@@ -1,0 +1,12 @@
+Cross-val accuracy : 0.610 ± 0.027
+Train accuracy     : 0.620
+
+Classification report (train set):
+              precision    recall  f1-score   support
+
+        loss       0.62      0.63      0.62       834
+         win       0.62      0.61      0.62       834
+
+    accuracy                           0.62      1668
+   macro avg       0.62      0.62      0.62      1668
+weighted avg       0.62      0.62      0.62      1668
