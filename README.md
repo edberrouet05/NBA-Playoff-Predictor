@@ -31,10 +31,10 @@ pip install -r requirements.txt
 
 ```bash
 # Regular season stats (default)
-python data/fetch_stats.py --season 2024-25
+python data/fetch_stats.py --season 2025-26
 
 # Playoff stats, skip rest-day calculation
-python data/fetch_stats.py --season 2024-25 --season-type Playoffs --no-rest
+python data/fetch_stats.py --season 2025-26 --season-type Playoffs --no-rest
 ```
 
 Output CSV is saved to `backend/data/`.
