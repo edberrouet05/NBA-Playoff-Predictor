@@ -28,6 +28,7 @@ FEATURES = [
     "ts_pct", "tov_pct", "oreb_pct", "home",
     "win_streak", "srs", "point_diff", "fg3_rate", "ftr",
     "back_to_back", "travel_km", "prev_margin",
+    "playoff_net_rtg",
 ]
 
 sns.set_theme(style="darkgrid", palette="muted")
@@ -79,9 +80,10 @@ def plot_distributions():
         "point_diff": "Point Differential",
         "fg3_rate":    "3PT Rate",
         "ftr":         "Free Throw Rate",
-        "back_to_back": "Back-to-Back",
-        "travel_km":   "Travel Distance (km)",
-        "prev_margin": "Previous Game Margin",
+        "back_to_back":    "Back-to-Back",
+        "travel_km":       "Travel Distance (km)",
+        "prev_margin":     "Previous Game Margin",
+        "playoff_net_rtg": "Prev Season Playoff Net Rtg",
     }
 
     for ax, feat in zip(axes, FEATURES):
@@ -132,9 +134,10 @@ def plot_win_probabilities(model):
     df["point_diff"]   = df.get("point_diff", 0.0)
     df["fg3_rate"]     = df.get("fg3_rate", 0.35)
     df["ftr"]          = df.get("ftr", 0.25)
-    df["back_to_back"] = 0
-    df["travel_km"]    = 0
-    df["prev_margin"]  = 0
+    df["back_to_back"]    = 0
+    df["travel_km"]       = 0
+    df["prev_margin"]     = 0
+    df["playoff_net_rtg"] = df.get("playoff_net_rtg", 0.0)
     probs = model.predict_proba(df[FEATURES])[:, 1]
     df["win_prob"] = probs
     df = df.sort_values("win_prob", ascending=True)

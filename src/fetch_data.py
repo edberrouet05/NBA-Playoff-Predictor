@@ -21,6 +21,8 @@ SEASONS = [
     "2020-21", "2021-22", "2022-23", "2023-24", "2024-25",
     "2025-26",
 ]
+# Playoff stats are needed one season further back (2014-15 is the baseline for 2015-16 training)
+PLAYOFF_STATS_SEASONS = ["2014-15"] + SEASONS
 
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 _SLEEP = 0.8   # stay under nba_api rate limit
@@ -166,6 +168,24 @@ def fetch_reg_season(season: str) -> pd.DataFrame:
     )
 
 
+def _fetch_playoff_team_stats(season: str) -> pd.DataFrame:
+    """Fetch team-level ratings from the playoffs for a given season."""
+    time.sleep(_SLEEP)
+    r = leaguedashteamstats.LeagueDashTeamStats(
+        season=season,
+        season_type_all_star="Playoffs",
+        measure_type_detailed_defense="Advanced",
+        per_mode_detailed="PerGame",
+    )
+    df = r.get_data_frames()[0]
+    if df.empty:
+        return pd.DataFrame(columns=["team_id", "playoff_net_rtg"])
+    return df[["TEAM_ID", "NET_RATING"]].rename(columns={
+        "TEAM_ID":    "team_id",
+        "NET_RATING": "playoff_net_rtg",
+    })
+
+
 def fetch_playoff_games(season: str) -> pd.DataFrame:
     time.sleep(_SLEEP)
     r = leaguegamefinder.LeagueGameFinder(
@@ -184,10 +204,24 @@ def fetch_playoff_games(season: str) -> pd.DataFrame:
 def main():
     RAW_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Playoff team stats (used as a feature for the *next* season's training data)
+    print("=== Playoff team stats ===")
+    for season in PLAYOFF_STATS_SEASONS:
+        slug = season.replace("-", "_")
+        path = RAW_DIR / f"playoff_stats_{slug}.csv"
+        print(f"{season}  playoff team stats … ", end="", flush=True)
+        try:
+            ps = _fetch_playoff_team_stats(season)
+            ps.to_csv(path, index=False)
+            print(f"{len(ps)} teams saved.")
+        except Exception as e:
+            print(f"FAILED ({e})")
+
+    print("\n=== Regular season + playoff games ===")
     for season in SEASONS:
         slug = season.replace("-", "_")
 
-        reg_path = RAW_DIR / f"reg_season_{slug}.csv"
+        reg_path    = RAW_DIR / f"reg_season_{slug}.csv"
         playoff_path = RAW_DIR / f"playoff_games_{slug}.csv"
 
         print(f"{season}  regular season … ", end="", flush=True)

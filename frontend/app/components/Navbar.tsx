@@ -14,7 +14,7 @@ export default function Navbar() {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
         <span className="font-bold text-gray-900 tracking-tight">
-          NBA Playoff Predictor
+          CourtEdge
         </span>
         <div className="flex gap-1">
           {links.map((l) => (

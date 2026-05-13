@@ -26,9 +26,10 @@ const LABELS: Record<string, string> = {
   point_diff:   "Point Differential",
   fg3_rate:     "3PT Rate",
   ftr:          "Free Throw Rate",
-  back_to_back: "Back-to-Back",
-  travel_km:    "Travel Distance (km)",
-  prev_margin:  "Previous Game Margin",
+  back_to_back:    "Back-to-Back",
+  travel_km:       "Travel Distance (km)",
+  prev_margin:     "Previous Game Margin",
+  playoff_net_rtg: "Prev Season Playoff Net Rtg",
 };
 
 export default function StatsPage() {

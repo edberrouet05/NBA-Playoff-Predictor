@@ -44,13 +44,21 @@ function fmt(v: number, pct: boolean): string {
   return v.toFixed(1);
 }
 
+interface InjuryPlayer { name: string; status: string; pts_per_game: number | null; }
+interface InjuryData   { factor: number; players: InjuryPlayer[]; }
+type InjuryReport = Record<string, InjuryData>;
+
 export default function MatchupPage() {
-  const [teams,   setTeams]   = useState<string[]>([]);
-  const [teamA,   setTeamA]   = useState("");
-  const [teamB,   setTeamB]   = useState("");
-  const [result,  setResult]  = useState<CompareResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
+  const [teams,         setTeams]         = useState<string[]>([]);
+  const [teamA,         setTeamA]         = useState("");
+  const [teamB,         setTeamB]         = useState("");
+  const [injuries,      setInjuries]      = useState<InjuryReport | null>(null);
+  const [injuryLoading, setInjuryLoading] = useState(false);
+  const [injuryA,       setInjuryA]       = useState(1.0);
+  const [injuryB,       setInjuryB]       = useState(1.0);
+  const [result,        setResult]        = useState<CompareResult | null>(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/teams`)
@@ -59,6 +67,21 @@ export default function MatchupPage() {
       .catch(() => setError("Backend unreachable."));
   }, []);
 
+  // Auto-fetch live injury data whenever both teams are selected
+  useEffect(() => {
+    if (!teamA || !teamB) { setInjuries(null); setInjuryA(1.0); setInjuryB(1.0); return; }
+    setInjuryLoading(true);
+    fetch(`${API}/api/injuries?team_a=${encodeURIComponent(teamA)}&team_b=${encodeURIComponent(teamB)}`)
+      .then((r) => r.json())
+      .then((data: InjuryReport) => {
+        setInjuries(data);
+        setInjuryA(data[teamA]?.factor ?? 1.0);
+        setInjuryB(data[teamB]?.factor ?? 1.0);
+      })
+      .catch(() => { setInjuries(null); setInjuryA(1.0); setInjuryB(1.0); })
+      .finally(() => setInjuryLoading(false));
+  }, [teamA, teamB]);
+
   async function compare() {
     if (!teamA || !teamB) return;
     if (teamA === teamB) { setError("Pick two different teams."); return; }
@@ -66,7 +89,7 @@ export default function MatchupPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${API}/api/compare?team_a=${encodeURIComponent(teamA)}&team_b=${encodeURIComponent(teamB)}`
+        `${API}/api/compare?team_a=${encodeURIComponent(teamA)}&team_b=${encodeURIComponent(teamB)}&injury_a=${injuryA}&injury_b=${injuryB}`
       );
       if (!res.ok) throw new Error();
       setResult(await res.json());
@@ -91,6 +114,7 @@ export default function MatchupPage() {
           <span className="text-gray-300 font-bold text-xl pb-2">vs</span>
           <Sel label="Team B" value={teamB} teams={teams} onChange={setTeamB} />
         </div>
+
         {error && <p className="mt-3 text-red-600 text-sm">{error}</p>}
         <button
           onClick={compare}
@@ -100,6 +124,23 @@ export default function MatchupPage() {
           {loading ? "Comparing…" : "Compare"}
         </button>
       </div>
+
+      {/* Live injury report */}
+      {(injuryLoading || (injuries && teamA && teamB)) && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            Live Injury Report
+          </h2>
+          {injuryLoading ? (
+            <p className="text-sm text-gray-400">Fetching injury data…</p>
+          ) : injuries && (
+            <div className="grid grid-cols-2 gap-6">
+              <InjuryPanel team={teamA} data={injuries[teamA]} />
+              <InjuryPanel team={teamB} data={injuries[teamB]} />
+            </div>
+          )}
+        </div>
+      )}
 
       {result && (
         <div className="flex flex-col gap-5">
@@ -129,11 +170,11 @@ export default function MatchupPage() {
               const bWins = better !== 0 && (better === 1 ? b > a : b < a);
               return (
                 <div key={key} className="grid grid-cols-[1fr_auto_1fr] gap-x-4 items-center py-2 border-b border-gray-50 last:border-0">
-                  <span className={`text-center text-sm font-semibold ${aWins ? "text-red-600" : "text-gray-400"}`}>
+                  <span className={`text-center text-sm font-semibold ${aWins ? "text-green-600" : "text-gray-400"}`}>
                     {fmt(a, pct)}
                   </span>
                   <span className="text-xs text-gray-400 text-center whitespace-nowrap w-32">{label}</span>
-                  <span className={`text-center text-sm font-semibold ${bWins ? "text-red-600" : "text-gray-400"}`}>
+                  <span className={`text-center text-sm font-semibold ${bWins ? "text-green-600" : "text-gray-400"}`}>
                     {fmt(b, pct)}
                   </span>
                 </div>
@@ -238,6 +279,51 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">{title}</h2>
       {children}
+    </div>
+  );
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  Out:          "bg-red-100 text-red-700",
+  Doubtful:     "bg-orange-100 text-orange-700",
+  Questionable: "bg-yellow-100 text-yellow-700",
+  "Day-To-Day": "bg-yellow-100 text-yellow-700",
+};
+
+function InjuryPanel({ team, data }: { team: string; data: InjuryData | undefined }) {
+  if (!data) return null;
+  const pct = Math.round(data.factor * 100);
+  const badgeClass =
+    data.factor >= 0.9 ? "bg-green-100 text-green-700" :
+    data.factor >= 0.7 ? "bg-yellow-100 text-yellow-700" :
+                         "bg-red-100 text-red-700";
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-bold text-gray-900 truncate pr-2">{team}</span>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${badgeClass}`}>
+          Health {pct}%
+        </span>
+      </div>
+      {data.players.length === 0 ? (
+        <p className="text-xs text-gray-400">No significant injuries</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {data.players.map((p) => (
+            <div key={p.name} className="flex items-center justify-between text-xs gap-2">
+              <span className="text-gray-700 font-medium truncate">{p.name}</span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {p.pts_per_game !== null && (
+                  <span className="text-gray-400">{p.pts_per_game} ppg</span>
+                )}
+                <span className={`px-1.5 py-0.5 rounded font-semibold ${STATUS_COLOR[p.status] ?? "bg-gray-100 text-gray-600"}`}>
+                  {p.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

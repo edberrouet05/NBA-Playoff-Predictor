@@ -78,6 +78,18 @@ def load_reg_stats(season: str) -> pd.DataFrame:
     return df.set_index("team_id")
 
 
+def load_playoff_stats(season: str) -> pd.DataFrame:
+    """Load previous season's playoff team ratings. Returns DataFrame indexed by team_id."""
+    slug = season.replace("-", "_")
+    path = RAW_DIR / f"playoff_stats_{slug}.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["playoff_net_rtg"])
+    df = pd.read_csv(path)
+    if "team_id" not in df.columns or "playoff_net_rtg" not in df.columns:
+        return pd.DataFrame(columns=["playoff_net_rtg"])
+    return df[["team_id", "playoff_net_rtg"]].set_index("team_id")
+
+
 def load_playoff_games(season: str) -> pd.DataFrame:
     slug = season.replace("-", "_")
     df = pd.read_csv(RAW_DIR / f"playoff_games_{slug}.csv")
@@ -93,6 +105,11 @@ def build():
         print(f"  {season} … ", end="", flush=True)
         stats = load_reg_stats(season)
         games = load_playoff_games(season)
+
+        # Previous season's playoff net rating (0.0 if team missed playoffs)
+        year = int(season.split("-")[0])
+        prev_season = f"{year - 1}-{str(year)[2:]}"
+        playoff_stats = load_playoff_stats(prev_season)
 
         if games.empty:
             print("no games")
@@ -120,6 +137,10 @@ def build():
                 s       = stats.loc[tid]
                 matchup = str(team_row.get("MATCHUP", ""))
                 is_home = 1 if " vs. " in matchup else 0
+                playoff_net_rtg = (
+                    float(playoff_stats.loc[tid, "playoff_net_rtg"])
+                    if tid in playoff_stats.index else 0.0
+                )
 
                 # Previous playoff games for this team (sorted newest first)
                 prev = games[
@@ -156,10 +177,11 @@ def build():
                     "point_diff":   s["point_diff"],
                     "fg3_rate":     s["fg3_rate"],
                     "ftr":          s["ftr"],
-                    "back_to_back": back_to_back,
-                    "travel_km":    travel,
-                    "prev_margin":  prev_margin,
-                    "label":        label,
+                    "back_to_back":    back_to_back,
+                    "travel_km":       travel,
+                    "prev_margin":     prev_margin,
+                    "playoff_net_rtg": playoff_net_rtg,
+                    "label":           label,
                 })
                 n_rows += 1
 

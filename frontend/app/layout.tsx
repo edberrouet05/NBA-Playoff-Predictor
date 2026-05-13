@@ -6,7 +6,7 @@ import Navbar from "./components/Navbar";
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NBA Playoff Predictor",
+  title: "CourtEdge",
   description: "Live schedule · Game-by-game simulation · 2025–26 stats",
 };
 

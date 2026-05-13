@@ -33,6 +33,7 @@ FEATURES = [
     "ts_pct", "tov_pct", "oreb_pct", "home",
     "win_streak", "srs", "point_diff", "fg3_rate", "ftr",
     "back_to_back", "travel_km", "prev_margin",
+    "playoff_net_rtg",
 ]
 
 
