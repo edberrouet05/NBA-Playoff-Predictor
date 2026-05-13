@@ -116,13 +116,17 @@ def _game_prob(
 
     ctx_a / ctx_b override contextual features (back_to_back, travel_km, prev_margin).
     """
+    defaults = {"back_to_back": 0, "travel_km": 0.0, "prev_margin": 0.0}
+
     a = stats.loc[team_a, STAT_FEATURES].to_dict()
     a["home"] = 1 if team_a_is_home else 0
+    a.update(defaults)
     if ctx_a:
         a.update(ctx_a)
 
     b = stats.loc[team_b, STAT_FEATURES].to_dict()
     b["home"] = 0 if team_a_is_home else 1
+    b.update(defaults)
     if ctx_b:
         b.update(ctx_b)
 
@@ -338,3 +342,62 @@ def predict(body: MatchupRequest):
         if t not in stats.index:
             raise HTTPException(status_code=404, detail=f"Team not found: {t}")
     return _build_prediction(model, stats, body.team_a, body.team_b)
+
+
+@app.get("/api/compare")
+def compare_teams(team_a: str, team_b: str):
+    """Return side-by-side stats + series prediction for two teams."""
+    stats = _load_stats_by_name()
+    for t in (team_a, team_b):
+        if t not in stats.index:
+            raise HTTPException(status_code=404, detail=f"Team not found: {t}")
+
+    display = [
+        "off_rtg", "def_rtg", "net_rtg", "pace", "ts_pct",
+        "tov_pct", "oreb_pct", "srs", "point_diff", "fg3_rate", "ftr", "win_streak",
+    ]
+
+    def team_stats(name: str) -> dict:
+        row = stats.loc[name]
+        return {col: round(float(row[col]), 3) for col in display if col in stats.columns}
+
+    model = _load_model()
+    return {
+        "team_a":       team_a,
+        "team_b":       team_b,
+        "team_a_stats": team_stats(team_a),
+        "team_b_stats": team_stats(team_b),
+        "prediction":   _build_prediction(model, stats, team_a, team_b),
+    }
+
+
+@app.get("/api/stats")
+def get_model_stats():
+    """Return model accuracy, training data info, and feature importance."""
+    model = _load_model()
+    coefs = [round(float(c), 4) for c in model.named_steps["clf"].coef_[0]]
+
+    cv_acc = 0.0
+    metrics_path = ROOT / "models" / "metrics.txt"
+    if metrics_path.exists():
+        for line in metrics_path.read_text().split("\n"):
+            if "Cross-val accuracy" in line:
+                try:
+                    cv_acc = float(line.split(":")[1].split("±")[0].strip())
+                except Exception:
+                    pass
+
+    n_games = n_seasons = 0
+    training_path = ROOT / "data" / "processed" / "training_data.csv"
+    if training_path.exists():
+        df = pd.read_csv(training_path)
+        n_games   = len(df) // 2
+        n_seasons = int(df["season"].nunique()) if "season" in df.columns else 0
+
+    return {
+        "accuracy":     round(cv_acc * 100, 1),
+        "n_games":      n_games,
+        "n_seasons":    n_seasons,
+        "features":     FEATURES,
+        "coefficients": coefs,
+    }
