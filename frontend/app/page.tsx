@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const API = "http://localhost:8000";
 
@@ -16,91 +17,112 @@ interface TodayGame {
   predicted_winner: string;
 }
 
-interface TeamStats {
-  off_rtg: number; def_rtg: number; net_rtg: number; pace: number;
-  ts_pct: number; tov_pct: number; oreb_pct: number; srs: number;
-  point_diff: number; fg3_rate: number; ftr: number; win_streak: number;
-}
-
-interface CompareResult {
-  team_a: string; team_b: string;
-  team_a_stats: TeamStats; team_b_stats: TeamStats;
-}
-
-interface InjuryPlayer { name: string; status: string; pts_per_game: number | null; }
-interface InjuryData   { factor: number; players: InjuryPlayer[]; }
-type InjuryReport = Record<string, InjuryData>;
-
-interface GameDetail {
-  compare: CompareResult | null;
-  injuries: InjuryReport | null;
-}
-
-const EXPAND_STATS = [
-  { key: "net_rtg",    label: "Net Rating",      better: 1,  pct: false },
-  { key: "off_rtg",    label: "Off Rating",      better: 1,  pct: false },
-  { key: "def_rtg",    label: "Def Rating",      better: -1, pct: false },
-  { key: "ts_pct",     label: "True Shooting %", better: 1,  pct: true  },
-  { key: "tov_pct",    label: "Turnover %",      better: -1, pct: true  },
-  { key: "srs",        label: "SRS",             better: 1,  pct: false },
-];
-
-const STATUS_COLOR: Record<string, string> = {
-  Out:          "bg-red-100 text-red-700",
-  Doubtful:     "bg-orange-100 text-orange-700",
-  Questionable: "bg-yellow-100 text-yellow-700",
-  "Day-To-Day": "bg-yellow-100 text-yellow-700",
+const TEAM_ABBR: Record<string, string> = {
+  "Atlanta Hawks": "ATL", "Boston Celtics": "BOS", "Brooklyn Nets": "BKN",
+  "Charlotte Hornets": "CHA", "Chicago Bulls": "CHI", "Cleveland Cavaliers": "CLE",
+  "Dallas Mavericks": "DAL", "Denver Nuggets": "DEN", "Detroit Pistons": "DET",
+  "Golden State Warriors": "GSW", "Houston Rockets": "HOU", "Indiana Pacers": "IND",
+  "LA Clippers": "LAC", "Los Angeles Lakers": "LAL", "Memphis Grizzlies": "MEM",
+  "Miami Heat": "MIA", "Milwaukee Bucks": "MIL", "Minnesota Timberwolves": "MIN",
+  "New Orleans Pelicans": "NOP", "New York Knicks": "NYK", "Oklahoma City Thunder": "OKC",
+  "Orlando Magic": "ORL", "Philadelphia 76ers": "PHI", "Phoenix Suns": "PHX",
+  "Portland Trail Blazers": "POR", "Sacramento Kings": "SAC", "San Antonio Spurs": "SAS",
+  "Toronto Raptors": "TOR", "Utah Jazz": "UTA", "Washington Wizards": "WAS",
+};
+const TEAM_COLORS: Record<string, string> = {
+  ATL: "#E03A3E", BOS: "#007A33", BKN: "#9EA0A2",
+  CHA: "#00788C", CHI: "#CE1141", CLE: "#860038",
+  DAL: "#00538C", DEN: "#FEC524", DET: "#1D428A",
+  GSW: "#FFC72C", HOU: "#CE1141", IND: "#FDBB30",
+  LAC: "#C8102E", LAL: "#FDB927", MEM: "#5D76A9",
+  MIA: "#F9A01B", MIL: "#00471B", MIN: "#236192",
+  NOP: "#C8A956", NYK: "#F58426", OKC: "#007AC1",
+  ORL: "#0077C0", PHI: "#006BB6", PHX: "#E56020",
+  POR: "#E03A3E", SAC: "#5A2D81", SAS: "#9EA0A2",
+  TOR: "#CE1141", UTA: "#F9A01B", WAS: "#E31837",
 };
 
-function fmt(v: number, pct: boolean): string {
-  if (pct) return (v * 100).toFixed(1) + "%";
-  return v.toFixed(1);
+function getAbbr(t: string) { return TEAM_ABBR[t] ?? t.split(" ").pop()?.substring(0, 3).toUpperCase() ?? "???"; }
+function getColor(t: string) { return TEAM_COLORS[getAbbr(t)] ?? "#555"; }
+
+const TEAM_IDS: Record<string, number> = {
+  ATL: 1610612737, BOS: 1610612738, BKN: 1610612751,
+  CHA: 1610612766, CHI: 1610612741, CLE: 1610612739,
+  DAL: 1610612742, DEN: 1610612743, DET: 1610612765,
+  GSW: 1610612744, HOU: 1610612745, IND: 1610612754,
+  LAC: 1610612746, LAL: 1610612747, MEM: 1610612763,
+  MIA: 1610612748, MIL: 1610612749, MIN: 1610612750,
+  NOP: 1610612740, NYK: 1610612752, OKC: 1610612760,
+  ORL: 1610612753, PHI: 1610612755, PHX: 1610612756,
+  POR: 1610612757, SAC: 1610612758, SAS: 1610612759,
+  TOR: 1610612761, UTA: 1610612762, WAS: 1610612764,
+};
+function getLogoUrl(t: string) {
+  const id = TEAM_IDS[getAbbr(t)];
+  return id ? `https://cdn.nba.com/logos/nba/${id}/global/L/logo.svg` : "";
 }
 
-export default function BracketPage() {
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric",
+  });
+}
+
+function gameUrl(g: TodayGame): string {
+  const p = new URLSearchParams({
+    away:       g.away_team,
+    home:       g.home_team,
+    time:       g.status_text,
+    status:     g.status,
+    away_prob:  String(g.away_win_prob),
+    home_prob:  String(g.home_win_prob),
+    winner:     g.predicted_winner,
+    away_score: g.away_score !== null ? String(g.away_score) : "",
+    home_score: g.home_score !== null ? String(g.home_score) : "",
+  });
+  return `/game/${g.game_id}?${p.toString()}`;
+}
+
+export default function GamesPage() {
   const [schedule, setSchedule] = useState<{ date: string; games: TodayGame[] }[]>([]);
   const [error, setError]       = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/schedule?days=1`)
-      .then((r) => r.json())
-      .then((d) => setSchedule(d.schedule ?? []))
+      .then(r => r.json())
+      .then(d => setSchedule(d.schedule ?? []))
       .catch(() => setError("Could not load schedule. Make sure the backend is running."));
   }, []);
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Tonight&apos;s Games</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tonight&apos;s Games</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Live win probability · injury-adjusted · tap a game for details
+          Live win probability · injury-adjusted · click a game for details
         </p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm mb-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm mb-6">
           {error}
         </div>
       )}
 
       {!error && schedule.length === 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center text-gray-400 text-sm shadow-sm">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
           Loading tonight&apos;s games…
         </div>
       )}
 
-      {schedule.map((day) => (
+      {schedule.map(day => (
         <div key={day.date} className="mb-6">
-          <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-widest">
-            {(() => {
-              const [y, m, d] = day.date.split("T")[0].split("-").map(Number);
-              return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-                weekday: "long", month: "long", day: "numeric",
-              });
-            })()}
+          <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-widest">
+            {formatDate(day.date)}
           </p>
-          <div className="flex flex-col gap-3">
-            {day.games.map((g) => <GameCard key={g.game_id} game={g} />)}
+          <div className="flex flex-col gap-4">
+            {day.games.map(g => <GameCard key={g.game_id} game={g} />)}
           </div>
         </div>
       ))}
@@ -111,159 +133,79 @@ export default function BracketPage() {
 function GameCard({ game }: { game: TodayGame }) {
   const isLive  = game.status === "Live";
   const isFinal = game.status === "Final";
-
-  const [expanded, setExpanded] = useState(false);
-  const [detail,   setDetail]   = useState<GameDetail | null>(null);
-  const [loading,  setLoading]  = useState(false);
-
-  async function toggle() {
-    setExpanded((v) => !v);
-    if (detail || loading) return;
-    setLoading(true);
-    try {
-      const [cmp, inj] = await Promise.all([
-        fetch(`${API}/api/compare?team_a=${encodeURIComponent(game.away_team)}&team_b=${encodeURIComponent(game.home_team)}`).then((r) => r.json()),
-        fetch(`${API}/api/injuries?team_a=${encodeURIComponent(game.away_team)}&team_b=${encodeURIComponent(game.home_team)}`).then((r) => r.json()),
-      ]);
-      setDetail({ compare: cmp, injuries: inj });
-    } catch {
-      setDetail({ compare: null, injuries: null });
-    } finally {
-      setLoading(false);
-    }
-  }
+  const showScore = isLive || isFinal;
+  const awayWins = isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score;
+  const homeWins = isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      {/* Clickable header */}
-      <button onClick={toggle} className="w-full text-left p-5 hover:bg-gray-50 transition-colors">
-        <div className="flex items-center justify-between mb-3">
-          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-            isLive  ? "bg-green-100 text-green-600" :
-            isFinal ? "bg-gray-100 text-gray-500"   :
-                      "bg-red-100 text-red-600"
-          }`}>
-            {isLive ? "● LIVE" : game.status_text}
-          </span>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">
-              Predicted: <span className="text-red-600 font-semibold">{game.predicted_winner}</span>
+    <Link href={gameUrl(game)} className="block group">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
+
+        {/* Status row */}
+        <div className="px-5 pt-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500">{game.status_text}</span>
+          {isLive && (
+            <span className="flex items-center gap-1.5 text-xs font-bold text-red-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+              Live
             </span>
-            <span className={`text-gray-300 text-xs transition-transform ${expanded ? "rotate-180" : ""}`}>▼</span>
+          )}
+          {isFinal && <span className="text-xs text-gray-500 font-medium">Final</span>}
+        </div>
+
+        {/* Teams */}
+        <div className="px-5 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div className="flex flex-col items-center gap-1.5">
+            <TeamLogo team={game.away_team} size="w-12 h-12" />
+            <span className="text-gray-900 dark:text-white text-sm font-bold">{getAbbr(game.away_team)}</span>
+            <span className={`text-sm font-bold ${game.predicted_winner === game.away_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+              {game.away_win_prob}%
+            </span>
+            {showScore && game.away_score !== null && (
+              <span className={`text-lg font-bold ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
+                {game.away_score}
+              </span>
+            )}
+          </div>
+
+          <span className="text-gray-300 dark:text-gray-700 font-bold text-sm">VS</span>
+
+          <div className="flex flex-col items-center gap-1.5">
+            <TeamLogo team={game.home_team} size="w-12 h-12" />
+            <span className="text-gray-900 dark:text-white text-sm font-bold">{getAbbr(game.home_team)}</span>
+            <span className={`text-sm font-bold ${game.predicted_winner === game.home_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+              {game.home_win_prob}%
+            </span>
+            {showScore && game.home_score !== null && (
+              <span className={`text-lg font-bold ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
+                {game.home_score}
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <TeamRow
-            team={game.away_team} prob={game.away_win_prob} score={game.away_score}
-            isWinner={isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score}
-            showScore={isLive || isFinal}
-          />
-          <TeamRow
-            team={game.home_team} prob={game.home_win_prob} score={game.home_score}
-            isWinner={isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score}
-            showScore={isLive || isFinal}
-          />
+
+        {/* Split probability bar */}
+        <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
+          <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: getColor(game.away_team) }} />
+          <div className="h-full flex-1" style={{ background: getColor(game.home_team) }} />
         </div>
-      </button>
 
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="border-t border-gray-100 px-5 pb-5 pt-4">
-          {loading && <p className="text-xs text-gray-400 text-center py-3">Loading details…</p>}
-
-          {detail && (
-            <div className="flex flex-col gap-5">
-
-              {/* Stats comparison */}
-              {detail.compare && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Stats Comparison</p>
-                  <div className="grid grid-cols-[1fr_auto_1fr] gap-x-3 pb-2 mb-1 border-b border-gray-100">
-                    <span className="text-center text-xs font-bold text-gray-700">{game.away_team.split(" ").slice(-1)[0]}</span>
-                    <span />
-                    <span className="text-center text-xs font-bold text-gray-700">{game.home_team.split(" ").slice(-1)[0]}</span>
-                  </div>
-                  {EXPAND_STATS.map(({ key, label, better, pct }) => {
-                    const a = detail.compare!.team_a_stats[key as keyof TeamStats] ?? 0;
-                    const b = detail.compare!.team_b_stats[key as keyof TeamStats] ?? 0;
-                    const aWins = better !== 0 && (better === 1 ? a > b : a < b);
-                    const bWins = better !== 0 && (better === 1 ? b > a : b < a);
-                    return (
-                      <div key={key} className="grid grid-cols-[1fr_auto_1fr] gap-x-3 items-center py-1.5 border-b border-gray-50 last:border-0">
-                        <span className={`text-center text-xs font-semibold ${aWins ? "text-green-600" : "text-gray-400"}`}>{fmt(a, pct)}</span>
-                        <span className="text-xs text-gray-400 text-center w-28">{label}</span>
-                        <span className={`text-center text-xs font-semibold ${bWins ? "text-green-600" : "text-gray-400"}`}>{fmt(b, pct)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Injury report */}
-              {detail.injuries && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Injury Report</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <InjuryPanel team={game.away_team} data={detail.injuries[game.away_team]} />
-                    <InjuryPanel team={game.home_team} data={detail.injuries[game.home_team]} />
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
+        {/* Prediction */}
+        <div className="px-5 py-3">
+          <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-function InjuryPanel({ team, data }: { team: string; data: InjuryData | undefined }) {
-  if (!data) return null;
-  const lastName = team.split(" ").slice(-1)[0];
-  return (
-    <div>
-      <p className="text-xs font-bold text-gray-700 mb-2">{lastName}</p>
-      {data.players.length === 0 ? (
-        <p className="text-xs text-gray-400">No injuries reported</p>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          {data.players.map((p) => (
-            <div key={p.name} className="flex flex-col gap-0.5">
-              <span className="text-xs text-gray-700 font-medium leading-tight">{p.name}</span>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${STATUS_COLOR[p.status] ?? "bg-gray-100 text-gray-600"}`}>
-                  {p.status}
-                </span>
-                {p.pts_per_game !== null && (
-                  <span className="text-xs text-gray-400">{p.pts_per_game} ppg</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TeamRow({ team, prob, score, isWinner, showScore }: {
-  team: string; prob: number; score: number | null; isWinner: boolean; showScore: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className={`w-44 text-sm font-medium truncate ${isWinner ? "text-red-600 font-semibold" : "text-gray-800"}`}>
-        {team}
-      </span>
-      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-full bg-red-500 rounded-full" style={{ width: `${prob}%` }} />
       </div>
-      <span className="text-red-600 text-xs font-bold w-10 text-right">{prob}%</span>
-      {showScore && score !== null && (
-        <span className={`text-sm font-bold w-8 text-right ${isWinner ? "text-red-600" : "text-gray-400"}`}>
-          {score}
-        </span>
-      )}
-    </div>
+    </Link>
+  );
+}
+
+function TeamLogo({ team, size }: { team: string; size: string }) {
+  const [err, setErr] = useState(false);
+  const url = getLogoUrl(team);
+  if (!url || err) {
+    return <div className={`${size} rounded-full flex-shrink-0`} style={{ background: getColor(team) }} />;
+  }
+  return (
+    <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setErr(true)} />
   );
 }

@@ -387,6 +387,80 @@ def get_injuries(team_a: str, team_b: str):
     return results
 
 
+_series_cache: dict[str, dict] = {}
+_series_cache_time: dict[str, float] = {}
+_SERIES_CACHE_TTL = 1800.0
+
+
+@app.get("/api/series_history")
+def get_series_history(team_a: str, team_b: str):
+    """Return series win probability after each game played so far."""
+    import time as _time
+
+    cache_key = f"{team_a}|{team_b}"
+    now = _time.time()
+    if cache_key in _series_cache and (now - _series_cache_time.get(cache_key, 0.0)) < _SERIES_CACHE_TTL:
+        return _series_cache[cache_key]
+
+    # Per-game win probability from model
+    try:
+        _model = _load_model()
+        stats  = _load_stats_by_name()
+        pred   = _build_prediction(_model, stats, team_a, team_b)
+        p_game = pred["games"][0]["team_a_prob"] / 100.0
+    except Exception:
+        p_game = 0.5
+
+    def series_prob(wa: int, wb: int, p: float, target: int = 4) -> float:
+        memo: dict = {}
+        def dp(i: int, j: int) -> float:
+            if i == target: return 1.0
+            if j == target: return 0.0
+            if (i, j) in memo: return memo[(i, j)]
+            v = p * dp(i + 1, j) + (1 - p) * dp(i, j + 1)
+            memo[(i, j)] = v
+            return v
+        return round(dp(wa, wb) * 100, 1)
+
+    pre_prob = series_prob(0, 0, p_game)
+    history: list[dict] = [
+        {"game": "Pre", "team_a_prob": pre_prob, "team_b_prob": round(100 - pre_prob, 1), "series": "0-0"}
+    ]
+
+    try:
+        from nba_api.stats.endpoints import leaguegamelog
+        _time.sleep(0.6)
+        df     = leaguegamelog.LeagueGameLog(season="2025-26", season_type_all_star="Playoffs").get_data_frames()[0]
+        abbr_a = TEAM_TO_ABBR.get(team_a, "")
+        abbr_b = TEAM_TO_ABBR.get(team_b, "")
+
+        if abbr_a and abbr_b:
+            games = df[df["TEAM_ABBREVIATION"] == abbr_a]
+            games = games[games["MATCHUP"].str.contains(abbr_b, na=False)]
+            games = games.sort_values("GAME_DATE")
+
+            wa, wb = 0, 0
+            for _, row in games.iterrows():
+                if row["WL"] == "W":
+                    wa += 1
+                else:
+                    wb += 1
+                prob = series_prob(wa, wb, p_game)
+                history.append({
+                    "game":        f"G{wa + wb}",
+                    "team_a_prob": prob,
+                    "team_b_prob": round(100 - prob, 1),
+                    "series":      f"{wa}-{wb}",
+                })
+    except Exception:
+        pass
+
+    result = {"team_a": team_a, "team_b": team_b, "history": history}
+    _series_cache[cache_key] = result
+    _series_cache_time[cache_key] = now
+    return result
+
+
 def _team_travel_km(away_name: str, home_name: str) -> float:
     """Distance from away team's home arena to the game arena (home team's city)."""
     a = TEAM_TO_ABBR.get(away_name, "")
@@ -415,6 +489,7 @@ def _fetch_day(
 
     # Fetch all injuries in one ESPN request, then look up each playing team
     injury_factors: dict[str, float] = {}
+    injury_players: dict[str, list] = {}
     if fetch_injuries:
         all_injuries   = _fetch_all_espn_injuries()
         player_minutes = _get_player_minutes_cached()
@@ -426,8 +501,9 @@ def _fetch_day(
                 name = str(stats_by_id.loc[tid, "team_name"])
                 if name not in injury_factors:
                     inj = all_injuries.get(name, [])
-                    factor, _ = _compute_injury_factor(inj, name, player_minutes)
+                    factor, players = _compute_injury_factor(inj, name, player_minutes)
                     injury_factors[name] = factor
+                    injury_players[name] = players
 
     results = []
     for g in games:

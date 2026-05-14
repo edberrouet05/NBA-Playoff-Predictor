@@ -50,7 +50,7 @@ export default function StatsPage() {
   );
   if (!data) return (
     <main className="max-w-2xl mx-auto px-4 py-10">
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center text-gray-400 text-sm shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center text-gray-400 text-sm shadow-sm">
         Loading…
       </div>
     </main>
@@ -65,7 +65,7 @@ export default function StatsPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Model Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Model Dashboard</h1>
         <p className="text-gray-500 text-sm mt-1">
           Logistic regression · {data.n_seasons} seasons · {data.n_games.toLocaleString()} playoff games
         </p>
@@ -79,23 +79,23 @@ export default function StatsPage() {
       </div>
 
       {/* Feature importance */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-5">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm dark:shadow-none mb-5">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-5">
           Feature Importance
         </h2>
         <div className="flex flex-col gap-3.5">
           {importance.map(({ feature, coef }) => {
-            const width   = (Math.abs(coef) / maxAbs) * 100;
-            const pos     = coef >= 0;
+            const width = (Math.abs(coef) / maxAbs) * 100;
+            const pos   = coef >= 0;
             return (
               <div key={feature}>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">{LABELS[feature] ?? feature}</span>
+                  <span className="text-gray-600 dark:text-gray-400 font-medium">{LABELS[feature] ?? feature}</span>
                   <span className={`font-mono font-semibold tabular-nums ${pos ? "text-red-600" : "text-blue-500"}`}>
                     {coef > 0 ? "+" : ""}{coef.toFixed(3)}
                   </span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${pos ? "bg-red-500" : "bg-blue-400"}`}
                     style={{ width: `${width}%` }}
@@ -112,15 +112,15 @@ export default function StatsPage() {
       </div>
 
       {/* Model details */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm dark:shadow-none">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">About the Model</h2>
-        <ul className="text-sm text-gray-600 space-y-2">
-          <li className="flex gap-2"><span className="text-gray-300">—</span> Logistic regression with L2 regularization + StandardScaler</li>
-          <li className="flex gap-2"><span className="text-gray-300">—</span> Trained on individual playoff games (game-level, not series-level)</li>
-          <li className="flex gap-2"><span className="text-gray-300">—</span> Stratified 5-fold cross-validation</li>
-          <li className="flex gap-2"><span className="text-gray-300">—</span> Prediction: normalized head-to-head logistic scores</li>
-          <li className="flex gap-2"><span className="text-gray-300">—</span> Series simulation: 10 000 Monte Carlo runs · 2-2-1-1-1 format</li>
-          <li className="flex gap-2"><span className="text-gray-300">—</span> Contextual features computed live: back-to-back, travel distance</li>
+        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic regression with L2 regularization + StandardScaler</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on individual playoff games (game-level, not series-level)</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Stratified 5-fold cross-validation</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Prediction: normalized head-to-head logistic scores</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Series simulation: 10 000 Monte Carlo runs · 2-2-1-1-1 format</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Contextual features computed live: back-to-back, travel distance</li>
         </ul>
       </div>
     </main>
@@ -129,9 +129,9 @@ export default function StatsPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm text-center">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm dark:shadow-none text-center">
       <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-2">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
     </div>
   );
 }

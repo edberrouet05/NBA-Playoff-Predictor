@@ -67,7 +67,6 @@ export default function MatchupPage() {
       .catch(() => setError("Backend unreachable."));
   }, []);
 
-  // Auto-fetch live injury data whenever both teams are selected
   useEffect(() => {
     if (!teamA || !teamB) { setInjuries(null); setInjuryA(1.0); setInjuryB(1.0); return; }
     setInjuryLoading(true);
@@ -103,15 +102,15 @@ export default function MatchupPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Matchup Comparison</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Matchup Comparison</h1>
         <p className="text-gray-500 text-sm mt-1">Feature-by-feature breakdown · series simulation</p>
       </div>
 
       {/* Selectors */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm mb-6">
         <div className="flex items-end gap-4">
           <Sel label="Team A" value={teamA} teams={teams} onChange={setTeamA} />
-          <span className="text-gray-300 font-bold text-xl pb-2">vs</span>
+          <span className="text-gray-300 dark:text-gray-600 font-bold text-xl pb-2">vs</span>
           <Sel label="Team B" value={teamB} teams={teams} onChange={setTeamB} />
         </div>
 
@@ -119,7 +118,7 @@ export default function MatchupPage() {
         <button
           onClick={compare}
           disabled={!teamA || !teamB || loading}
-          className="mt-4 w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold transition-colors"
+          className="mt-4 w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 text-white font-semibold transition-colors"
         >
           {loading ? "Comparing…" : "Compare"}
         </button>
@@ -127,7 +126,7 @@ export default function MatchupPage() {
 
       {/* Live injury report */}
       {(injuryLoading || (injuries && teamA && teamB)) && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm mb-6">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
             Live Injury Report
           </h2>
@@ -149,7 +148,7 @@ export default function MatchupPage() {
           <Card title="Series Win Probability">
             <ProbBar team={result.team_a} pct={result.prediction.team_a_series_prob} />
             <ProbBar team={result.team_b} pct={result.prediction.team_b_series_prob} />
-            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
               <p className="text-xs text-gray-400 uppercase tracking-widest">Predicted winner</p>
               <p className="text-xl font-bold text-red-600 mt-1">{result.prediction.predicted_winner}</p>
             </div>
@@ -157,11 +156,10 @@ export default function MatchupPage() {
 
           {/* Stats comparison */}
           <Card title="Stats Comparison">
-            {/* Header row */}
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-x-4 pb-3 mb-1 border-b border-gray-100">
-              <span className="text-center text-sm font-bold text-gray-900">{result.team_a}</span>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-x-4 pb-3 mb-1 border-b border-gray-100 dark:border-gray-700">
+              <span className="text-center text-sm font-bold text-gray-900 dark:text-white">{result.team_a}</span>
               <span />
-              <span className="text-center text-sm font-bold text-gray-900">{result.team_b}</span>
+              <span className="text-center text-sm font-bold text-gray-900 dark:text-white">{result.team_b}</span>
             </div>
             {STATS.map(({ key, label, better, pct }) => {
               const a = result.team_a_stats[key as keyof TeamStats] ?? 0;
@@ -169,7 +167,7 @@ export default function MatchupPage() {
               const aWins = better !== 0 && (better === 1 ? a > b : a < b);
               const bWins = better !== 0 && (better === 1 ? b > a : b < a);
               return (
-                <div key={key} className="grid grid-cols-[1fr_auto_1fr] gap-x-4 items-center py-2 border-b border-gray-50 last:border-0">
+                <div key={key} className="grid grid-cols-[1fr_auto_1fr] gap-x-4 items-center py-2 border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <span className={`text-center text-sm font-semibold ${aWins ? "text-green-600" : "text-gray-400"}`}>
                     {fmt(a, pct)}
                   </span>
@@ -186,7 +184,7 @@ export default function MatchupPage() {
           <Card title="Game-by-Game Simulation">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-400 text-xs uppercase border-b border-gray-200">
+                <tr className="text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left pb-2">Game</th>
                   <th className="text-left pb-2">Winner</th>
                   <th className="text-right pb-2">Prob</th>
@@ -195,12 +193,12 @@ export default function MatchupPage() {
               </thead>
               <tbody>
                 {result.prediction.games.map((g) => (
-                  <tr key={g.game} className={`border-b border-gray-100 ${g.clinching ? "font-semibold" : ""}`}>
+                  <tr key={g.game} className={`border-b border-gray-100 dark:border-gray-800 ${g.clinching ? "font-semibold" : ""}`}>
                     <td className="py-2 text-gray-400">Game {g.game}</td>
-                    <td className={`py-2 ${g.clinching ? "text-red-600" : ""}`}>
+                    <td className={`py-2 ${g.clinching ? "text-red-600" : "text-gray-700 dark:text-gray-300"}`}>
                       {g.winner}
                       {g.clinching && (
-                        <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                        <span className="ml-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">
                           Clinches
                         </span>
                       )}
@@ -219,7 +217,7 @@ export default function MatchupPage() {
           <Card title="Series Outcome Distribution (10 000 simulations)">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-400 text-xs uppercase border-b border-gray-200">
+                <tr className="text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left pb-2">Result</th>
                   <th className="text-right pb-2">{result.team_a}</th>
                   <th className="text-right pb-2">{result.team_b}</th>
@@ -227,7 +225,7 @@ export default function MatchupPage() {
               </thead>
               <tbody>
                 {result.prediction.outcomes.map((o) => (
-                  <tr key={o.result} className="border-b border-gray-100">
+                  <tr key={o.result} className="border-b border-gray-100 dark:border-gray-800">
                     <td className="py-2 text-gray-500">{o.result}</td>
                     <td className="py-2 text-right text-red-600 font-medium">{o.team_a_pct}%</td>
                     <td className="py-2 text-right text-gray-400">{o.team_b_pct}%</td>
@@ -251,7 +249,7 @@ function Sel({ label, value, teams, onChange }: {
       <label className="text-xs text-gray-500 font-medium block mb-1">{label}</label>
       <select
         value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+        className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
       >
         <option value="">Select team…</option>
         {teams.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -264,10 +262,10 @@ function ProbBar({ team, pct }: { team: string; pct: number }) {
   return (
     <div className="mb-3">
       <div className="flex justify-between text-sm mb-1">
-        <span className="font-medium text-gray-800">{team}</span>
+        <span className="font-medium text-gray-800 dark:text-gray-200">{team}</span>
         <span className="text-red-600 font-bold">{pct}%</span>
       </div>
-      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
         <div className="h-full bg-red-600 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -276,7 +274,7 @@ function ProbBar({ team, pct }: { team: string; pct: number }) {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm dark:shadow-none">
       <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">{title}</h2>
       {children}
     </div>
@@ -284,23 +282,23 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  Out:          "bg-red-100 text-red-700",
-  Doubtful:     "bg-orange-100 text-orange-700",
-  Questionable: "bg-yellow-100 text-yellow-700",
-  "Day-To-Day": "bg-yellow-100 text-yellow-700",
+  Out:          "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400",
+  Doubtful:     "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400",
+  Questionable: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+  "Day-To-Day": "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
 };
 
 function InjuryPanel({ team, data }: { team: string; data: InjuryData | undefined }) {
   if (!data) return null;
   const pct = Math.round(data.factor * 100);
   const badgeClass =
-    data.factor >= 0.9 ? "bg-green-100 text-green-700" :
-    data.factor >= 0.7 ? "bg-yellow-100 text-yellow-700" :
-                         "bg-red-100 text-red-700";
+    data.factor >= 0.9 ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400" :
+    data.factor >= 0.7 ? "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400" :
+                         "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400";
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-bold text-gray-900 truncate pr-2">{team}</span>
+        <span className="text-sm font-bold text-gray-900 dark:text-white truncate pr-2">{team}</span>
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${badgeClass}`}>
           Health {pct}%
         </span>
@@ -311,12 +309,12 @@ function InjuryPanel({ team, data }: { team: string; data: InjuryData | undefine
         <div className="flex flex-col gap-2">
           {data.players.map((p) => (
             <div key={p.name} className="flex items-center justify-between text-xs gap-2">
-              <span className="text-gray-700 font-medium truncate">{p.name}</span>
+              <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{p.name}</span>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {p.pts_per_game !== null && (
                   <span className="text-gray-400">{p.pts_per_game} ppg</span>
                 )}
-                <span className={`px-1.5 py-0.5 rounded font-semibold ${STATUS_COLOR[p.status] ?? "bg-gray-100 text-gray-600"}`}>
+                <span className={`px-1.5 py-0.5 rounded font-semibold ${STATUS_COLOR[p.status] ?? "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"}`}>
                   {p.status}
                 </span>
               </div>
