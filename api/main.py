@@ -266,7 +266,16 @@ def _get_player_minutes() -> pd.DataFrame:
         season_type_all_star="Regular Season",
         per_mode_detailed="PerGame",
     ).get_data_frames()[0]
-    return df[["PLAYER_NAME", "TEAM_ABBREVIATION", "MIN", "PTS"]].copy()
+    cols = ["PLAYER_NAME", "TEAM_ABBREVIATION", "MIN", "PTS", "AST", "REB", "STL", "BLK"]
+    df = df[[c for c in cols if c in df.columns]].copy()
+    df["IMPACT"] = (
+        df.get("PTS", 0) * 1.0
+        + df.get("AST", 0) * 1.5
+        + df.get("REB", 0) * 1.2
+        + df.get("STL", 0) * 2.0
+        + df.get("BLK", 0) * 2.0
+    )
+    return df
 
 
 def _get_player_minutes_cached() -> pd.DataFrame:
@@ -311,14 +320,16 @@ def _compute_injury_factor(
     injuries: list[dict], team_name: str, player_minutes: pd.DataFrame
 ) -> tuple[float, list[dict]]:
     abbr = TEAM_TO_ABBR.get(team_name, "")
-    team_df   = player_minutes[player_minutes["TEAM_ABBREVIATION"] == abbr].copy()
-    top8      = team_df.nlargest(8, "MIN")
+    team_df    = player_minutes[player_minutes["TEAM_ABBREVIATION"] == abbr].copy()
+    top8       = team_df.nlargest(8, "MIN")
     top8_names = set(top8["PLAYER_NAME"].str.lower())
-    total_min  = float(top8["MIN"].sum())
-    name_to_min = {r["PLAYER_NAME"].lower(): float(r["MIN"]) for _, r in team_df.iterrows()}
-    name_to_pts = {r["PLAYER_NAME"].lower(): float(r["PTS"]) for _, r in team_df.iterrows()}
+    # Use composite IMPACT score; fall back to MIN if column missing
+    impact_col   = "IMPACT" if "IMPACT" in top8.columns else "MIN"
+    total_impact = float(top8[impact_col].sum())
+    name_to_impact = {r["PLAYER_NAME"].lower(): float(r[impact_col]) for _, r in team_df.iterrows()}
+    name_to_pts    = {r["PLAYER_NAME"].lower(): float(r["PTS"]) for _, r in team_df.iterrows() if "PTS" in r.index}
 
-    missing_min = 0.0
+    missing_impact = 0.0
     affected: list[dict] = []
 
     for inj in injuries:
@@ -328,12 +339,11 @@ def _compute_injury_factor(
         if not name or weight == 0.0:
             continue
 
-        mpg = name_to_min.get(name.lower())
-        ppg = name_to_pts.get(name.lower())
+        impact = name_to_impact.get(name.lower())
+        ppg    = name_to_pts.get(name.lower())
 
-        # Only count impact for top-8 players but show all injured players
-        if mpg is not None and name.lower() in top8_names and total_min > 0:
-            missing_min += mpg * weight
+        if impact is not None and name.lower() in top8_names and total_impact > 0:
+            missing_impact += impact * weight
 
         affected.append({
             "name":         name,
@@ -341,7 +351,7 @@ def _compute_injury_factor(
             "pts_per_game": round(ppg, 1) if ppg is not None else None,
         })
 
-    factor = max(0.40, round(1.0 - missing_min / total_min, 3)) if total_min > 0 else 1.0
+    factor = max(0.40, round(1.0 - missing_impact / total_impact, 3)) if total_impact > 0 else 1.0
     return factor, affected
 
 
@@ -528,30 +538,36 @@ def _fetch_day(
             "travel_km":    0.0,
         }
 
+        inj_away = injury_factors.get(away_name, 1.0)
+        inj_home = injury_factors.get(home_name, 1.0)
+
         try:
             p_raw = _game_prob(
                 model, stats_by_name, away_name, home_name,
                 team_a_is_home=False, ctx_a=ctx_away, ctx_b=ctx_home,
             )
-            p_away = _adjust_for_injuries(
-                p_raw,
-                injury_factors.get(away_name, 1.0),
-                injury_factors.get(home_name, 1.0),
-            )
+            p_away = _adjust_for_injuries(p_raw, inj_away, inj_home)
         except Exception:
             continue
 
+        away_impact = round((_adjust_for_injuries(p_raw, inj_away, 1.0) - p_raw) * 100, 1) if inj_away != 1.0 else 0.0
+        home_impact = round((p_raw - _adjust_for_injuries(p_raw, 1.0, inj_home)) * 100, 1) if inj_home != 1.0 else 0.0
+
         results.append({
-            "game_id":          g["gameId"],
-            "status":           STATUS.get(g["gameStatus"], "Scheduled"),
-            "status_text":      g.get("gameStatusText", "TBD"),
-            "away_team":        away_name,
-            "home_team":        home_name,
-            "away_score":       away.get("score"),
-            "home_score":       home.get("score"),
-            "away_win_prob":    round(p_away * 100, 1),
-            "home_win_prob":    round((1 - p_away) * 100, 1),
-            "predicted_winner": away_name if p_away >= 0.5 else home_name,
+            "game_id":             g["gameId"],
+            "status":              STATUS.get(g["gameStatus"], "Scheduled"),
+            "status_text":         g.get("gameStatusText", "TBD"),
+            "away_team":           away_name,
+            "home_team":           home_name,
+            "away_score":          away.get("score"),
+            "home_score":          home.get("score"),
+            "away_win_prob":       round(p_away * 100, 1),
+            "home_win_prob":       round((1 - p_away) * 100, 1),
+            "predicted_winner":    away_name if p_away >= 0.5 else home_name,
+            "away_injury_impact":  away_impact,
+            "home_injury_impact":  home_impact,
+            "away_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(away_name, [])],
+            "home_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(home_name, [])],
         })
 
     return {"date": date, "games": results}
@@ -657,6 +673,88 @@ def compare_teams(
         "team_b_stats": team_stats(team_b),
         "prediction":   _build_prediction(model, stats, team_a, team_b, injury_a, injury_b),
     }
+
+
+_predictions_log_cache: dict | None = None
+_predictions_log_cache_time: float = 0.0
+_PREDICTIONS_LOG_TTL = 300.0
+
+
+@app.get("/api/predictions_log")
+def get_predictions_log(n: int = 5):
+    """Return the last n completed playoff games with model prediction vs actual result."""
+    import time as _time
+    global _predictions_log_cache, _predictions_log_cache_time
+
+    now = _time.time()
+    if _predictions_log_cache is not None and (now - _predictions_log_cache_time) < _PREDICTIONS_LOG_TTL:
+        return _predictions_log_cache
+
+    try:
+        from nba_api.stats.endpoints import leaguegamelog
+        _time.sleep(0.6)
+        df = leaguegamelog.LeagueGameLog(
+            season="2025-26", season_type_all_star="Playoffs"
+        ).get_data_frames()[0]
+
+        abbr_to_team = {v: k for k, v in TEAM_TO_ABBR.items()}
+        home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)].copy()
+        home_rows = home_rows.sort_values("GAME_DATE", ascending=False)
+
+        model = _load_model()
+        stats = _load_stats_by_name()
+
+        # Build a map from GAME_ID to away row for score lookup
+        away_rows = df[df["MATCHUP"].str.contains(" @ ", na=False)].set_index("GAME_ID")
+
+        log: list[dict] = []
+        for _, row in home_rows.iterrows():
+            parts = row["MATCHUP"].split(" vs. ")
+            if len(parts) != 2:
+                continue
+            home_abbr, away_abbr = parts[0].strip(), parts[1].strip()
+            home_team = abbr_to_team.get(home_abbr)
+            away_team = abbr_to_team.get(away_abbr)
+            if not home_team or not away_team:
+                continue
+            if home_team not in stats.index or away_team not in stats.index:
+                continue
+            try:
+                p_away = _game_prob(model, stats, away_team, home_team, team_a_is_home=False)
+            except Exception:
+                continue
+            predicted_winner = away_team if p_away >= 0.5 else home_team
+            predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
+            actual_winner    = home_team if row["WL"] == "W" else away_team
+            home_score = int(row["PTS"]) if "PTS" in row.index and pd.notna(row["PTS"]) else None
+            away_score = None
+            game_id    = str(row["GAME_ID"]) if "GAME_ID" in row.index else ""
+            if game_id and game_id in away_rows.index:
+                away_row   = away_rows.loc[game_id]
+                away_score = int(away_row["PTS"]) if "PTS" in away_row.index and pd.notna(away_row["PTS"]) else None
+            log.append({
+                "game_id":          game_id,
+                "date":             row["GAME_DATE"],
+                "away_team":        away_team,
+                "home_team":        home_team,
+                "predicted_winner": predicted_winner,
+                "predicted_prob":   predicted_prob,
+                "actual_winner":    actual_winner,
+                "correct":          predicted_winner == actual_winner,
+                "away_score":       away_score,
+                "home_score":       home_score,
+                "away_win_prob":    round(p_away * 100, 1),
+                "home_win_prob":    round((1 - p_away) * 100, 1),
+            })
+            if len(log) >= n:
+                break
+
+        result = {"log": log}
+        _predictions_log_cache = result
+        _predictions_log_cache_time = now
+        return result
+    except Exception:
+        return {"log": []}
 
 
 @app.get("/api/stats")
