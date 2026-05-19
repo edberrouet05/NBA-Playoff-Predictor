@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from nba_api.stats.endpoints import leaguedashteamstats, leaguegamefinder
+from nba_api.stats.endpoints import leaguedashteamstats, leaguedashplayerstats, leaguegamefinder
 
 SEASONS = [
     "2015-16", "2016-17", "2017-18", "2018-19", "2019-20",
@@ -104,9 +104,9 @@ def _fetch_reg_games(season: str) -> pd.DataFrame:
 
 
 def _compute_season_extras(reg_games: pd.DataFrame) -> pd.DataFrame:
-    """Compute SRS and end-of-season win streak from regular-season game logs."""
+    """Compute SRS, win streak, win_pct_last10, net_rtg_last15 from game logs."""
     if reg_games.empty or "WL" not in reg_games.columns:
-        return pd.DataFrame(columns=["team_id", "srs", "win_streak"])
+        return pd.DataFrame(columns=["team_id", "srs", "win_streak", "win_pct_last10", "net_rtg_last15"])
 
     reg_games = reg_games.copy()
     reg_games["GAME_DATE"] = pd.to_datetime(reg_games["GAME_DATE"])
@@ -132,7 +132,6 @@ def _compute_season_extras(reg_games: pd.DataFrame) -> pd.DataFrame:
         srs = {t: 0.0 for t in teams}
     else:
         gdf = reg_games[["GAME_ID", "TEAM_ID", "PLUS_MINUS"]].dropna()
-        # Self-join to create (team, opponent, margin) rows
         paired = gdf.merge(
             gdf[["GAME_ID", "TEAM_ID"]].rename(columns={"TEAM_ID": "opp_id"}),
             on="GAME_ID",
@@ -147,11 +146,77 @@ def _compute_season_extras(reg_games: pd.DataFrame) -> pd.DataFrame:
             sos = paired.groupby("TEAM_ID")["opp_srs"].mean().to_dict()
             srs = {t: mov.get(t, 0.0) + sos.get(t, 0.0) for t in srs}
 
+    # Rolling form — last 10 / 15 regular season games
+    has_pm = "PLUS_MINUS" in reg_games.columns
+    win_pct_last10: dict = {}
+    net_rtg_last15: dict = {}
+    for tid in teams:
+        tg = reg_games[reg_games["TEAM_ID"] == tid].sort_values("GAME_DATE")
+        last10 = tg.tail(10)
+        win_pct_last10[tid] = round((last10["WL"] == "W").sum() / max(len(last10), 1), 3)
+        if has_pm:
+            pm = tg.tail(15)["PLUS_MINUS"].dropna()
+            net_rtg_last15[tid] = round(float(pm.mean()) if len(pm) > 0 else 0.0, 2)
+        else:
+            net_rtg_last15[tid] = 0.0
+
     return pd.DataFrame({
-        "team_id":    list(teams),
-        "win_streak": [streaks.get(t, 0) for t in teams],
-        "srs":        [round(srs.get(t, 0.0), 3) for t in teams],
+        "team_id":        list(teams),
+        "win_streak":     [streaks.get(t, 0) for t in teams],
+        "srs":            [round(srs.get(t, 0.0), 3) for t in teams],
+        "win_pct_last10": [win_pct_last10.get(t, 0.5) for t in teams],
+        "net_rtg_last15": [net_rtg_last15.get(t, 0.0) for t in teams],
     })
+
+
+def _fetch_opponent_stats(season: str) -> pd.DataFrame:
+    """Fetch opp_3pt_pct_allowed per team."""
+    time.sleep(_SLEEP)
+    r = leaguedashteamstats.LeagueDashTeamStats(
+        season=season,
+        season_type_all_star="Regular Season",
+        measure_type_detailed_defense="Opponent",
+        per_mode_detailed="PerGame",
+    )
+    df = r.get_data_frames()[0]
+    result = pd.DataFrame({"team_id": df["TEAM_ID"]})
+    result["opp_3pt_pct_allowed"] = df["OPP_FG3_PCT"] if "OPP_FG3_PCT" in df.columns else 0.35
+    return result
+
+
+def _fetch_bench_stats(season: str) -> pd.DataFrame:
+    """Bench net rating: weighted average of non-starter players per team.
+    Uses NET_RATING (Advanced) with fallback to PLUS_MINUS (Base)."""
+    time.sleep(_SLEEP)
+    r = leaguedashplayerstats.LeagueDashPlayerStats(
+        season=season,
+        season_type_all_star="Regular Season",
+        measure_type_detailed_defense="Advanced",
+        per_mode_detailed="PerGame",
+    )
+    df = r.get_data_frames()[0]
+
+    # Pick best available rating column
+    rating_col = next((c for c in ("NET_RATING", "PLUS_MINUS") if c in df.columns), None)
+    if not rating_col or not {"TEAM_ID", "GP", "GS", "MIN"}.issubset(df.columns):
+        return pd.DataFrame(columns=["team_id", "bench_net_rtg"])
+
+    df = df[df["GP"] >= 10].copy()
+    df["is_bench"] = (df["GS"] / df["GP"].clip(lower=1)) < 0.3
+    bench = df[df["is_bench"]].copy()
+    if bench.empty:
+        return pd.DataFrame(columns=["team_id", "bench_net_rtg"])
+
+    bench = bench.dropna(subset=[rating_col, "MIN"])
+    bench["weight"] = bench["MIN"] * bench["GP"]
+    agg = (
+        bench.groupby("TEAM_ID")
+        .apply(lambda g: (g[rating_col] * g["weight"]).sum() / g["weight"].sum())
+        .reset_index()
+    )
+    agg.columns = ["team_id", "bench_net_rtg"]
+    agg["bench_net_rtg"] = agg["bench_net_rtg"].round(2)
+    return agg
 
 
 def fetch_reg_season(season: str) -> pd.DataFrame:
@@ -160,11 +225,15 @@ def fetch_reg_season(season: str) -> pd.DataFrame:
     base      = _fetch_base(season)
     reg_games = _fetch_reg_games(season)
     extras    = _compute_season_extras(reg_games)
+    opp       = _fetch_opponent_stats(season)
+    bench     = _fetch_bench_stats(season)
     return (
         adv
         .merge(ff,     on="team_id")
         .merge(base,   on="team_id")
         .merge(extras, on="team_id", how="left")
+        .merge(opp,    on="team_id", how="left")
+        .merge(bench,  on="team_id", how="left")
     )
 
 

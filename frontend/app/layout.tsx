@@ -21,8 +21,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
         <div className="ml-[68px]">
           <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/60 dark:border-white/[0.06] px-7 h-12 flex items-center justify-between">
-            <div>
-              <span className="text-red-600 font-black text-xl tracking-tight">Court</span><span className="text-gray-900 dark:text-white font-black text-xl tracking-tight">Edge</span>
+            <div className="flex items-center gap-3">
+              <div>
+                <span className="text-red-600 font-black text-xl tracking-tight">Court</span><span className="text-gray-900 dark:text-white font-black text-xl tracking-tight">Edge</span>
+              </div>
+              <div className="flex items-center gap-4 ml-2">
+                <span className="text-base font-bold text-red-600 tracking-wide">NBA</span>
+                <span className="text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide">MLB</span>
+                <span className="text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide">NHL</span>
+              </div>
             </div>
             <ThemeToggle />
           </header>

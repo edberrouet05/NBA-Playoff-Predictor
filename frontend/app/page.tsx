@@ -123,7 +123,7 @@ export default function GamesPage() {
       .catch(() => setError("Could not load schedule. Make sure the backend is running."))
       .finally(() => setLoading(false));
 
-    fetch(`${API}/api/predictions_log?n=3`, { cache: "no-store" })
+    fetch(`${API}/api/predictions_log?n=10`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => setPredLog(d.log ?? []))
       .catch(() => {});
@@ -269,22 +269,33 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
 // ── Insight panel: recent predictions log ─────────────────────────────────────
 
 function PredictionsLog({ log }: { log: PredictionEntry[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? log : log.slice(0, 3);
+
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
+      <button onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between mb-3 group">
         <div className="flex items-center gap-2">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
             <circle cx="8" cy="8" r="6.5" /><path d="M8 4.5V8l2.5 2" />
           </svg>
-          <p className="text-sm font-bold text-gray-900 dark:text-white">Recent predictions log</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+            Recent predictions log
+          </p>
         </div>
-      </div>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}>
+          <path d="M4 6l4 4 4-4" />
+        </svg>
+      </button>
 
       {log.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet this season.</p>
       ) : (
+        <>
         <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
-          {log.map((e, i) => {
+          {visible.map((e, i) => {
             const params = new URLSearchParams({
               away:       e.away_team,
               home:       e.home_team,
@@ -318,6 +329,14 @@ function PredictionsLog({ log }: { log: PredictionEntry[] }) {
             );
           })}
         </div>
+        <Link href="/predictions"
+          className="mt-3 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-100 dark:border-gray-800 transition-colors">
+          See all predictions
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 4l4 4-4 4" />
+          </svg>
+        </Link>
+        </>
       )}
     </div>
   );

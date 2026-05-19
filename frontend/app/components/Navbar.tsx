@@ -13,6 +13,15 @@ function IconGames() {
   );
 }
 
+function IconBracket() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4h4v3H2M2 11h4v3H2" />
+      <path d="M6 5.5h3v5H6M9 8h4v3H9M13 9.5h3" />
+    </svg>
+  );
+}
+
 function IconMatchup() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -34,6 +43,7 @@ function IconStats() {
 
 const links = [
   { href: "/",        Icon: IconGames,   label: "Games"   },
+  { href: "/bracket", Icon: IconBracket, label: "Bracket" },
   { href: "/matchup", Icon: IconMatchup, label: "Matchup" },
   { href: "/stats",   Icon: IconStats,   label: "Stats"   },
 ];
@@ -49,7 +59,7 @@ export default function Sidebar() {
             href={href}
             title={label}
             className={`w-11 h-11 flex items-center justify-center rounded-xl transition-colors ${
-              path === href
+              path === href || (href === "/bracket" && path.startsWith("/team"))
                 ? "bg-white/10 text-white"
                 : "text-gray-600 hover:text-gray-300 hover:bg-white/[0.05]"
             }`}

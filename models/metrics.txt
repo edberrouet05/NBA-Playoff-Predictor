@@ -1,12 +1,14 @@
-Cross-val accuracy : 0.608 ± 0.027
-Train accuracy     : 0.622
+Model              : XGBClassifier
+Features           : 28
+Cross-val accuracy : 0.606 ± 0.027
+Train accuracy     : 0.856
 
 Classification report (train set):
               precision    recall  f1-score   support
 
-        loss       0.62      0.64      0.63       834
-         win       0.63      0.61      0.62       834
+        loss       0.86      0.85      0.86       834
+         win       0.85      0.86      0.86       834
 
-    accuracy                           0.62      1668
-   macro avg       0.62      0.62      0.62      1668
-weighted avg       0.62      0.62      0.62      1668
+    accuracy                           0.86      1668
+   macro avg       0.86      0.86      0.86      1668
+weighted avg       0.86      0.86      0.86      1668
