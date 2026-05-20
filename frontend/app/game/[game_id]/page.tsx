@@ -132,17 +132,52 @@ export default function GamePage({
   const [injuries, setInjuries] = useState<InjuryReport | null>(null);
   const [history,  setHistory]  = useState<HistoryPoint[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [fetchErr, setFetchErr] = useState(false);
 
   useEffect(() => {
     if (!away || !home) { setLoading(false); return; }
-    Promise.all([
-      fetch(`${API}/api/compare?team_a=${encodeURIComponent(away)}&team_b=${encodeURIComponent(home)}`).then(r => r.json()),
-      fetch(`${API}/api/injuries?team_a=${encodeURIComponent(away)}&team_b=${encodeURIComponent(home)}`).then(r => r.json()),
-      fetch(`${API}/api/series_history?team_a=${encodeURIComponent(away)}&team_b=${encodeURIComponent(home)}`).then(r => r.json()),
-    ])
-      .then(([cmp, inj, hist]) => { setCompare(cmp); setInjuries(inj); setHistory(hist.history ?? []); })
+
+    const qa = `team_a=${encodeURIComponent(away)}&team_b=${encodeURIComponent(home)}`;
+
+    // ── Primary fetch: compare only (instant from backend cache) ──
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+
+    fetch(`${API}/api/compare?${qa}`, { signal: ctrl.signal })
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(cmp => setCompare(cmp as CompareResult))
+      .catch((err) => {
+        if ((err as Error)?.name === "AbortError") return;
+        console.error("[GamePage] compare fetch error:", err);
+        setFetchErr(true);
+      })
+      .finally(() => { clearTimeout(timer); setLoading(false); });
+
+    // ── Series history — slow (Monte Carlo + nba_api), fetched independently ──
+    const histCtrl  = new AbortController();
+    const histTimer = setTimeout(() => histCtrl.abort(), 60000);
+
+    fetch(`${API}/api/series_history?${qa}`, { signal: histCtrl.signal })
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(hist => setHistory((hist as { history: HistoryPoint[] }).history ?? []))
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => clearTimeout(histTimer));
+
+    // ── Injuries — fetched independently so ESPN latency doesn't block stats ──
+    const injCtrl  = new AbortController();
+    const injTimer = setTimeout(() => injCtrl.abort(), 30000);
+
+    fetch(`${API}/api/injuries?${qa}`, { signal: injCtrl.signal })
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(inj => setInjuries(inj as InjuryReport))
+      .catch(() => {})
+      .finally(() => clearTimeout(injTimer));
+
+    return () => {
+      ctrl.abort();     clearTimeout(timer);
+      histCtrl.abort(); clearTimeout(histTimer);
+      injCtrl.abort();  clearTimeout(injTimer);
+    };
   }, [away, home]);
 
   return (
@@ -220,7 +255,13 @@ export default function GamePage({
         </div>
       )}
 
-      {!loading && (
+      {!loading && fetchErr && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center text-xs text-gray-400 dark:text-gray-600">
+          Could not load stats — make sure the backend is running on port 8000.
+        </div>
+      )}
+
+      {!loading && !fetchErr && (
         <>
           {/* ── Win Prob chart + Injuries side by side ── */}
           <div className="grid grid-cols-[5fr_2fr] gap-3 items-start">

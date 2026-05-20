@@ -293,6 +293,15 @@ def _build_prediction(
     }
 
 
+# ── Compare cache (keyed by team pair, 30-min TTL) ───────────────────────────
+import threading as _threading
+import time as _time_mod
+
+_compare_cache: dict[str, dict] = {}
+_compare_cache_time: dict[str, float] = {}
+_COMPARE_CACHE_TTL = 1800.0
+
+
 # ── Injury helpers ────────────────────────────────────────────────────────────
 
 _player_minutes_cache: pd.DataFrame | None = None
@@ -332,6 +341,10 @@ def _get_player_minutes_cached() -> pd.DataFrame:
                 columns=["PLAYER_NAME", "TEAM_ABBREVIATION", "MIN", "PTS"]
             )
     return _player_minutes_cache
+
+
+# Pre-warm player minutes on startup so the first /api/injuries request is instant.
+_threading.Thread(target=_get_player_minutes_cached, daemon=True).start()
 
 
 def _fetch_all_espn_injuries() -> dict[str, list[dict]]:
@@ -446,22 +459,12 @@ _series_cache_time: dict[str, float] = {}
 _SERIES_CACHE_TTL = 1800.0
 
 
-@app.get("/api/series_history")
-def get_series_history(team_a: str, team_b: str):
-    """Return series win probability after each game played so far."""
-    import time as _time
-
-    cache_key = f"{team_a}|{team_b}"
-    now = _time.time()
-    if cache_key in _series_cache and (now - _series_cache_time.get(cache_key, 0.0)) < _SERIES_CACHE_TTL:
-        return _series_cache[cache_key]
-
-    # Per-game win probability from model
+def _build_series_history(team_a: str, team_b: str) -> dict:
+    """Compute series win-probability history. Runs in a background thread."""
     try:
         _model = _load_model()
         stats  = _load_stats_by_name()
-        pred   = _build_prediction(_model, stats, team_a, team_b)
-        p_game = pred["games"][0]["team_a_prob"] / 100.0
+        p_game = _game_prob(_model, stats, team_a, team_b, team_a_is_home=True)
     except Exception:
         p_game = 0.5
 
@@ -481,38 +484,91 @@ def get_series_history(team_a: str, team_b: str):
         {"game": "Pre", "team_a_prob": pre_prob, "team_b_prob": round(100 - pre_prob, 1), "series": "0-0"}
     ]
 
+    # Fetch game results from ESPN (fast, < 3s) instead of nba_api
     try:
-        from nba_api.stats.endpoints import leaguegamelog
-        _time.sleep(0.6)
-        df     = leaguegamelog.LeagueGameLog(season="2025-26", season_type_all_star="Playoffs").get_data_frames()[0]
-        abbr_a = TEAM_TO_ABBR.get(team_a, "")
-        abbr_b = TEAM_TO_ABBR.get(team_b, "")
-
-        if abbr_a and abbr_b:
-            games = df[df["TEAM_ABBREVIATION"] == abbr_a]
-            games = games[games["MATCHUP"].str.contains(abbr_b, na=False)]
-            games = games.sort_values("GAME_DATE")
+        import urllib.request, json as _json
+        espn_id = ESPN_TEAM_IDS.get(team_a)
+        if espn_id:
+            url = (
+                f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
+                f"/teams/{espn_id}/schedule?season=2026&seasontype=3"
+            )
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = _json.loads(resp.read())
 
             wa, wb = 0, 0
-            for _, row in games.iterrows():
-                if row["WL"] == "W":
-                    wa += 1
-                else:
-                    wb += 1
-                prob = series_prob(wa, wb, p_game)
-                history.append({
-                    "game":        f"G{wa + wb}",
-                    "team_a_prob": prob,
-                    "team_b_prob": round(100 - prob, 1),
-                    "series":      f"{wa}-{wb}",
-                })
+            for event in data.get("events", []):
+                competition = event.get("competitions", [{}])[0]
+                # Skip games that haven't been played yet
+                status = competition.get("status", {})
+                if not status.get("type", {}).get("completed", False):
+                    continue
+                competitors = competition.get("competitors", [])
+                opponent_names = {
+                    c.get("team", {}).get("displayName", "")
+                    for c in competitors
+                }
+                if team_b not in opponent_names:
+                    continue
+                # Find team_a's result
+                for c in competitors:
+                    if c.get("team", {}).get("displayName", "") == team_a:
+                        won = c.get("winner", False)
+                        if won:
+                            wa += 1
+                        else:
+                            wb += 1
+                        prob = series_prob(wa, wb, p_game)
+                        history.append({
+                            "game":        f"G{wa + wb}",
+                            "team_a_prob": prob,
+                            "team_b_prob": round(100 - prob, 1),
+                            "series":      f"{wa}-{wb}",
+                        })
+                        break
     except Exception:
         pass
 
-    result = {"team_a": team_a, "team_b": team_b, "history": history}
-    _series_cache[cache_key] = result
-    _series_cache_time[cache_key] = now
-    return result
+    return {"team_a": team_a, "team_b": team_b, "history": history}
+
+
+@app.get("/api/series_history")
+def get_series_history(team_a: str, team_b: str):
+    """Return series win probability after each game played so far.
+
+    Returns instantly from cache. If not cached yet, kicks off a background
+    fetch and returns only the pre-series probability so the page isn't blocked.
+    """
+    import time as _time
+
+    cache_key = f"{team_a}|{team_b}"
+    now = _time.time()
+    if cache_key in _series_cache and (now - _series_cache_time.get(cache_key, 0.0)) < _SERIES_CACHE_TTL:
+        return _series_cache[cache_key]
+
+    # Not cached yet — kick off background fetch and return minimal response.
+    def _fetch_and_cache():
+        result = _build_series_history(team_a, team_b)
+        _series_cache[cache_key] = result
+        _series_cache_time[cache_key] = _time.time()
+
+    _threading.Thread(target=_fetch_and_cache, daemon=True).start()
+
+    # Return pre-series probability immediately using a fast model call.
+    try:
+        _model = _load_model()
+        stats  = _load_stats_by_name()
+        p = _game_prob(_model, stats, team_a, team_b, team_a_is_home=True)
+        pre = round(p * 100, 1)
+    except Exception:
+        pre = 50.0
+
+    return {
+        "team_a": team_a,
+        "team_b": team_b,
+        "history": [{"game": "Pre", "team_a_prob": pre, "team_b_prob": round(100 - pre, 1), "series": "0-0"}],
+    }
 
 
 def _series_win_prob(wa: int, wb: int, p_game: float, target: int = 4) -> float:
@@ -943,13 +999,18 @@ def compare_teams(
 
     injury_a / injury_b: health factor 0.5–1.0 (1.0 = full health, 0.7 = key starter out).
     """
+    injury_a = max(0.1, min(1.0, injury_a))
+    injury_b = max(0.1, min(1.0, injury_b))
+    cache_key = f"{team_a}|{team_b}|{injury_a}|{injury_b}"
+    now = _time_mod.time()
+
+    if cache_key in _compare_cache and (now - _compare_cache_time.get(cache_key, 0.0)) < _COMPARE_CACHE_TTL:
+        return _compare_cache[cache_key]
+
     stats = _load_stats_by_name()
     for t in (team_a, team_b):
         if t not in stats.index:
             raise HTTPException(status_code=404, detail=f"Team not found: {t}")
-
-    injury_a = max(0.1, min(1.0, injury_a))
-    injury_b = max(0.1, min(1.0, injury_b))
 
     display = [
         "off_rtg", "def_rtg", "net_rtg", "pace", "ts_pct",
@@ -960,14 +1021,22 @@ def compare_teams(
         row = stats.loc[name]
         return {col: round(float(row[col]), 3) for col in display if col in stats.columns}
 
-    model = _load_model()
-    return {
+    try:
+        model = _load_model()
+        prediction = _build_prediction(model, stats, team_a, team_b, injury_a, injury_b)
+    except Exception:
+        prediction = None
+
+    result = {
         "team_a":       team_a,
         "team_b":       team_b,
         "team_a_stats": team_stats(team_a),
         "team_b_stats": team_stats(team_b),
-        "prediction":   _build_prediction(model, stats, team_a, team_b, injury_a, injury_b),
+        "prediction":   prediction,
     }
+    _compare_cache[cache_key] = result
+    _compare_cache_time[cache_key] = now
+    return result
 
 
 _predictions_log_cache: dict | None = None

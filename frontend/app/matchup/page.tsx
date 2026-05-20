@@ -20,7 +20,7 @@ interface Prediction {
 interface CompareResult {
   team_a: string; team_b: string;
   team_a_stats: TeamStats; team_b_stats: TeamStats;
-  prediction: Prediction;
+  prediction: Prediction | null;
 }
 
 const STATS = [
@@ -145,14 +145,16 @@ export default function MatchupPage() {
         <div className="flex flex-col gap-5">
 
           {/* Win probability */}
-          <Card title="Series Win Probability">
-            <ProbBar team={result.team_a} pct={result.prediction.team_a_series_prob} />
-            <ProbBar team={result.team_b} pct={result.prediction.team_b_series_prob} />
-            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-widest">Predicted winner</p>
-              <p className="text-xl font-bold text-red-600 mt-1">{result.prediction.predicted_winner}</p>
-            </div>
-          </Card>
+          {result.prediction && (
+            <Card title="Series Win Probability">
+              <ProbBar team={result.team_a} pct={result.prediction.team_a_series_prob} />
+              <ProbBar team={result.team_b} pct={result.prediction.team_b_series_prob} />
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
+                <p className="text-xs text-gray-400 uppercase tracking-widest">Predicted winner</p>
+                <p className="text-xl font-bold text-red-600 mt-1">{result.prediction.predicted_winner}</p>
+              </div>
+            </Card>
+          )}
 
           {/* Stats comparison */}
           <Card title="Stats Comparison">
@@ -181,59 +183,63 @@ export default function MatchupPage() {
           </Card>
 
           {/* Game-by-game */}
-          <Card title="Game-by-Game Simulation">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left pb-2">Game</th>
-                  <th className="text-left pb-2">Winner</th>
-                  <th className="text-right pb-2">Prob</th>
-                  <th className="text-right pb-2">Series</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.prediction.games.map((g) => (
-                  <tr key={g.game} className={`border-b border-gray-100 dark:border-gray-800 ${g.clinching ? "font-semibold" : ""}`}>
-                    <td className="py-2 text-gray-400">Game {g.game}</td>
-                    <td className={`py-2 ${g.clinching ? "text-red-600" : "text-gray-700 dark:text-gray-300"}`}>
-                      {g.winner}
-                      {g.clinching && (
-                        <span className="ml-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">
-                          Clinches
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right text-gray-400">
-                      {g.winner === result.team_a ? g.team_a_prob : g.team_b_prob}%
-                    </td>
-                    <td className="py-2 text-right text-gray-400">{g.series_score}</td>
+          {result.prediction && (
+            <Card title="Game-by-Game Simulation">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left pb-2">Game</th>
+                    <th className="text-left pb-2">Winner</th>
+                    <th className="text-right pb-2">Prob</th>
+                    <th className="text-right pb-2">Series</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                </thead>
+                <tbody>
+                  {result.prediction.games.map((g) => (
+                    <tr key={g.game} className={`border-b border-gray-100 dark:border-gray-800 ${g.clinching ? "font-semibold" : ""}`}>
+                      <td className="py-2 text-gray-400">Game {g.game}</td>
+                      <td className={`py-2 ${g.clinching ? "text-red-600" : "text-gray-700 dark:text-gray-300"}`}>
+                        {g.winner}
+                        {g.clinching && (
+                          <span className="ml-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">
+                            Clinches
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right text-gray-400">
+                        {g.winner === result.team_a ? g.team_a_prob : g.team_b_prob}%
+                      </td>
+                      <td className="py-2 text-right text-gray-400">{g.series_score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
 
           {/* Outcome distribution */}
-          <Card title="Series Outcome Distribution (10 000 simulations)">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left pb-2">Result</th>
-                  <th className="text-right pb-2">{result.team_a}</th>
-                  <th className="text-right pb-2">{result.team_b}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.prediction.outcomes.map((o) => (
-                  <tr key={o.result} className="border-b border-gray-100 dark:border-gray-800">
-                    <td className="py-2 text-gray-500">{o.result}</td>
-                    <td className="py-2 text-right text-red-600 font-medium">{o.team_a_pct}%</td>
-                    <td className="py-2 text-right text-gray-400">{o.team_b_pct}%</td>
+          {result.prediction && (
+            <Card title="Series Outcome Distribution (10 000 simulations)">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-400 text-xs uppercase border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left pb-2">Result</th>
+                    <th className="text-right pb-2">{result.team_a}</th>
+                    <th className="text-right pb-2">{result.team_b}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                </thead>
+                <tbody>
+                  {result.prediction.outcomes.map((o) => (
+                    <tr key={o.result} className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="py-2 text-gray-500">{o.result}</td>
+                      <td className="py-2 text-right text-red-600 font-medium">{o.team_a_pct}%</td>
+                      <td className="py-2 text-right text-gray-400">{o.team_b_pct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
 
         </div>
       )}
