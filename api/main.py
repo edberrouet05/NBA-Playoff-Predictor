@@ -1136,8 +1136,10 @@ MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
 
 MLB_FEATURES = [
     "era", "whip", "k_per9", "bb_per9",
+    "sp_era", "bullpen_era",
     "batting_avg", "ops", "obp", "slg", "run_diff",
     "opp_era", "opp_whip", "opp_ops", "opp_run_diff",
+    "opp_sp_era",
     "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
     "home", "rest_days", "win_pct_last10", "park_factor",
 ]
@@ -1165,27 +1167,99 @@ def _load_mlb_stats() -> pd.DataFrame:
     return _mlb_stats_cache
 
 
-def _mlb_win_prob(model, stats: pd.DataFrame, team: str, opp: str, is_home: int) -> float:
-    """Return P(team wins) using the MLB logistic regression."""
-    def _row(t, o, home):
+# ── Per-game pitcher ERA cache ─────────────────────────────────────────────────
+# Keyed by pitcher_id (int). Busted each calendar day alongside the today cache.
+_pitcher_era_cache: dict[int, float | None] = {}
+_pitcher_era_cache_date: str = ""
+
+
+def _fetch_pitcher_eras_batch(pitcher_ids: list[int], season: int = 2026) -> dict[int, float]:
+    """Return {pitcher_id: era} for a list of IDs in a single MLB Stats API call.
+
+    Falls back to an empty dict on any error — callers use team sp_era as default.
+    """
+    import json, urllib.request, datetime
+    global _pitcher_era_cache, _pitcher_era_cache_date
+
+    today = datetime.date.today().isoformat()
+    if _pitcher_era_cache_date != today:
+        _pitcher_era_cache.clear()
+        _pitcher_era_cache_date = today
+
+    # Only fetch IDs we haven't cached yet
+    uncached = [pid for pid in pitcher_ids if pid not in _pitcher_era_cache]
+    if uncached:
+        ids_str = ",".join(str(p) for p in uncached)
+        url = (
+            f"https://statsapi.mlb.com/api/v1/people"
+            f"?personIds={ids_str}"
+            f"&hydrate=stats(group=%5Bpitching%5D,type=%5Bseason%5D,season={season},gameType=R)"
+        )
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+
+            for person in data.get("people", []):
+                pid = person.get("id")
+                era_val = None
+                for stat_group in person.get("stats", []):
+                    for split in stat_group.get("splits", []):
+                        era_str = split.get("stat", {}).get("era", "")
+                        if era_str and era_str not in ("-.--", "--", ""):
+                            try:
+                                era_val = float(era_str)
+                                break
+                            except (ValueError, TypeError):
+                                pass
+                    if era_val is not None:
+                        break
+                if pid is not None:
+                    _pitcher_era_cache[pid] = era_val
+        except Exception:
+            pass
+
+        # Mark unfound IDs so we don't re-request them
+        for pid in uncached:
+            if pid not in _pitcher_era_cache:
+                _pitcher_era_cache[pid] = None
+
+    return {pid: _pitcher_era_cache[pid] for pid in pitcher_ids if _pitcher_era_cache.get(pid) is not None}
+
+
+def _mlb_win_prob(
+    model, stats: pd.DataFrame,
+    team: str, opp: str, is_home: int,
+    sp_era_override: float | None = None,
+    opp_sp_era_override: float | None = None,
+) -> float:
+    """Return P(team wins) using the MLB logistic regression.
+
+    sp_era_override / opp_sp_era_override: today's specific starter ERA when
+    available — more accurate than the season rotation average.
+    """
+    def _row(t, o, home, sp_era_ov, opp_sp_era_ov):
         ts = stats.loc[t]
         os = stats.loc[o]
         return {
-            "era":          float(ts.get("era",     4.5)),
-            "whip":         float(ts.get("whip",    1.3)),
-            "k_per9":       float(ts.get("k_per9",  8.0)),
-            "bb_per9":      float(ts.get("bb_per9", 3.2)),
+            "era":          float(ts.get("era",         4.50)),
+            "whip":         float(ts.get("whip",        1.30)),
+            "k_per9":       float(ts.get("k_per9",      8.0)),
+            "bb_per9":      float(ts.get("bb_per9",     3.2)),
+            "sp_era":       sp_era_ov if sp_era_ov is not None else float(ts.get("sp_era", 4.50)),
+            "bullpen_era":  float(ts.get("bullpen_era", 4.00)),
             "batting_avg":  float(ts.get("batting_avg", 0.250)),
-            "ops":          float(ts.get("ops",     0.700)),
-            "obp":          float(ts.get("obp",     0.320)),
-            "slg":          float(ts.get("slg",     0.420)),
-            "run_diff":     float(ts.get("run_diff", 0)),
-            "opp_era":      float(os.get("era",     4.5)),
-            "opp_whip":     float(os.get("whip",    1.3)),
-            "opp_ops":      float(os.get("ops",     0.700)),
-            "opp_run_diff": float(os.get("run_diff", 0)),
-            "era_diff":     float(ts.get("era",     4.5))   - float(os.get("era",     4.5)),
-            "whip_diff":    float(ts.get("whip",    1.3))   - float(os.get("whip",    1.3)),
+            "ops":          float(ts.get("ops",         0.700)),
+            "obp":          float(ts.get("obp",         0.320)),
+            "slg":          float(ts.get("slg",         0.420)),
+            "run_diff":     float(ts.get("run_diff",    0)),
+            "opp_era":      float(os.get("era",         4.50)),
+            "opp_whip":     float(os.get("whip",        1.30)),
+            "opp_ops":      float(os.get("ops",         0.700)),
+            "opp_run_diff": float(os.get("run_diff",    0)),
+            "opp_sp_era":   opp_sp_era_ov if opp_sp_era_ov is not None else float(os.get("sp_era", 4.50)),
+            "era_diff":     float(ts.get("era",     4.50))  - float(os.get("era",     4.50)),
+            "whip_diff":    float(ts.get("whip",    1.30))  - float(os.get("whip",    1.30)),
             "ops_diff":     float(ts.get("ops",     0.700)) - float(os.get("ops",     0.700)),
             "run_diff_diff":float(ts.get("run_diff", 0))    - float(os.get("run_diff", 0)),
             "home":         home,
@@ -1194,8 +1268,8 @@ def _mlb_win_prob(model, stats: pd.DataFrame, team: str, opp: str, is_home: int)
             "park_factor":  float(ts.get("park_factor", 1.0)),
         }
 
-    r_team = _row(team, opp, is_home)
-    r_opp  = _row(opp, team, 1 - is_home)
+    r_team = _row(team, opp, is_home,     sp_era_override,     opp_sp_era_override)
+    r_opp  = _row(opp, team, 1 - is_home, opp_sp_era_override, sp_era_override)
     p_t = float(model.predict_proba(pd.DataFrame([r_team])[MLB_FEATURES])[0][1])
     p_o = float(model.predict_proba(pd.DataFrame([r_opp ])[MLB_FEATURES])[0][1])
     return p_t / (p_t + p_o)   # normalise so home+away = 100 %
@@ -1220,13 +1294,23 @@ def _fetch_mlb_today() -> dict:
     model = _load_mlb_model()
     stats = _load_mlb_stats()
 
-    results = []
-    for date_block in data.get("dates", []):
-        for g in date_block.get("games", []):
-            # Skip non-regular-season games
-            if g.get("gameType", "R") != "R":
-                continue
+    # ── Collect all probable pitcher IDs, then batch-fetch their ERAs ────────
+    all_games = [
+        g
+        for date_block in data.get("dates", [])
+        for g in date_block.get("games", [])
+        if g.get("gameType", "R") == "R"
+    ]
+    pitcher_ids: list[int] = []
+    for g in all_games:
+        for side in ("away", "home"):
+            pid = g.get("teams", {}).get(side, {}).get("probablePitcher", {}).get("id")
+            if pid:
+                pitcher_ids.append(pid)
+    starter_eras: dict[int, float] = _fetch_pitcher_eras_batch(list(set(pitcher_ids)))
 
+    results = []
+    for g in all_games:
             teams     = g.get("teams", {})
             away_info = teams.get("away", {})
             home_info = teams.get("home", {})
@@ -1242,20 +1326,30 @@ def _fetch_mlb_today() -> dict:
             away_score = away_info.get("score")
             home_score = home_info.get("score")
 
-            # Probable starters (hydrated)
+            # Probable starters — name for display, ID for ERA lookup
             def _pitcher_name(side_info: dict) -> str:
                 p = side_info.get("probablePitcher", {})
                 return p.get("fullName", "TBD") if p else "TBD"
 
-            away_sp = _pitcher_name(away_info)
-            home_sp = _pitcher_name(home_info)
+            away_sp    = _pitcher_name(away_info)
+            home_sp    = _pitcher_name(home_info)
+            away_sp_id = away_info.get("probablePitcher", {}).get("id")
+            home_sp_id = home_info.get("probablePitcher", {}).get("id")
+
+            # Game-specific starter ERA (falls back to team rotation ERA inside _mlb_win_prob)
+            away_sp_era = starter_eras.get(away_sp_id) if away_sp_id else None
+            home_sp_era = starter_eras.get(home_sp_id) if home_sp_id else None
 
             # Skip if team not in stats CSV
             if away_name not in stats.index or home_name not in stats.index:
                 continue
 
             try:
-                p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0)
+                p_away = _mlb_win_prob(
+                    model, stats, away_name, home_name, is_home=0,
+                    sp_era_override=away_sp_era,
+                    opp_sp_era_override=home_sp_era,
+                )
             except Exception:
                 p_away = 0.5
 
@@ -1308,6 +1402,92 @@ def get_mlb_today():
 def get_mlb_teams() -> list[str]:
     """Return sorted list of all MLB team names in the stats CSV."""
     return sorted(_load_mlb_stats().index.tolist())
+
+
+_mlb_pred_log_cache: dict | None = None
+_mlb_pred_log_cache_time: float = 0.0
+_MLB_PRED_LOG_TTL = 300.0  # 5 minutes
+
+
+@app.get("/api/mlb/predictions_log")
+def get_mlb_predictions_log(n: int = 10):
+    """Return last n completed MLB regular-season games with model prediction vs actual result."""
+    import time as _t, datetime, json, urllib.request
+    global _mlb_pred_log_cache, _mlb_pred_log_cache_time
+
+    now = _t.time()
+    if _mlb_pred_log_cache is not None and (now - _mlb_pred_log_cache_time) < _MLB_PRED_LOG_TTL:
+        return _mlb_pred_log_cache
+
+    try:
+        end_date   = datetime.date.today()
+        start_date = end_date - datetime.timedelta(days=10)
+
+        url = (
+            "https://statsapi.mlb.com/api/v1/schedule"
+            f"?sportId=1&startDate={start_date.isoformat()}&endDate={end_date.isoformat()}"
+            "&gameType=R"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+
+        model = _load_mlb_model()
+        stats = _load_mlb_stats()
+
+        log: list[dict] = []
+        for date_block in reversed(data.get("dates", [])):
+            for g in date_block.get("games", []):
+                if g.get("status", {}).get("detailedState") != "Final":
+                    continue
+                teams      = g.get("teams", {})
+                away_info  = teams.get("away", {})
+                home_info  = teams.get("home", {})
+                away_name  = away_info.get("team", {}).get("name", "")
+                home_name  = home_info.get("team", {}).get("name", "")
+                away_score = away_info.get("score")
+                home_score = home_info.get("score")
+
+                if away_name not in stats.index or home_name not in stats.index:
+                    continue
+                if away_score is None or home_score is None:
+                    continue
+
+                try:
+                    p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0)
+                except Exception:
+                    continue
+
+                predicted_winner = away_name if p_away >= 0.5 else home_name
+                predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
+                actual_winner    = away_name if away_score > home_score else home_name
+
+                log.append({
+                    "game_id":          g.get("gamePk"),
+                    "date":             date_block.get("date", ""),
+                    "away_team":        away_name,
+                    "home_team":        home_name,
+                    "predicted_winner": predicted_winner,
+                    "predicted_prob":   predicted_prob,
+                    "actual_winner":    actual_winner,
+                    "correct":          predicted_winner == actual_winner,
+                    "away_score":       away_score,
+                    "home_score":       home_score,
+                    "away_win_prob":    round(p_away * 100, 1),
+                    "home_win_prob":    round((1 - p_away) * 100, 1),
+                })
+
+                if len(log) >= n:
+                    break
+            if len(log) >= n:
+                break
+
+        result = {"log": log}
+        _mlb_pred_log_cache = result
+        _mlb_pred_log_cache_time = now
+        return result
+    except Exception:
+        return {"log": []}
 
 
 @app.get("/api/stats")

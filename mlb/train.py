@@ -32,10 +32,12 @@ METRICS_PATH = MODELS_DIR / "mlb_metrics.txt"
 FEATURES = [
     # Team pitching
     "era", "whip", "k_per9", "bb_per9",
+    "sp_era", "bullpen_era",           # NEW: rotation ERA, bullpen ERA
     # Team hitting
     "batting_avg", "ops", "obp", "slg", "run_diff",
     # Opponent stats
     "opp_era", "opp_whip", "opp_ops", "opp_run_diff",
+    "opp_sp_era",                      # NEW: opponent rotation ERA
     # Differentials (team minus opponent — key signal for the model)
     "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
     # Context

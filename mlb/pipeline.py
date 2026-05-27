@@ -13,6 +13,8 @@ Estimated runtime: ~8-12 minutes (API rate limiting).
 """
 
 import statsapi
+import json
+import urllib.request
 import pandas as pd
 from pathlib import Path
 from datetime import date
@@ -89,6 +91,52 @@ def get_all_teams() -> dict[int, str]:
     return {t["id"]: t["name"] for t in raw.get("teams", [])}
 
 
+# ── Starter / bullpen ERA split ────────────────────────────────────────────────
+
+def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float]:
+    """Return (sp_era, bullpen_era) for a team/season from individual pitcher stats.
+
+    Classifies pitchers with >= 3 starts as starters; the rest as bullpen.
+    Uses direct MLB Stats API call (no statsapi package dependency).
+    """
+    url = (
+        f"https://statsapi.mlb.com/api/v1/stats"
+        f"?stats=season&group=pitching&season={season}"
+        f"&sportId=1&teamId={team_id}&gameType=R&limit=60"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+    except Exception:
+        return 4.50, 4.00
+
+    sp_er = sp_ip = 0.0
+    bp_er = bp_ip = 0.0
+
+    for group in data.get("stats", []):
+        for split in group.get("splits", []):
+            s   = split.get("stat", {})
+            gs  = int(s.get("gamesStarted", 0) or 0)
+            er  = int(s.get("earnedRuns",   0) or 0)
+            ip_str = str(s.get("inningsPitched", "0") or "0")
+            try:
+                parts = ip_str.split(".")
+                ip = float(parts[0]) + (float(parts[1]) / 3 if len(parts) > 1 and parts[1] else 0.0)
+            except Exception:
+                ip = 0.0
+            if ip < 1.0:   # skip tiny samples
+                continue
+            if gs >= 3:    # rotation starter
+                sp_er += er;  sp_ip += ip
+            else:           # bullpen
+                bp_er += er;  bp_ip += ip
+
+    sp_era      = round(sp_er / sp_ip * 9, 2) if sp_ip > 0 else 4.50
+    bullpen_era = round(bp_er / bp_ip * 9, 2) if bp_ip > 0 else 4.00
+    return sp_era, bullpen_era
+
+
 # ── Season team stats ──────────────────────────────────────────────────────────
 
 def get_team_stats(team_id: int, season: int) -> dict:
@@ -109,18 +157,24 @@ def get_team_stats(team_id: int, season: int) -> dict:
         rs = _safe_float(h.get("runs"), 700.0)
         ra = _safe_float(p.get("runs"), 700.0)
 
+        # Starter / bullpen ERA split — separate API call
+        sp_era, bullpen_era = get_pitcher_splits(team_id, season)
+
         return {
             # Hitting
-            "batting_avg": _safe_float(h.get("avg"), 0.250),
-            "ops":         _safe_float(h.get("ops"), 0.700),
-            "obp":         _safe_float(h.get("obp"), 0.320),
-            "slg":         _safe_float(h.get("slg"), 0.420),
-            "runs_scored": rs,
-            # Pitching
-            "era":         _safe_float(p.get("era"), 4.50),
-            "whip":        _safe_float(p.get("whip"), 1.30),
-            "k_per9":      _safe_float(p.get("strikeoutsPer9Inn"), 8.0),
-            "bb_per9":     _safe_float(p.get("walksPer9Inn"), 3.2),
+            "batting_avg":  _safe_float(h.get("avg"), 0.250),
+            "ops":          _safe_float(h.get("ops"), 0.700),
+            "obp":          _safe_float(h.get("obp"), 0.320),
+            "slg":          _safe_float(h.get("slg"), 0.420),
+            "runs_scored":  rs,
+            # Pitching (aggregate)
+            "era":          _safe_float(p.get("era"), 4.50),
+            "whip":         _safe_float(p.get("whip"), 1.30),
+            "k_per9":       _safe_float(p.get("strikeoutsPer9Inn"), 8.0),
+            "bb_per9":      _safe_float(p.get("walksPer9Inn"), 3.2),
+            # Pitching (role split) ← NEW
+            "sp_era":       sp_era,
+            "bullpen_era":  bullpen_era,
             # Derived
             "runs_allowed": ra,
             "run_diff":     rs - ra,
@@ -269,21 +323,24 @@ def build_training_data(
                     "team_name":       tname,
                     "opp_name":        oname,
                     # Team pitching
-                    "era":             team_s.get("era",     4.50),
-                    "whip":            team_s.get("whip",    1.30),
-                    "k_per9":          team_s.get("k_per9",  8.00),
-                    "bb_per9":         team_s.get("bb_per9", 3.20),
+                    "era":             team_s.get("era",         4.50),
+                    "whip":            team_s.get("whip",        1.30),
+                    "k_per9":          team_s.get("k_per9",      8.00),
+                    "bb_per9":         team_s.get("bb_per9",     3.20),
+                    "sp_era":          team_s.get("sp_era",      4.50),   # NEW
+                    "bullpen_era":     team_s.get("bullpen_era", 4.00),   # NEW
                     # Team hitting
                     "batting_avg":     team_s.get("batting_avg", 0.250),
-                    "ops":             team_s.get("ops",     0.700),
-                    "obp":             team_s.get("obp",     0.320),
-                    "slg":             team_s.get("slg",     0.420),
-                    "run_diff":        team_s.get("run_diff", 0),
+                    "ops":             team_s.get("ops",         0.700),
+                    "obp":             team_s.get("obp",         0.320),
+                    "slg":             team_s.get("slg",         0.420),
+                    "run_diff":        team_s.get("run_diff",    0),
                     # Opponent stats (mirror)
-                    "opp_era":         opp_s.get("era",     4.50),
-                    "opp_whip":        opp_s.get("whip",    1.30),
-                    "opp_ops":         opp_s.get("ops",     0.700),
-                    "opp_run_diff":    opp_s.get("run_diff", 0),
+                    "opp_era":         opp_s.get("era",         4.50),
+                    "opp_whip":        opp_s.get("whip",        1.30),
+                    "opp_ops":         opp_s.get("ops",         0.700),
+                    "opp_run_diff":    opp_s.get("run_diff",    0),
+                    "opp_sp_era":      opp_s.get("sp_era",      4.50),   # NEW
                     # Differentials (team minus opp; negative = disadvantage)
                     "era_diff":        team_s.get("era",     4.50) - opp_s.get("era",     4.50),
                     "whip_diff":       team_s.get("whip",    1.30) - opp_s.get("whip",    1.30),

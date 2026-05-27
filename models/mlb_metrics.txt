@@ -1,28 +1,31 @@
 MLB Logistic Regression Model
-Features        : ['era', 'whip', 'k_per9', 'bb_per9', 'batting_avg', 'ops', 'obp', 'slg', 'run_diff', 'opp_era', 'opp_whip', 'opp_ops', 'opp_run_diff', 'era_diff', 'whip_diff', 'ops_diff', 'run_diff_diff', 'home', 'rest_days', 'win_pct_last10', 'park_factor']
+Features        : ['era', 'whip', 'k_per9', 'bb_per9', 'sp_era', 'bullpen_era', 'batting_avg', 'ops', 'obp', 'slg', 'run_diff', 'opp_era', 'opp_whip', 'opp_ops', 'opp_run_diff', 'opp_sp_era', 'era_diff', 'whip_diff', 'ops_diff', 'run_diff_diff', 'home', 'rest_days', 'win_pct_last10', 'park_factor']
 Training rows   : 14,266
-Cross-val accuracy: 0.5756 +/- 0.0073
-Per-fold scores : [np.float64(0.5788), np.float64(0.5654), np.float64(0.5871), np.float64(0.5713), np.float64(0.5755)]
+Cross-val accuracy: 0.5752 +/- 0.0077
+Per-fold scores : [np.float64(0.5799), np.float64(0.5643), np.float64(0.5868), np.float64(0.5706), np.float64(0.5745)]
 
 Feature coefficients (sorted by |coef|):
-  run_diff_diff          +0.137009
-  home                   +0.121679
-  run_diff               +0.101502
-  opp_run_diff           -0.098316
-  opp_ops                -0.038865
-  batting_avg            +0.037599
-  opp_whip               +0.032783
-  whip_diff              -0.030275
-  ops_diff               +0.028811
-  bb_per9                -0.021179
-  win_pct_last10         -0.014926
-  park_factor            -0.014741
-  obp                    +0.011620
-  whip                   -0.010137
-  k_per9                 +0.005548
-  rest_days              -0.005031
-  slg                    -0.004115
-  era                    -0.003875
-  era_diff               -0.003440
-  opp_era                +0.001010
-  ops                    +0.001000
+  run_diff_diff          +0.135914
+  home                   +0.121607
+  opp_run_diff           -0.100661
+  run_diff               +0.097560
+  batting_avg            +0.043107
+  opp_ops                -0.038990
+  whip_diff              -0.032314
+  opp_whip               +0.030509
+  ops_diff               +0.028067
+  bb_per9                -0.021117
+  park_factor            -0.017118
+  win_pct_last10         -0.015340
+  sp_era                 -0.015320
+  whip                   -0.015302
+  obp                    +0.013471
+  slg                    -0.006639
+  era                    +0.005540
+  rest_days              -0.005104
+  k_per9                 +0.003631
+  opp_era                +0.003302
+  era_diff               +0.001576
+  opp_sp_era             +0.001138
+  ops                    -0.000154
+  bullpen_era            +0.000000

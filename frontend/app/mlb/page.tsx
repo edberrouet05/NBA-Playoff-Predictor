@@ -186,25 +186,44 @@ function GameCard({ game }: { game: MLBGame }) {
   );
 }
 
-// ── Sidebar: pitcher matchups ──────────────────────────────────────────────────
+// ── Sidebar: recent predictions log ───────────────────────────────────────────
 
-function PitcherMatchups({ games }: { games: MLBGame[] }) {
+interface MLBPredEntry {
+  game_id: number;
+  date: string;
+  away_team: string;
+  home_team: string;
+  predicted_winner: string;
+  predicted_prob: number;
+  actual_winner: string;
+  correct: boolean;
+  away_score: number | null;
+  home_score: number | null;
+  away_win_prob: number;
+  home_win_prob: number;
+}
+
+function fmtShortDate(d: string): string {
+  try {
+    const [y, mo, day] = d.split("-").map(Number);
+    return new Date(y, mo - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch { return d; }
+}
+
+function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
   const [expanded, setExpanded] = useState(false);
-  const notable = games.filter(g => g.away_pitcher !== "TBD" && g.home_pitcher !== "TBD");
-  const visible = expanded ? notable : notable.slice(0, 3);
+  const visible = expanded ? log : log.slice(0, 3);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
       <button onClick={() => setExpanded(e => !e)}
         className="w-full flex items-center justify-between mb-3 group">
         <div className="flex items-center gap-2">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="text-gray-400">
-            <circle cx="8" cy="8" r="6.5" />
-            <path d="M5.5 2.5C6 4 6 5.5 5 7s-2 2.5-2.5 4" />
-            <path d="M10.5 2.5C10 4 10 5.5 11 7s2 2.5 2.5 4" />
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+            <circle cx="8" cy="8" r="6.5" /><path d="M8 4.5V8l2.5 2" />
           </svg>
           <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-            Pitcher matchups
+            Recent predictions log
           </p>
         </div>
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -213,18 +232,27 @@ function PitcherMatchups({ games }: { games: MLBGame[] }) {
         </svg>
       </button>
 
-      {notable.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-3">No confirmed starters yet.</p>
+      {log.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-3">No completed games yet.</p>
       ) : (
         <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
-          {visible.map((g, i) => (
+          {visible.map((e, i) => (
             <div key={i} className="flex items-center justify-between py-2 gap-3">
               <p className="text-xs text-gray-500 truncate">
-                {getAbbr(g.away_team)} @ {getAbbr(g.home_team)}
+                {fmtShortDate(e.date)} · {getNick(e.away_team)} vs {getNick(e.home_team)}
               </p>
-              <p className="text-xs text-gray-700 dark:text-gray-300 text-right flex-shrink-0 whitespace-nowrap">
-                {g.away_pitcher.split(" ").pop()} vs {g.home_pitcher.split(" ").pop()}
-              </p>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  {getNick(e.predicted_winner)} {e.predicted_prob}%
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${
+                  e.correct
+                    ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400"
+                    : "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400"
+                }`}>
+                  {e.correct ? "Correct" : "Wrong"}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -338,6 +366,7 @@ export default function MLBPage() {
   const [date,    setDate]    = useState("");
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
+  const [predLog, setPredLog] = useState<MLBPredEntry[]>([]);
 
   useEffect(() => {
     const load = () =>
@@ -352,6 +381,12 @@ export default function MLBPage() {
 
     load();
     const id = setInterval(load, 120_000);
+
+    fetch(`${API}/api/mlb/predictions_log?n=10`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setPredLog(d.log ?? []))
+      .catch(() => {});
+
     return () => clearInterval(id);
   }, []);
 
@@ -400,8 +435,8 @@ export default function MLBPage() {
 
         {/* ── Right: insight panels ── */}
         <div className="flex flex-col gap-4">
+          <PredictionsLog log={predLog} />
           <ConfidencePicks games={games} />
-          <PitcherMatchups games={games} />
           <ParkFactorPanel games={games} />
         </div>
 
