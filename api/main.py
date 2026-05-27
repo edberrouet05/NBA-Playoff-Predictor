@@ -990,6 +990,18 @@ def predict(body: MatchupRequest):
     return _build_prediction(model, stats, body.team_a, body.team_b)
 
 
+@app.get("/api/predict")
+def predict_get(team_a: str, team_b: str, injury_a: float = 1.0, injury_b: float = 1.0):
+    injury_a = max(0.1, min(1.0, injury_a))
+    injury_b = max(0.1, min(1.0, injury_b))
+    model = _load_model()
+    stats = _load_stats_by_name()
+    for t in (team_a, team_b):
+        if t not in stats.index:
+            raise HTTPException(status_code=404, detail=f"Team not found: {t}")
+    return _build_prediction(model, stats, team_a, team_b, injury_a, injury_b)
+
+
 @app.get("/api/compare")
 def compare_teams(
     team_a: str, team_b: str,
@@ -1021,18 +1033,11 @@ def compare_teams(
         row = stats.loc[name]
         return {col: round(float(row[col]), 3) for col in display if col in stats.columns}
 
-    try:
-        model = _load_model()
-        prediction = _build_prediction(model, stats, team_a, team_b, injury_a, injury_b)
-    except Exception:
-        prediction = None
-
     result = {
         "team_a":       team_a,
         "team_b":       team_b,
         "team_a_stats": team_stats(team_a),
         "team_b_stats": team_stats(team_b),
-        "prediction":   prediction,
     }
     _compare_cache[cache_key] = result
     _compare_cache_time[cache_key] = now
@@ -1120,6 +1125,189 @@ def get_predictions_log(n: int = 5):
         return result
     except Exception:
         return {"log": []}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  MLB endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+MLB_MODEL_PATH = ROOT / "models" / "mlb_logistic_regression.pkl"
+MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
+
+MLB_FEATURES = [
+    "era", "whip", "k_per9", "bb_per9",
+    "batting_avg", "ops", "obp", "slg", "run_diff",
+    "opp_era", "opp_whip", "opp_ops", "opp_run_diff",
+    "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
+    "home", "rest_days", "win_pct_last10", "park_factor",
+]
+
+_mlb_model_cache = None
+_mlb_stats_cache: pd.DataFrame | None = None
+
+_mlb_today_cache: dict | None = None
+_mlb_today_cache_date: str = ""
+_MLB_TODAY_TTL = 600.0   # 10 minutes
+
+
+def _load_mlb_model():
+    global _mlb_model_cache
+    if _mlb_model_cache is None:
+        with open(MLB_MODEL_PATH, "rb") as f:
+            _mlb_model_cache = pickle.load(f)
+    return _mlb_model_cache
+
+
+def _load_mlb_stats() -> pd.DataFrame:
+    global _mlb_stats_cache
+    if _mlb_stats_cache is None:
+        _mlb_stats_cache = pd.read_csv(MLB_STATS_PATH).set_index("team_name")
+    return _mlb_stats_cache
+
+
+def _mlb_win_prob(model, stats: pd.DataFrame, team: str, opp: str, is_home: int) -> float:
+    """Return P(team wins) using the MLB logistic regression."""
+    def _row(t, o, home):
+        ts = stats.loc[t]
+        os = stats.loc[o]
+        return {
+            "era":          float(ts.get("era",     4.5)),
+            "whip":         float(ts.get("whip",    1.3)),
+            "k_per9":       float(ts.get("k_per9",  8.0)),
+            "bb_per9":      float(ts.get("bb_per9", 3.2)),
+            "batting_avg":  float(ts.get("batting_avg", 0.250)),
+            "ops":          float(ts.get("ops",     0.700)),
+            "obp":          float(ts.get("obp",     0.320)),
+            "slg":          float(ts.get("slg",     0.420)),
+            "run_diff":     float(ts.get("run_diff", 0)),
+            "opp_era":      float(os.get("era",     4.5)),
+            "opp_whip":     float(os.get("whip",    1.3)),
+            "opp_ops":      float(os.get("ops",     0.700)),
+            "opp_run_diff": float(os.get("run_diff", 0)),
+            "era_diff":     float(ts.get("era",     4.5))   - float(os.get("era",     4.5)),
+            "whip_diff":    float(ts.get("whip",    1.3))   - float(os.get("whip",    1.3)),
+            "ops_diff":     float(ts.get("ops",     0.700)) - float(os.get("ops",     0.700)),
+            "run_diff_diff":float(ts.get("run_diff", 0))    - float(os.get("run_diff", 0)),
+            "home":         home,
+            "rest_days":    4,
+            "win_pct_last10": 0.5,
+            "park_factor":  float(ts.get("park_factor", 1.0)),
+        }
+
+    r_team = _row(team, opp, is_home)
+    r_opp  = _row(opp, team, 1 - is_home)
+    p_t = float(model.predict_proba(pd.DataFrame([r_team])[MLB_FEATURES])[0][1])
+    p_o = float(model.predict_proba(pd.DataFrame([r_opp ])[MLB_FEATURES])[0][1])
+    return p_t / (p_t + p_o)   # normalise so home+away = 100 %
+
+
+def _fetch_mlb_today() -> dict:
+    """Fetch today's MLB games directly from statsapi.mlb.com (no third-party package needed)."""
+    import datetime, json, urllib.request
+
+    today_iso = datetime.date.today().isoformat()   # YYYY-MM-DD
+
+    url = (
+        "https://statsapi.mlb.com/api/v1/schedule"
+        f"?sportId=1&date={today_iso}"
+        "&hydrate=probablePitcher,linescore,decisions"
+        "&gameType=R"
+    )
+    req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        data = json.loads(resp.read())
+
+    model = _load_mlb_model()
+    stats = _load_mlb_stats()
+
+    results = []
+    for date_block in data.get("dates", []):
+        for g in date_block.get("games", []):
+            # Skip non-regular-season games
+            if g.get("gameType", "R") != "R":
+                continue
+
+            teams     = g.get("teams", {})
+            away_info = teams.get("away", {})
+            home_info = teams.get("home", {})
+
+            away_name = away_info.get("team", {}).get("name", "")
+            home_name = home_info.get("team", {}).get("name", "")
+            status    = g.get("status", {}).get("detailedState", "Scheduled")
+            venue     = g.get("venue", {}).get("name", "")
+            game_time = g.get("gameDate", "")
+            game_id   = g.get("gamePk")
+
+            # Scores (only present when in-progress or final)
+            away_score = away_info.get("score")
+            home_score = home_info.get("score")
+
+            # Probable starters (hydrated)
+            def _pitcher_name(side_info: dict) -> str:
+                p = side_info.get("probablePitcher", {})
+                return p.get("fullName", "TBD") if p else "TBD"
+
+            away_sp = _pitcher_name(away_info)
+            home_sp = _pitcher_name(home_info)
+
+            # Skip if team not in stats CSV
+            if away_name not in stats.index or home_name not in stats.index:
+                continue
+
+            try:
+                p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0)
+            except Exception:
+                p_away = 0.5
+
+            results.append({
+                "game_id":          game_id,
+                "status":           status,
+                "game_time_utc":    game_time,
+                "venue":            venue,
+                "away_team":        away_name,
+                "home_team":        home_name,
+                "away_score":       away_score,
+                "home_score":       home_score,
+                "away_win_prob":    round(p_away * 100, 1),
+                "home_win_prob":    round((1 - p_away) * 100, 1),
+                "predicted_winner": away_name if p_away >= 0.5 else home_name,
+                "away_pitcher":     away_sp,
+                "home_pitcher":     home_sp,
+            })
+
+    return {
+        "date":  today_iso,
+        "games": results,
+    }
+
+
+@app.get("/api/mlb/today")
+def get_mlb_today():
+    """Return today's MLB games with win probabilities and pitcher matchups."""
+    import time as _t
+    global _mlb_today_cache, _mlb_today_cache_date
+    import datetime
+
+    today = datetime.date.today().isoformat()
+    now   = _t.time()
+
+    # Bust cache on new calendar day
+    if _mlb_today_cache is not None and _mlb_today_cache_date == today:
+        return _mlb_today_cache
+
+    try:
+        result = _fetch_mlb_today()
+        _mlb_today_cache = result
+        _mlb_today_cache_date = today
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MLB fetch failed: {e}")
+
+
+@app.get("/api/mlb/teams")
+def get_mlb_teams() -> list[str]:
+    """Return sorted list of all MLB team names in the stats CSV."""
+    return sorted(_load_mlb_stats().index.tolist())
 
 
 @app.get("/api/stats")

@@ -20,7 +20,6 @@ interface Prediction {
 interface CompareResult {
   team_a: string; team_b: string;
   team_a_stats: TeamStats; team_b_stats: TeamStats;
-  prediction: Prediction | null;
 }
 
 const STATS = [
@@ -57,7 +56,9 @@ export default function MatchupPage() {
   const [injuryA,       setInjuryA]       = useState(1.0);
   const [injuryB,       setInjuryB]       = useState(1.0);
   const [result,        setResult]        = useState<CompareResult | null>(null);
+  const [prediction,    setPrediction]    = useState<Prediction | null>(null);
   const [loading,       setLoading]       = useState(false);
+  const [predLoading,   setPredLoading]   = useState(false);
   const [error,         setError]         = useState("");
 
   useEffect(() => {
@@ -86,17 +87,25 @@ export default function MatchupPage() {
     if (teamA === teamB) { setError("Pick two different teams."); return; }
     setError("");
     setLoading(true);
+    setPrediction(null);
+    const qa = `team_a=${encodeURIComponent(teamA)}&team_b=${encodeURIComponent(teamB)}&injury_a=${injuryA}&injury_b=${injuryB}`;
     try {
-      const res = await fetch(
-        `${API}/api/compare?team_a=${encodeURIComponent(teamA)}&team_b=${encodeURIComponent(teamB)}&injury_a=${injuryA}&injury_b=${injuryB}`
-      );
+      const res = await fetch(`${API}/api/compare?${qa}`);
       if (!res.ok) throw new Error();
       setResult(await res.json());
     } catch {
       setError("Comparison failed. Check the backend.");
-    } finally {
       setLoading(false);
+      return;
     }
+    setLoading(false);
+    // Fetch prediction separately — can take several seconds (Monte Carlo)
+    setPredLoading(true);
+    fetch(`${API}/api/predict?${qa}`)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(p => setPrediction(p as Prediction))
+      .catch(() => {})
+      .finally(() => setPredLoading(false));
   }
 
   return (
@@ -145,16 +154,22 @@ export default function MatchupPage() {
         <div className="flex flex-col gap-5">
 
           {/* Win probability */}
-          {result.prediction && (
-            <Card title="Series Win Probability">
-              <ProbBar team={result.team_a} pct={result.prediction.team_a_series_prob} />
-              <ProbBar team={result.team_b} pct={result.prediction.team_b_series_prob} />
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
-                <p className="text-xs text-gray-400 uppercase tracking-widest">Predicted winner</p>
-                <p className="text-xl font-bold text-red-600 mt-1">{result.prediction.predicted_winner}</p>
-              </div>
-            </Card>
-          )}
+          <Card title="Series Win Probability">
+            {predLoading && <p className="text-sm text-gray-400">Running simulation…</p>}
+            {!predLoading && prediction && (
+              <>
+                <ProbBar team={result.team_a} pct={prediction.team_a_series_prob} />
+                <ProbBar team={result.team_b} pct={prediction.team_b_series_prob} />
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
+                  <p className="text-xs text-gray-400 uppercase tracking-widest">Predicted winner</p>
+                  <p className="text-xl font-bold text-red-600 mt-1">{prediction.predicted_winner}</p>
+                </div>
+              </>
+            )}
+            {!predLoading && !prediction && (
+              <p className="text-sm text-gray-400">Prediction unavailable.</p>
+            )}
+          </Card>
 
           {/* Stats comparison */}
           <Card title="Stats Comparison">
@@ -183,7 +198,7 @@ export default function MatchupPage() {
           </Card>
 
           {/* Game-by-game */}
-          {result.prediction && (
+          {prediction && (
             <Card title="Game-by-Game Simulation">
               <table className="w-full text-sm">
                 <thead>
@@ -195,7 +210,7 @@ export default function MatchupPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.prediction.games.map((g) => (
+                  {prediction.games.map((g) => (
                     <tr key={g.game} className={`border-b border-gray-100 dark:border-gray-800 ${g.clinching ? "font-semibold" : ""}`}>
                       <td className="py-2 text-gray-400">Game {g.game}</td>
                       <td className={`py-2 ${g.clinching ? "text-red-600" : "text-gray-700 dark:text-gray-300"}`}>
@@ -218,7 +233,7 @@ export default function MatchupPage() {
           )}
 
           {/* Outcome distribution */}
-          {result.prediction && (
+          {prediction && (
             <Card title="Series Outcome Distribution (10 000 simulations)">
               <table className="w-full text-sm">
                 <thead>
@@ -229,7 +244,7 @@ export default function MatchupPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.prediction.outcomes.map((o) => (
+                  {prediction.outcomes.map((o) => (
                     <tr key={o.result} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-2 text-gray-500">{o.result}</td>
                       <td className="py-2 text-right text-red-600 font-medium">{o.team_a_pct}%</td>

@@ -7,3 +7,4 @@ matplotlib==3.10.9
 fastapi==0.115.12
 uvicorn==0.34.3
 python-multipart==0.0.20
+MLB-StatsAPI==1.9.0

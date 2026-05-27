@@ -42,10 +42,10 @@ function IconStats() {
 }
 
 const links = [
-  { href: "/",        Icon: IconGames,   label: "Games"   },
-  { href: "/bracket", Icon: IconBracket, label: "Bracket" },
-  { href: "/matchup", Icon: IconMatchup, label: "Matchup" },
-  { href: "/stats",   Icon: IconStats,   label: "Stats"   },
+  { href: "/",        Icon: IconGames,    label: "NBA"     },
+  { href: "/bracket", Icon: IconBracket,  label: "Bracket" },
+  { href: "/matchup", Icon: IconMatchup,  label: "Matchup" },
+  { href: "/stats",   Icon: IconStats,    label: "Stats"   },
 ];
 
 export default function Sidebar() {
@@ -59,7 +59,8 @@ export default function Sidebar() {
             href={href}
             title={label}
             className={`w-11 h-11 flex items-center justify-center rounded-xl transition-colors ${
-              path === href || (href === "/bracket" && path.startsWith("/team"))
+              path === href ||
+              (href === "/bracket" && path.startsWith("/team"))
                 ? "bg-white/10 text-white"
                 : "text-gray-600 hover:text-gray-300 hover:bg-white/[0.05]"
             }`}

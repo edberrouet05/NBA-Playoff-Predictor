@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import ThemeToggle from "./components/ThemeToggle";
+import TopNav from "./components/TopNav";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -25,11 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <span className="text-red-600 font-black text-xl tracking-tight">Court</span><span className="text-gray-900 dark:text-white font-black text-xl tracking-tight">Edge</span>
               </div>
-              <div className="flex items-center gap-4 ml-2">
-                <span className="text-base font-bold text-red-600 tracking-wide">NBA</span>
-                <span className="text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide">MLB</span>
-                <span className="text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide">NHL</span>
-              </div>
+              <TopNav />
             </div>
             <ThemeToggle />
           </header>
