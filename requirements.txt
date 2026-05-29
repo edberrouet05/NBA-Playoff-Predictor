@@ -2,6 +2,7 @@ nba_api==1.11.4
 pandas==3.0.2
 numpy==2.4.4
 scikit-learn==1.8.0
+xgboost>=2.0.0
 seaborn==0.13.2
 matplotlib==3.10.9
 fastapi==0.115.12

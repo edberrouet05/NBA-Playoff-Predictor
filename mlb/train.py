@@ -28,17 +28,16 @@ MODEL_PATH   = MODELS_DIR / "mlb_logistic_regression.pkl"
 METRICS_PATH = MODELS_DIR / "mlb_metrics.txt"
 
 # ── Feature list — must match pipeline.py and api/main.py ─────────────────────
-# Note: season / game_date / team_name / opp_name are metadata, not features.
 FEATURES = [
     # Team pitching
     "era", "whip", "k_per9", "bb_per9",
-    "sp_era", "bullpen_era",           # NEW: rotation ERA, bullpen ERA
+    "sp_era", "bullpen_era",
     # Team hitting
     "batting_avg", "ops", "obp", "slg", "run_diff",
     # Opponent stats
     "opp_era", "opp_whip", "opp_ops", "opp_run_diff",
-    "opp_sp_era",                      # NEW: opponent rotation ERA
-    # Differentials (team minus opponent — key signal for the model)
+    "opp_sp_era",
+    # Differentials
     "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
     # Context
     "home", "rest_days", "win_pct_last10", "park_factor",
@@ -56,7 +55,6 @@ def load_data() -> tuple[pd.DataFrame, pd.Series]:
         raise ValueError(f"Missing features in training data: {missing}")
     X = df[FEATURES].copy()
     y = df[TARGET].copy()
-    # Sanity-check for NaNs
     nan_cols = X.columns[X.isna().any()].tolist()
     if nan_cols:
         print(f"  WARNING: NaN values in {nan_cols} — filling with column median")
@@ -82,7 +80,6 @@ def train(X: pd.DataFrame, y: pd.Series) -> Pipeline:
     print(f"\n  5-fold CV accuracy: {scores.mean():.4f} +/- {scores.std():.4f}")
     print(f"  Per-fold: {[round(s, 4) for s in scores]}")
 
-    # Fit on full dataset
     pipe.fit(X, y)
     return pipe, scores
 

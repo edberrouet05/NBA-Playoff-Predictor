@@ -1,6 +1,9 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+// ── Icons ──────────────────────────────────────────────────────────────────────
 
 function IconGames() {
   return (
@@ -41,26 +44,144 @@ function IconStats() {
   );
 }
 
-const links = [
-  { href: "/",        Icon: IconGames,    label: "NBA"     },
-  { href: "/bracket", Icon: IconBracket,  label: "Bracket" },
-  { href: "/matchup", Icon: IconMatchup,  label: "Matchup" },
-  { href: "/stats",   Icon: IconStats,    label: "Stats"   },
-];
+function IconStandings() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4h14" />
+      <path d="M2 8h14" />
+      <path d="M2 12h14" />
+      <path d="M2 16h8" />
+    </svg>
+  );
+}
+
+function IconLog() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="14" height="14" rx="2" />
+      <path d="M5 6.5l2 2 4-4" />
+      <path d="M5 11.5l2 2 4-4" />
+    </svg>
+  );
+}
+
+// ── Sport detection ────────────────────────────────────────────────────────────
+
+type Sport = "nba" | "mlb" | "nhl";
+
+function getSport(path: string): Sport {
+  if (path.startsWith("/mlb")) return "mlb";
+  if (path.startsWith("/nhl")) return "nhl";
+  return "nba";
+}
+
+// ── Sidebar config per sport ───────────────────────────────────────────────────
+
+type SidebarLink = {
+  href: string;
+  Icon: () => React.JSX.Element;
+  label: string;
+  isActive: (path: string) => boolean;
+};
+
+const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
+  nba: [
+    {
+      href: "/",
+      Icon: IconGames,
+      label: "Games",
+      isActive: (p) => p === "/" || p.startsWith("/game"),
+    },
+    {
+      href: "/bracket",
+      Icon: IconBracket,
+      label: "Bracket",
+      isActive: (p) => p === "/bracket" || p.startsWith("/team"),
+    },
+    {
+      href: "/matchup",
+      Icon: IconMatchup,
+      label: "Matchup",
+      isActive: (p) => p === "/matchup",
+    },
+    {
+      href: "/stats",
+      Icon: IconStats,
+      label: "Stats",
+      isActive: (p) => p === "/stats",
+    },
+  ],
+  mlb: [
+    {
+      href: "/mlb",
+      Icon: IconGames,
+      label: "Games",
+      isActive: (p) => p === "/mlb",
+    },
+    {
+      href: "/mlb/standings",
+      Icon: IconStandings,
+      label: "Standings",
+      isActive: (p) => p === "/mlb/standings",
+    },
+    {
+      href: "/mlb/predictions",
+      Icon: IconLog,
+      label: "Predictions",
+      isActive: (p) => p === "/mlb/predictions",
+    },
+    {
+      href: "/mlb/stats",
+      Icon: IconStats,
+      label: "Stats",
+      isActive: (p) => p === "/mlb/stats",
+    },
+  ],
+  nhl: [
+    {
+      href: "/nhl",
+      Icon: IconGames,
+      label: "Games",
+      isActive: (p) => p === "/nhl",
+    },
+    {
+      href: "/nhl/bracket",
+      Icon: IconBracket,
+      label: "Bracket",
+      isActive: (p) => p === "/nhl/bracket",
+    },
+    {
+      href: "/nhl/matchup",
+      Icon: IconMatchup,
+      label: "Matchup",
+      isActive: (p) => p === "/nhl/matchup",
+    },
+    {
+      href: "/nhl/stats",
+      Icon: IconStats,
+      label: "Stats",
+      isActive: (p) => p === "/nhl/stats",
+    },
+  ],
+};
+
+// ── Sidebar component ──────────────────────────────────────────────────────────
 
 export default function Sidebar() {
-  const path = usePathname();
+  const path  = usePathname();
+  const sport = getSport(path);
+  const links = SPORT_SIDEBAR[sport];
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-[68px] bg-[#0d0d0d] flex flex-col items-center pt-5 pb-6 z-20 border-r border-white/[0.06]">
       <nav className="flex flex-col gap-1 mt-2">
-        {links.map(({ href, Icon, label }) => (
+        {links.map(({ href, Icon, label, isActive }) => (
           <Link
             key={href}
             href={href}
             title={label}
             className={`w-11 h-11 flex items-center justify-center rounded-xl transition-colors ${
-              path === href ||
-              (href === "/bracket" && path.startsWith("/team"))
+              isActive(path)
                 ? "bg-white/10 text-white"
                 : "text-gray-600 hover:text-gray-300 hover:bg-white/[0.05]"
             }`}

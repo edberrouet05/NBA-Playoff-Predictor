@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const API = "http://localhost:8000";
 
@@ -19,6 +20,8 @@ interface MLBGame {
   predicted_winner: string;
   away_pitcher: string;
   home_pitcher: string;
+  away_sp_era:  number | null;
+  home_sp_era:  number | null;
 }
 
 // ── Team metadata ──────────────────────────────────────────────────────────────
@@ -111,19 +114,22 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
 // ── Game card ──────────────────────────────────────────────────────────────────
 
 function GameCard({ game }: { game: MLBGame }) {
-  const isLive   = game.status === "Live" || game.status === "In Progress";
-  const isFinal  = game.status === "Final" || game.status === "Game Over";
-  const showScore = isLive || isFinal;
-  const awayWins  = isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score;
-  const homeWins  = isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score;
+  const isLive  = game.status === "Live" || game.status === "In Progress";
+  const isFinal = game.status === "Final" || game.status === "Game Over";
+  const awayWins = isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score;
+  const homeWins = isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score;
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden">
+    <div className={`bg-white dark:bg-gray-900 border shadow-sm rounded-2xl overflow-hidden ${
+      isFinal
+        ? "border-gray-100 dark:border-gray-800 opacity-80"
+        : "border-gray-100 dark:border-transparent"
+    }`}>
 
       {/* Status row */}
       <div className="px-5 pt-4 flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          {isLive || isFinal ? game.status : formatGameTime(game.game_time_utc)}
+          {isFinal ? "Final" : isLive ? game.status : formatGameTime(game.game_time_utc)}
         </span>
         {isLive && (
           <span className="flex items-center gap-1.5 text-xs font-bold text-red-400">
@@ -131,36 +137,65 @@ function GameCard({ game }: { game: MLBGame }) {
             Live
           </span>
         )}
-        {isFinal && <span className="text-xs text-gray-500 font-medium">Final</span>}
       </div>
 
-      {/* Teams + probabilities */}
+      {/* Teams + score / probabilities */}
       <div className="px-5 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+
+        {/* Away team */}
         <div className="flex flex-col items-center gap-1.5">
-          <TeamLogo team={game.away_team} size="w-12 h-12" />
-          <span className="text-gray-900 dark:text-white text-sm font-bold">{getAbbr(game.away_team)}</span>
-          <span className={`text-sm font-bold ${game.predicted_winner === game.away_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-            {game.away_win_prob}%
+          <TeamLogo team={game.away_team} size={isFinal ? "w-10 h-10" : "w-12 h-12"} />
+          <span className={`text-sm font-bold ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
+            {getAbbr(game.away_team)}
           </span>
-          {showScore && game.away_score !== null && (
-            <span className={`text-lg font-bold ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
-              {game.away_score}
-            </span>
+          {isFinal ? (
+            <>
+              <span className={`text-3xl font-bold leading-none ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>
+                {game.away_score ?? "—"}
+              </span>
+              <span className={`text-xs font-medium ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-500"}`}>
+                {game.away_win_prob}%
+              </span>
+            </>
+          ) : (
+            <>
+              <span className={`text-sm font-bold ${game.predicted_winner === game.away_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+                {game.away_win_prob}%
+              </span>
+              {isLive && game.away_score !== null && (
+                <span className="text-lg font-bold text-gray-900 dark:text-white">{game.away_score}</span>
+              )}
+            </>
           )}
         </div>
 
-        <span className="text-gray-300 dark:text-gray-700 font-bold text-sm">VS</span>
+        {/* Center */}
+        <span className="text-gray-300 dark:text-gray-700 font-bold text-sm">{isFinal ? "—" : "VS"}</span>
 
+        {/* Home team */}
         <div className="flex flex-col items-center gap-1.5">
-          <TeamLogo team={game.home_team} size="w-12 h-12" />
-          <span className="text-gray-900 dark:text-white text-sm font-bold">{getAbbr(game.home_team)}</span>
-          <span className={`text-sm font-bold ${game.predicted_winner === game.home_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-            {game.home_win_prob}%
+          <TeamLogo team={game.home_team} size={isFinal ? "w-10 h-10" : "w-12 h-12"} />
+          <span className={`text-sm font-bold ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
+            {getAbbr(game.home_team)}
           </span>
-          {showScore && game.home_score !== null && (
-            <span className={`text-lg font-bold ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
-              {game.home_score}
-            </span>
+          {isFinal ? (
+            <>
+              <span className={`text-3xl font-bold leading-none ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>
+                {game.home_score ?? "—"}
+              </span>
+              <span className={`text-xs font-medium ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-500"}`}>
+                {game.home_win_prob}%
+              </span>
+            </>
+          ) : (
+            <>
+              <span className={`text-sm font-bold ${game.predicted_winner === game.home_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+                {game.home_win_prob}%
+              </span>
+              {isLive && game.home_score !== null && (
+                <span className="text-lg font-bold text-gray-900 dark:text-white">{game.home_score}</span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -179,9 +214,11 @@ function GameCard({ game }: { game: MLBGame }) {
       </div>
 
       {/* Predicted winner */}
-      <div className="px-5 py-3">
-        <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
-      </div>
+      {!isFinal && (
+        <div className="px-5 py-3">
+          <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -212,19 +249,17 @@ function fmtShortDate(d: string): string {
 
 function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? log : log.slice(0, 3);
+  const visible = log.slice(0, expanded ? 10 : 3);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
-      <button onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center justify-between mb-3 group">
+      {/* Header */}
+      <button onClick={() => setExpanded(e => !e)} className="w-full flex items-center justify-between mb-3 group">
         <div className="flex items-center gap-2">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
             <circle cx="8" cy="8" r="6.5" /><path d="M8 4.5V8l2.5 2" />
           </svg>
-          <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-            Recent predictions log
-          </p>
+          <p className="text-sm font-bold text-gray-900 dark:text-white">Recent predictions log</p>
         </div>
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
           className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}>
@@ -235,27 +270,38 @@ function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
       {log.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
-          {visible.map((e, i) => (
-            <div key={i} className="flex items-center justify-between py-2 gap-3">
-              <p className="text-xs text-gray-500 truncate">
-                {fmtShortDate(e.date)} · {getNick(e.away_team)} vs {getNick(e.home_team)}
-              </p>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                  {getNick(e.predicted_winner)} {e.predicted_prob}%
-                </span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${
-                  e.correct
-                    ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400"
-                    : "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400"
-                }`}>
-                  {e.correct ? "Correct" : "Wrong"}
-                </span>
+        <>
+          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+            {visible.map((e, i) => (
+              <div key={i} className="flex items-center justify-between py-2 gap-3">
+                <p className="text-xs text-gray-500 truncate">
+                  {fmtShortDate(e.date)} · {getNick(e.away_team)} vs {getNick(e.home_team)}
+                </p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    {getNick(e.predicted_winner)} {e.predicted_prob}%
+                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${
+                    e.correct
+                      ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400"
+                      : "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400"
+                  }`}>
+                    {e.correct ? "Correct" : "Wrong"}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {/* See all link */}
+          <Link href="/mlb/predictions"
+            className="mt-3 flex items-center justify-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors pt-2 border-t border-gray-100 dark:border-gray-800">
+            See all predictions
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 4l4 4-4 4" />
+            </svg>
+          </Link>
+        </>
       )}
     </div>
   );
@@ -309,51 +355,147 @@ function ConfidencePicks({ games }: { games: MLBGame[] }) {
   );
 }
 
-// ── Sidebar: venue & park factors ─────────────────────────────────────────────
+// ── Sidebar: today's key pitchers ─────────────────────────────────────────────
 
-function ParkFactorPanel({ games }: { games: MLBGame[] }) {
-  if (games.length === 0) return null;
+function KeyPitchers({ games }: { games: MLBGame[] }) {
+  const [expanded, setExpanded] = useState(false);
 
-  // Static park factor labels (sourced from model training data)
-  const PARK_LABELS: Record<string, { label: string; cls: string }> = {
-    COL: { label: "Hitter-friendly", cls: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400" },
-    CIN: { label: "Hitter-friendly", cls: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400" },
-    BOS: { label: "Slight hitter",   cls: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400" },
-    SD:  { label: "Pitcher-friendly",cls: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400" },
-    SEA: { label: "Pitcher-friendly",cls: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400" },
-    OAK: { label: "Pitcher-friendly",cls: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400" },
-  };
+  const starters = games
+    .flatMap(g => [
+      { team: g.away_team, name: g.away_pitcher, era: g.away_sp_era },
+      { team: g.home_team, name: g.home_pitcher, era: g.home_sp_era },
+    ])
+    .filter(p => p.name && p.name !== "TBD")
+    .sort((a, b) => (a.era ?? 99) - (b.era ?? 99));
 
-  const notable = games
-    .map(g => ({ game: g, abbr: getAbbr(g.home_team) }))
-    .filter(({ abbr }) => PARK_LABELS[abbr])
-    .slice(0, 3);
+  if (!starters.length) return null;
 
-  if (notable.length === 0) return null;
+  const visible = expanded ? starters : starters.slice(0, 3);
+  const hasMore = starters.length > 3;
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-          <path d="M2 14 L8 2 L14 14" /><path d="M4 10 h8" />
-        </svg>
-        <p className="text-sm font-bold text-gray-900 dark:text-white">Park factors</p>
-      </div>
-      <div className="flex flex-col gap-2">
-        {notable.map(({ game, abbr }, i) => {
-          const info = PARK_LABELS[abbr]!;
-          return (
-            <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2">
-              <div className="flex items-center gap-2">
-                <TeamLogo team={game.home_team} size="w-5 h-5" />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{game.venue || abbr}</span>
+      <button onClick={() => hasMore && setExpanded(e => !e)}
+        className={`w-full flex items-center justify-between mb-3 ${hasMore ? "group" : ""}`}>
+        <div className="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+            <circle cx="8" cy="8" r="6.5" />
+            <path d="M5.5 2.5C6 4 6 5.5 5 7s-2 2.5-2.5 4" />
+            <path d="M10.5 2.5C10 4 10 5.5 11 7s2 2.5 2.5 4" />
+          </svg>
+          <p className={`text-sm font-bold text-gray-900 dark:text-white ${hasMore ? "group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" : ""}`}>
+            Today&apos;s starters
+          </p>
+        </div>
+        {hasMore && (
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={`text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}>
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        )}
+      </button>
+
+      <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+        {visible.map((p, i) => (
+          <div key={i} className="flex items-center justify-between py-2 gap-2">
+            <div className="flex items-center gap-2">
+              <TeamLogo team={p.team} size="w-5 h-5" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                  {p.name.split(" ").pop()}
+                </span>
+                <span className="text-[10px] text-gray-400">{getAbbr(p.team)}</span>
               </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${info.cls}`}>
-                {info.label}
-              </span>
             </div>
-          );
-        })}
+            {p.era !== null ? (
+              <span className={`text-xs font-bold tabular-nums ${
+                p.era <= 3.00 ? "text-green-600 dark:text-green-400"
+                : p.era >= 4.50 ? "text-red-500 dark:text-red-400"
+                : "text-gray-500 dark:text-gray-400"
+              }`}>
+                {p.era.toFixed(2)} ERA
+              </span>
+            ) : (
+              <span className="text-[10px] text-gray-400">—</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Sidebar: streak leaders ────────────────────────────────────────────────────
+
+interface StreakTeam { name: string; streak: string; n: number; }
+
+function StreakLeaders() {
+  const [hot,  setHot]  = useState<StreakTeam[]>([]);
+  const [cold, setCold] = useState<StreakTeam[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/api/mlb/standings`)
+      .then(r => r.json())
+      .then((data: { al: { teams: StreakTeam[] }[]; nl: { teams: StreakTeam[] }[] }) => {
+        const all: StreakTeam[] = [
+          ...data.al.flatMap(d => d.teams),
+          ...data.nl.flatMap(d => d.teams),
+        ].map(t => {
+          const isWin = t.streak.startsWith("W");
+          const n     = parseInt(t.streak.slice(1)) || 0;
+          return { name: t.name, streak: t.streak, n: isWin ? n : -n };
+        });
+
+        setHot( all.filter(t => t.n > 0).sort((a, b) => b.n - a.n).slice(0, 4));
+        setCold(all.filter(t => t.n < 0).sort((a, b) => a.n - b.n).slice(0, 4));
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!hot.length && !cold.length) return null;
+
+  const Row = ({ t, isHot }: { t: StreakTeam; isHot: boolean }) => (
+    <div className="flex items-center justify-between py-1.5">
+      <div className="flex items-center gap-2">
+        <TeamLogo team={t.name} size="w-5 h-5" />
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{getNick(t.name)}</span>
+      </div>
+      <span className={`text-xs font-bold tabular-nums ${isHot ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
+        {t.streak}
+      </span>
+    </div>
+  );
+
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
+      <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">Streak leaders</p>
+      <div className="grid grid-cols-2 gap-x-4">
+        {/* Hot */}
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            {/* Flame / trending up */}
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+              <path d="M3 13L8 3l5 10" /><path d="M5.5 9h5" />
+            </svg>
+            <p className="text-[10px] font-semibold text-green-600 dark:text-green-500 uppercase tracking-widest">Hot</p>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {hot.map(t => <Row key={t.name} t={t} isHot={true} />)}
+          </div>
+        </div>
+        {/* Cold */}
+        <div>
+          <div className="flex items-center gap-1 mb-1">
+            {/* Trending down */}
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
+              <path d="M3 3L8 13l5-10" /><path d="M5.5 7h5" />
+            </svg>
+            <p className="text-[10px] font-semibold text-red-500 dark:text-red-400 uppercase tracking-widest">Cold</p>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {cold.map(t => <Row key={t.name} t={t} isHot={false} />)}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -421,23 +563,45 @@ export default function MLBPage() {
             </div>
           )}
 
-          {games.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-widest">
-                {formatDate(date)}
-              </p>
-              <div className="flex flex-col gap-4">
-                {games.map(g => <GameCard key={g.game_id} game={g} />)}
+          {games.length > 0 && (() => {
+            const isLiveOrUpcoming = (g: MLBGame) => g.status !== "Final" && g.status !== "Game Over";
+            const isFinalGame      = (g: MLBGame) => g.status === "Final" || g.status === "Game Over";
+            const rankStatus = (g: MLBGame) => {
+              if (g.status === "Live" || g.status === "In Progress") return 0;
+              return 1;
+            };
+            const active   = games.filter(isLiveOrUpcoming).sort((a, b) => rankStatus(a) - rankStatus(b));
+            const finished = games.filter(isFinalGame);
+            return (
+              <div>
+                <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-widest">
+                  {formatDate(date)}
+                </p>
+                <div className="flex flex-col gap-4">
+                  {active.map(g => <GameCard key={g.game_id} game={g} />)}
+                </div>
+
+                {finished.length > 0 && (
+                  <>
+                    <p className="text-xs text-gray-400 font-semibold mt-6 mb-3 uppercase tracking-widest">
+                      Completed · {finished.length} game{finished.length > 1 ? "s" : ""}
+                    </p>
+                    <div className="flex flex-col gap-4">
+                      {finished.map(g => <GameCard key={g.game_id} game={g} />)}
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* ── Right: insight panels ── */}
         <div className="flex flex-col gap-4">
           <PredictionsLog log={predLog} />
           <ConfidencePicks games={games} />
-          <ParkFactorPanel games={games} />
+          <KeyPitchers games={games} />
+          <StreakLeaders />
         </div>
 
       </div>

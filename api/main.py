@@ -1149,7 +1149,12 @@ _mlb_stats_cache: pd.DataFrame | None = None
 
 _mlb_today_cache: dict | None = None
 _mlb_today_cache_date: str = ""
-_MLB_TODAY_TTL = 600.0   # 10 minutes
+_mlb_today_cache_time: float = 0.0
+_MLB_TODAY_TTL = 120.0   # 2 minutes — refresh statuts en cours de journée
+
+_mlb_standings_cache: dict | None = None
+_mlb_standings_cache_time: float = 0.0
+_MLB_STANDINGS_TTL = 300.0  # 5 minutes
 
 
 def _load_mlb_model():
@@ -1367,6 +1372,8 @@ def _fetch_mlb_today() -> dict:
                 "predicted_winner": away_name if p_away >= 0.5 else home_name,
                 "away_pitcher":     away_sp,
                 "home_pitcher":     home_sp,
+                "away_sp_era":      round(away_sp_era, 2) if away_sp_era is not None else None,
+                "home_sp_era":      round(home_sp_era, 2) if home_sp_era is not None else None,
             })
 
     return {
@@ -1379,20 +1386,25 @@ def _fetch_mlb_today() -> dict:
 def get_mlb_today():
     """Return today's MLB games with win probabilities and pitcher matchups."""
     import time as _t
-    global _mlb_today_cache, _mlb_today_cache_date
+    global _mlb_today_cache, _mlb_today_cache_date, _mlb_today_cache_time
     import datetime
 
     today = datetime.date.today().isoformat()
     now   = _t.time()
 
-    # Bust cache on new calendar day
-    if _mlb_today_cache is not None and _mlb_today_cache_date == today:
+    # Serve cache si même jour ET TTL pas expiré
+    if (
+        _mlb_today_cache is not None
+        and _mlb_today_cache_date == today
+        and (now - _mlb_today_cache_time) < _MLB_TODAY_TTL
+    ):
         return _mlb_today_cache
 
     try:
         result = _fetch_mlb_today()
-        _mlb_today_cache = result
+        _mlb_today_cache      = result
         _mlb_today_cache_date = today
+        _mlb_today_cache_time = now
         return result
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"MLB fetch failed: {e}")
@@ -1410,26 +1422,32 @@ _MLB_PRED_LOG_TTL = 300.0  # 5 minutes
 
 
 @app.get("/api/mlb/predictions_log")
-def get_mlb_predictions_log(n: int = 10):
-    """Return last n completed MLB regular-season games with model prediction vs actual result."""
-    import time as _t, datetime, json, urllib.request
+def get_mlb_predictions_log(n: int = 500):
+    """Return completed MLB regular-season games with model prediction vs actual result.
+
+    Fetches from Opening Day 2026 → yesterday so the full season log is available.
+    Results are cached 5 minutes; n= slices the returned list.
+    """
+    import time as _t, datetime, json, urllib.request, calendar
     global _mlb_pred_log_cache, _mlb_pred_log_cache_time
 
     now = _t.time()
     if _mlb_pred_log_cache is not None and (now - _mlb_pred_log_cache_time) < _MLB_PRED_LOG_TTL:
-        return _mlb_pred_log_cache
+        cached_log = _mlb_pred_log_cache["log"]
+        return {"log": cached_log[:n]}
 
     try:
-        end_date   = datetime.date.today()
-        start_date = end_date - datetime.timedelta(days=10)
+        # Full 2026 regular season from Opening Day
+        start_date = datetime.date(2026, 3, 25)
+        end_date   = datetime.date.today() - datetime.timedelta(days=1)  # completed only
 
         url = (
             "https://statsapi.mlb.com/api/v1/schedule"
             f"?sportId=1&startDate={start_date.isoformat()}&endDate={end_date.isoformat()}"
-            "&gameType=R"
+            "&gameType=R&limit=2500"
         )
         req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read())
 
         model = _load_mlb_model()
@@ -1437,8 +1455,17 @@ def get_mlb_predictions_log(n: int = 10):
 
         log: list[dict] = []
         for date_block in reversed(data.get("dates", [])):
+            date_str = date_block.get("date", "")
+            # Derive month label
+            try:
+                month_num  = int(date_str.split("-")[1])
+                month_name = calendar.month_name[month_num]
+            except Exception:
+                month_name = "Unknown"
+
             for g in date_block.get("games", []):
-                if g.get("status", {}).get("detailedState") != "Final":
+                state = g.get("status", {}).get("abstractGameState", "")
+                if state != "Final":
                     continue
                 teams      = g.get("teams", {})
                 away_info  = teams.get("away", {})
@@ -1464,7 +1491,8 @@ def get_mlb_predictions_log(n: int = 10):
 
                 log.append({
                     "game_id":          g.get("gamePk"),
-                    "date":             date_block.get("date", ""),
+                    "date":             date_str,
+                    "month":            month_name,
                     "away_team":        away_name,
                     "home_team":        home_name,
                     "predicted_winner": predicted_winner,
@@ -1477,17 +1505,161 @@ def get_mlb_predictions_log(n: int = 10):
                     "home_win_prob":    round((1 - p_away) * 100, 1),
                 })
 
-                if len(log) >= n:
-                    break
-            if len(log) >= n:
-                break
-
         result = {"log": log}
         _mlb_pred_log_cache = result
         _mlb_pred_log_cache_time = now
-        return result
+        return {"log": log[:n]}
     except Exception:
         return {"log": []}
+
+
+@app.get("/api/mlb/standings")
+def get_mlb_standings():
+    """Return AL and NL standings by division, enriched with ERA/OPS from the stats CSV."""
+    import time as _t, json, urllib.request
+    global _mlb_standings_cache, _mlb_standings_cache_time
+
+    now = _t.time()
+    if _mlb_standings_cache is not None and (now - _mlb_standings_cache_time) < _MLB_STANDINGS_TTL:
+        return _mlb_standings_cache
+
+    try:
+        season = 2026
+        url = (
+            "https://statsapi.mlb.com/api/v1/standings"
+            f"?leagueId=103,104&season={season}&standingsTypes=regularSeason"
+            "&hydrate=team,division,league"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+
+        stats = _load_mlb_stats()
+
+        al_divs: dict[str, list] = {}
+        nl_divs: dict[str, list] = {}
+
+        for record in data.get("records", []):
+            league_id = record.get("league", {}).get("id")          # 103=AL 104=NL
+            div_name  = record.get("division", {}).get("name", "")  # "AL East" etc.
+
+            teams = []
+            for tr in record.get("teamRecords", []):
+                name     = tr.get("team", {}).get("name", "")
+                w        = tr.get("wins", 0)
+                l        = tr.get("losses", 0)
+                pct      = tr.get("winningPercentage", ".000")
+                gb       = tr.get("gamesBack", "-")
+                streak   = tr.get("streak", {}).get("streakCode", "-")
+                run_diff = tr.get("runDifferential", 0)
+
+                splits   = tr.get("records", {}).get("splitRecords", [])
+                home_r   = next((r for r in splits if r.get("type") == "home"),    {})
+                away_r   = next((r for r in splits if r.get("type") == "away"),    {})
+                last10_r = next((r for r in splits if r.get("type") == "lastTen"), {})
+
+                era = ops = None
+                if name in stats.index:
+                    row = stats.loc[name]
+                    era = round(float(row.get("era", 0)), 2)
+                    ops = round(float(row.get("ops", 0)), 3)
+
+                teams.append({
+                    "name":     name,
+                    "w":        w,
+                    "l":        l,
+                    "pct":      pct,
+                    "gb":       gb,
+                    "streak":   streak,
+                    "run_diff": run_diff,
+                    "home":     f"{home_r.get('wins',0)}-{home_r.get('losses',0)}",
+                    "away":     f"{away_r.get('wins',0)}-{away_r.get('losses',0)}",
+                    "last10":   f"{last10_r.get('wins',0)}-{last10_r.get('losses',0)}",
+                    "era":      era,
+                    "ops":      ops,
+                })
+
+            # MLB Stats API returns "American League East" — normalize to "AL East" etc.
+            DIV_DISPLAY = {
+                "American League East":    "AL East",
+                "American League Central": "AL Central",
+                "American League West":    "AL West",
+                "National League East":    "NL East",
+                "National League Central": "NL Central",
+                "National League West":    "NL West",
+            }
+            display_name = DIV_DISPLAY.get(div_name, div_name)
+
+            if league_id == 103:
+                al_divs[display_name] = teams
+            else:
+                nl_divs[display_name] = teams
+
+        div_order = ["East", "Central", "West"]
+        al = [{"name": f"AL {d}", "teams": al_divs.get(f"AL {d}", [])} for d in div_order if f"AL {d}" in al_divs]
+        nl = [{"name": f"NL {d}", "teams": nl_divs.get(f"NL {d}", [])} for d in div_order if f"NL {d}" in nl_divs]
+
+        result = {"al": al, "nl": nl}
+        _mlb_standings_cache      = result
+        _mlb_standings_cache_time = now
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Standings fetch failed: {e}")
+
+
+@app.get("/api/mlb/stats")
+def get_mlb_model_stats():
+    """Return MLB model accuracy, CV scores, features and coefficients."""
+    model     = _load_mlb_model()
+    estimator = model.named_steps["clf"]
+    coefs     = [round(float(c), 6) for c in estimator.coef_[0]] if hasattr(estimator, "coef_") else []
+
+    cv_acc   = 0.0
+    cv_std   = 0.0
+    cv_folds: list[float] = []
+    n_rows   = 0
+    seasons: list[int] = []
+
+    metrics_path = ROOT / "models" / "mlb_metrics.txt"
+    if metrics_path.exists():
+        for line in metrics_path.read_text().split("\n"):
+            if "Cross-val accuracy" in line:
+                try:
+                    parts = line.split(":")[1].split("+/-")
+                    cv_acc = float(parts[0].strip())
+                    cv_std = float(parts[1].strip()) if len(parts) > 1 else 0.0
+                except Exception:
+                    pass
+            if "Per-fold" in line:
+                try:
+                    raw = line.split(":")[1].strip().strip("[]")
+                    cv_folds = [float(x.replace("np.float64(","").replace(")","").strip())
+                                for x in raw.split(",") if x.strip()]
+                except Exception:
+                    pass
+            if "Training rows" in line:
+                try:
+                    n_rows = int(line.split(":")[1].strip().replace(",", ""))
+                except Exception:
+                    pass
+
+    training_path = ROOT / "data" / "processed" / "mlb_training_data.csv"
+    if training_path.exists():
+        df = pd.read_csv(training_path, usecols=["season"])
+        seasons = sorted(int(s) for s in df["season"].unique())
+        if n_rows == 0:
+            n_rows = len(df)
+
+    return {
+        "accuracy":     round(cv_acc * 100, 2),
+        "cv_std":       round(cv_std * 100, 2),
+        "cv_folds":     [round(f * 100, 1) for f in cv_folds],
+        "n_rows":       n_rows,
+        "seasons":      seasons,
+        "features":     MLB_FEATURES,
+        "coefficients": coefs,
+    }
 
 
 @app.get("/api/stats")
