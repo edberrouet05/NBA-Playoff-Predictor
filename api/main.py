@@ -1439,7 +1439,7 @@ def get_mlb_predictions_log(n: int = 500):
     try:
         # Full 2026 regular season from Opening Day
         start_date = datetime.date(2026, 3, 25)
-        end_date   = datetime.date.today() - datetime.timedelta(days=1)  # completed only
+        end_date   = datetime.date.today()
 
         url = (
             "https://statsapi.mlb.com/api/v1/schedule"
@@ -1452,6 +1452,16 @@ def get_mlb_predictions_log(n: int = 500):
 
         model = _load_mlb_model()
         stats = _load_mlb_stats()
+
+        # Batch-fetch pitcher ERAs for all games (same as the games endpoint)
+        all_games_flat = [g for db in data.get("dates", []) for g in db.get("games", [])]
+        pitcher_ids: list[int] = []
+        for g in all_games_flat:
+            for side in ("away", "home"):
+                pid = g.get("teams", {}).get(side, {}).get("probablePitcher", {}).get("id")
+                if pid:
+                    pitcher_ids.append(pid)
+        starter_eras: dict[int, float] = _fetch_pitcher_eras_batch(list(set(pitcher_ids)))
 
         log: list[dict] = []
         for date_block in reversed(data.get("dates", [])):
@@ -1480,8 +1490,15 @@ def get_mlb_predictions_log(n: int = 500):
                 if away_score is None or home_score is None:
                     continue
 
+                away_sp_id  = away_info.get("probablePitcher", {}).get("id")
+                home_sp_id  = home_info.get("probablePitcher", {}).get("id")
+                away_sp_era = starter_eras.get(away_sp_id) if away_sp_id else None
+                home_sp_era = starter_eras.get(home_sp_id) if home_sp_id else None
+
                 try:
-                    p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0)
+                    p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0,
+                                           sp_era_override=away_sp_era,
+                                           opp_sp_era_override=home_sp_era)
                 except Exception:
                     continue
 
@@ -1660,6 +1677,215 @@ def get_mlb_model_stats():
         "features":     MLB_FEATURES,
         "coefficients": coefs,
     }
+
+
+# ── MLB game detail ────────────────────────────────────────────────────────────
+
+_mlb_game_detail_cache: dict[str, dict] = {}
+_mlb_game_detail_cache_time: dict[str, float] = {}
+_MLB_GAME_DETAIL_TTL_LIVE  = 30.0     # 30 s for in-progress games
+_MLB_GAME_DETAIL_TTL_FINAL = 3600.0   # 1 h for finished games
+
+
+def _mlb_inning_win_prob(
+    pre_game_home_prob: float,
+    home_runs: int,
+    away_runs: int,
+    inning: float,
+    total_innings: float = 9.0,
+) -> float:
+    """Blended home-team win probability after `inning` completed innings.
+
+    Blends the pre-game ML probability (prior) with a current-state estimate
+    derived from a Normal approximation of remaining scoring differential.
+    """
+    import math
+    score_diff        = home_runs - away_runs          # positive = home leading
+    innings_remaining = max(0.3, total_innings - inning)
+    run_rate = 0.46                                    # MLB avg ~4.1 R/game / 9
+    std_net  = math.sqrt(2.0 * run_rate * innings_remaining)
+    z        = score_diff / (std_net * math.sqrt(2.0))
+    cur_prob = 0.5 * (1.0 + math.erf(z))
+    progress = min(0.95, inning / total_innings)
+    p = (1.0 - progress) * pre_game_home_prob + progress * cur_prob
+    return max(0.02, min(0.98, p))
+
+
+@app.get("/api/mlb/game/{game_id}")
+def get_mlb_game_detail(game_id: int):
+    """Return linescore, inning-by-inning win probability, and team stats for one game."""
+    import time as _t, json, urllib.request
+    global _mlb_game_detail_cache, _mlb_game_detail_cache_time
+
+    cache_key = str(game_id)
+    now       = _t.time()
+
+    if cache_key in _mlb_game_detail_cache:
+        cached   = _mlb_game_detail_cache[cache_key]
+        st       = cached.get("status", "")
+        is_done  = "Final" in st or "Over" in st or "Completed" in st
+        ttl      = _MLB_GAME_DETAIL_TTL_FINAL if is_done else _MLB_GAME_DETAIL_TTL_LIVE
+        if (now - _mlb_game_detail_cache_time.get(cache_key, 0.0)) < ttl:
+            return cached
+
+    try:
+        # ── Linescore ───────────────────────────────────────────────────────
+        ls_url = f"https://statsapi.mlb.com/api/v1/game/{game_id}/linescore"
+        req    = urllib.request.Request(ls_url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            linescore = json.loads(resp.read())
+
+        # ── Schedule metadata (probable pitchers, status) ────────────────────
+        sc_url = (
+            f"https://statsapi.mlb.com/api/v1/schedule"
+            f"?gamePk={game_id}&hydrate=probablePitcher,venue"
+        )
+        req2 = urllib.request.Request(sc_url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req2, timeout=10) as resp2:
+            sched = json.loads(resp2.read())
+
+        game_dates = sched.get("dates", [])
+        g_info     = game_dates[0].get("games", [{}])[0] if game_dates else {}
+        t_info     = g_info.get("teams", {})
+        away_info  = t_info.get("away", {})
+        home_info  = t_info.get("home", {})
+
+        away_name = away_info.get("team", {}).get("name", "")
+        home_name = home_info.get("team", {}).get("name", "")
+        status    = g_info.get("status", {}).get("detailedState", "Scheduled")
+        venue     = g_info.get("venue", {}).get("name", "")
+        game_time = g_info.get("gameDate", "")
+
+        def _sp(side: dict) -> str:
+            p = side.get("probablePitcher", {})
+            return p.get("fullName", "TBD") if p else "TBD"
+
+        away_pitcher = _sp(away_info)
+        home_pitcher = _sp(home_info)
+
+        ls_t        = linescore.get("teams", {})
+        away_score  = ls_t.get("away", {}).get("runs")  or 0
+        home_score  = ls_t.get("home", {}).get("runs")  or 0
+        away_hits   = ls_t.get("away", {}).get("hits")  or 0
+        home_hits   = ls_t.get("home", {}).get("hits")  or 0
+        away_errors = ls_t.get("away", {}).get("errors") or 0
+        home_errors = ls_t.get("home", {}).get("errors") or 0
+        cur_inning  = linescore.get("currentInning",    0) or 0
+        inn_state   = linescore.get("inningState",      "")
+        is_final    = "Final" in status or "Over" in status or "Completed" in status
+
+        # ── Pre-game win probability ─────────────────────────────────────────
+        try:
+            mlb_model = _load_mlb_model()
+            mlb_stats = _load_mlb_stats()
+            if away_name in mlb_stats.index and home_name in mlb_stats.index:
+                p_away = _mlb_win_prob(mlb_model, mlb_stats, away_name, home_name, is_home=0)
+            else:
+                p_away = 0.5
+        except Exception:
+            p_away = 0.5
+        p_home = 1.0 - p_away
+
+        # ── Inning-by-inning win probability ─────────────────────────────────
+        innings = linescore.get("innings", [])
+        history: list[dict] = [{
+            "label":     "Pre",
+            "away_prob": round(p_away * 100, 1),
+            "home_prob": round(p_home * 100, 1),
+        }]
+        home_total = away_total = 0
+
+        for inn in innings:
+            inn_num    = inn.get("num", 0)
+            away_r_val = inn.get("away", {}).get("runs")
+            home_r_val = inn.get("home", {}).get("runs")
+
+            if away_r_val is None:
+                break  # top of this inning not yet played
+
+            away_total += int(away_r_val)
+
+            if home_r_val is None:
+                # Top half done, bottom in progress / skipped
+                p_h = _mlb_inning_win_prob(p_home, home_total, away_total, inn_num - 0.5)
+                history.append({
+                    "label":     f"{inn_num}T",
+                    "away_prob": round((1.0 - p_h) * 100, 1),
+                    "home_prob": round(p_h * 100, 1),
+                })
+                break
+
+            home_total += int(home_r_val)
+            p_h = _mlb_inning_win_prob(p_home, home_total, away_total, float(inn_num))
+            history.append({
+                "label":     str(inn_num),
+                "away_prob": round((1.0 - p_h) * 100, 1),
+                "home_prob": round(p_h * 100, 1),
+            })
+
+        # Final games: snap last point to 100 / 0
+        if is_final and len(history) > 1:
+            if home_score > away_score:
+                history[-1]["home_prob"] = 100.0
+                history[-1]["away_prob"] = 0.0
+            elif away_score > home_score:
+                history[-1]["home_prob"] = 0.0
+                history[-1]["away_prob"] = 100.0
+
+        # ── Inning table rows ────────────────────────────────────────────────
+        inning_rows = [
+            {"num": i.get("num"), "away_r": i.get("away", {}).get("runs"),
+             "home_r": i.get("home", {}).get("runs")}
+            for i in innings
+        ]
+
+        # ── Team stats for comparison ─────────────────────────────────────────
+        try:
+            mlb_stats = _load_mlb_stats()
+            def _s(name: str, col: str, default: float) -> float:
+                if name in mlb_stats.index:
+                    try:
+                        return round(float(mlb_stats.loc[name].get(col, default)), 3)
+                    except Exception:
+                        pass
+                return default
+            stat_cols = ["era", "whip", "k_per9", "ops", "batting_avg", "run_diff"]
+            away_stats_out = {c: _s(away_name, c, 0.0) for c in stat_cols}
+            home_stats_out = {c: _s(home_name, c, 0.0) for c in stat_cols}
+        except Exception:
+            away_stats_out = home_stats_out = {}
+
+        result = {
+            "game_id":          game_id,
+            "status":           status,
+            "game_time_utc":    game_time,
+            "venue":            venue,
+            "away_team":        away_name,
+            "home_team":        home_name,
+            "away_score":       away_score,
+            "home_score":       home_score,
+            "away_hits":        away_hits,
+            "home_hits":        home_hits,
+            "away_errors":      away_errors,
+            "home_errors":      home_errors,
+            "current_inning":   cur_inning,
+            "inning_state":     inn_state,
+            "away_pitcher":     away_pitcher,
+            "home_pitcher":     home_pitcher,
+            "away_win_prob":    round(p_away * 100, 1),
+            "home_win_prob":    round(p_home * 100, 1),
+            "win_prob_history": history,
+            "innings":          inning_rows,
+            "away_stats":       away_stats_out,
+            "home_stats":       home_stats_out,
+        }
+
+        _mlb_game_detail_cache[cache_key] = result
+        _mlb_game_detail_cache_time[cache_key] = now
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MLB game detail fetch failed: {e}")
 
 
 @app.get("/api/stats")

@@ -187,7 +187,7 @@ export default function MLBPredictionsPage() {
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {visible.map((e, i) => (
-                <div key={i} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <Link key={i} href={`/mlb/game/${e.game_id}?away=${encodeURIComponent(e.away_team)}&home=${encodeURIComponent(e.home_team)}&status=Final`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
 
                   {/* Date */}
                   <span className="text-xs text-gray-400 w-14 flex-shrink-0">{fmtDate(e.date)}</span>
@@ -229,7 +229,7 @@ export default function MLBPredictionsPage() {
                     )}
                   </div>
 
-                </div>
+                </Link>
               ))}
             </div>
           )}

@@ -119,8 +119,11 @@ function GameCard({ game }: { game: MLBGame }) {
   const awayWins = isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score;
   const homeWins = isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score;
 
+  const href = `/mlb/game/${game.game_id}?away=${encodeURIComponent(game.away_team)}&home=${encodeURIComponent(game.home_team)}&status=${encodeURIComponent(game.status)}`;
+
   return (
-    <div className={`bg-white dark:bg-gray-900 border shadow-sm rounded-2xl overflow-hidden ${
+    <Link href={href} className="block group">
+    <div className={`bg-white dark:bg-gray-900 border shadow-sm rounded-2xl overflow-hidden transition-shadow group-hover:shadow-md ${
       isFinal
         ? "border-gray-100 dark:border-gray-800 opacity-80"
         : "border-gray-100 dark:border-transparent"
@@ -220,6 +223,7 @@ function GameCard({ game }: { game: MLBGame }) {
         </div>
       )}
     </div>
+    </Link>
   );
 }
 
@@ -273,7 +277,8 @@ function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
         <>
           <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
             {visible.map((e, i) => (
-              <div key={i} className="flex items-center justify-between py-2 gap-3">
+              <Link key={i} href={`/mlb/game/${e.game_id}?away=${encodeURIComponent(e.away_team)}&home=${encodeURIComponent(e.home_team)}&status=Final`}
+                className="flex items-center justify-between py-2 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-1 px-1 rounded-lg transition-colors">
                 <p className="text-xs text-gray-500 truncate">
                   {fmtShortDate(e.date)} · {getNick(e.away_team)} vs {getNick(e.home_team)}
                 </p>
@@ -289,7 +294,7 @@ function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
                     {e.correct ? "Correct" : "Wrong"}
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
