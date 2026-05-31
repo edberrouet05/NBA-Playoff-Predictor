@@ -68,7 +68,7 @@ function SeriesCard({ s }: { s: SeriesEntry }) {
   const aLeads  = s.team_a_wins > s.team_b_wins;
   const bLeads  = s.team_b_wins > s.team_a_wins;
   const done    = s.status === "complete";
-  const matchupUrl = `/matchup?team_a=${encodeURIComponent(s.team_a)}&team_b=${encodeURIComponent(s.team_b)}`;
+  const matchupUrl = `/predictions?team_a=${encodeURIComponent(s.team_a)}&team_b=${encodeURIComponent(s.team_b)}`;
 
   return (
     <Link href={matchupUrl} className="block group">
@@ -145,7 +145,7 @@ export default function BracketPage() {
   const doneSeries   = rounds.flatMap(r => r.series).filter(s => s.status === "complete").length;
 
   return (
-    <main className="px-6 py-8 max-w-5xl mx-auto">
+    <main className="px-6 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Playoff Bracket</h1>
         <p className="text-sm text-gray-500 mt-1">

@@ -8,7 +8,7 @@ Charts produced (saved to plots/):
   4. win_probability.png      — predicted win prob for every team in 2024-25
 
 Usage:
-    python src/visualize.py
+    python nba/visualize.py
 """
 
 import pickle

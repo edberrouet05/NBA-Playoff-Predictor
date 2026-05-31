@@ -9,7 +9,7 @@ Label: 1 = won this game, 0 = lost
 Output: data/processed/training_data.csv
 
 Usage:
-    python src/build_dataset.py
+    python nba/build_dataset.py
 """
 
 import math

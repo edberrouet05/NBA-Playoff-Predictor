@@ -7,7 +7,7 @@ Saves two CSV files per season into data/raw/:
                                and rest-day calculation)
 
 Usage:
-    python src/fetch_data.py
+    python nba/fetch_data.py
 """
 
 import time

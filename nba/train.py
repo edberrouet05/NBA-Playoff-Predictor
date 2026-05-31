@@ -6,7 +6,7 @@ sklearn's HistGradientBoostingClassifier.
 
 Usage:
     pip install xgboost   # optional but recommended
-    python src/train.py
+    python nba/train.py
 """
 
 import pickle
@@ -71,7 +71,7 @@ def train():
     missing   = [f for f in FEATURES if f not in df.columns]
     if missing:
         print(f"Features not in training data (skipped): {missing}")
-        print("Run python src/build_dataset.py to regenerate with all features.\n")
+        print("Run python nba/build_dataset.py to regenerate with all features.\n")
 
     X = df[available].fillna(0)
     y = df["label"]
