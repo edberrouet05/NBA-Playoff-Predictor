@@ -41,6 +41,8 @@ FEATURES = [
     "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
     # Context
     "home", "rest_days", "win_pct_last10", "park_factor",
+    # Rolling form (last 15 games)
+    "run_diff_last15", "opp_run_diff_last15",
 ]
 TARGET = "win"
 

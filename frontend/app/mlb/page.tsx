@@ -22,6 +22,8 @@ interface MLBGame {
   home_pitcher: string;
   away_sp_era:  number | null;
   home_sp_era:  number | null;
+  away_odds:    number | null;
+  home_odds:    number | null;
 }
 
 // ── Team metadata ──────────────────────────────────────────────────────────────
@@ -165,6 +167,7 @@ function GameCard({ game }: { game: MLBGame }) {
               <span className={`text-sm font-bold ${game.predicted_winner === game.away_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
                 {game.away_win_prob}%
               </span>
+              {game.away_odds && <span className="text-[11px] text-gray-400">x{game.away_odds}</span>}
               {isLive && game.away_score !== null && (
                 <span className="text-lg font-bold text-gray-900 dark:text-white">{game.away_score}</span>
               )}
@@ -195,6 +198,7 @@ function GameCard({ game }: { game: MLBGame }) {
               <span className={`text-sm font-bold ${game.predicted_winner === game.home_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
                 {game.home_win_prob}%
               </span>
+              {game.home_odds && <span className="text-[11px] text-gray-400">x{game.home_odds}</span>}
               {isLive && game.home_score !== null && (
                 <span className="text-lg font-bold text-gray-900 dark:text-white">{game.home_score}</span>
               )}
@@ -216,10 +220,23 @@ function GameCard({ game }: { game: MLBGame }) {
         <span className="text-[11px] text-gray-400 truncate max-w-[44%] text-right">{game.home_pitcher}</span>
       </div>
 
-      {/* Predicted winner */}
+      {/* Predicted winner + value badge */}
       {!isFinal && (
-        <div className="px-5 py-3">
+        <div className="px-5 py-3 flex items-center justify-between">
           <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
+          {(() => {
+            const winnerOdds = game.predicted_winner === game.away_team ? game.away_odds : game.home_odds;
+            if (!winnerOdds) return null;
+            const impliedProb = (1 / winnerOdds) * 100;
+            const modelProb   = game.predicted_winner === game.away_team ? game.away_win_prob : game.home_win_prob;
+            const edge = modelProb - impliedProb;
+            if (edge < 10) return null;
+            return (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                Value +{Math.round(edge)}%
+              </span>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -538,7 +555,7 @@ export default function MLBPage() {
   }, []);
 
   return (
-    <main className="px-6 py-8">
+    <main className="px-6 pt-4 pb-8">
       <div className="grid grid-cols-[1fr_340px] gap-6">
 
         {/* ── Left: game cards ── */}

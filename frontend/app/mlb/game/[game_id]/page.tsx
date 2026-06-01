@@ -409,8 +409,9 @@ export default function MLBGamePage({
   const showScore = isLive || isFinal;
   const awayWins  = isFinal && !!g && g.away_score > g.home_score;
   const homeWins  = isFinal && !!g && g.home_score > g.away_score;
-  const awayProb  = g?.away_win_prob ?? 50;
-  const homeProb  = g?.home_win_prob ?? 50;
+  const lastPoint = g?.win_prob_history?.at(-1);
+  const awayProb  = lastPoint?.away_prob ?? g?.away_win_prob ?? 50;
+  const homeProb  = lastPoint?.home_prob ?? g?.home_win_prob ?? 50;
 
   const statusLabel = (() => {
     if (!g) return statusParam || "Scheduled";

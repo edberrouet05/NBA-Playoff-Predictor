@@ -10,6 +10,7 @@ Usage:
     uvicorn api.main:app --reload --reload-dir api
 """
 
+import os
 import pickle
 from pathlib import Path
 
@@ -18,6 +19,8 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+ODDS_API_KEY = os.getenv("ODDS_API_KEY", "09bb7105d888c7ad840a18fdc316b0c8")
 
 ROOT                = Path(__file__).parent.parent
 MODEL_PATH          = ROOT / "models" / "logistic_regression.pkl"
@@ -852,6 +855,7 @@ def _fetch_day(
                     injury_factors[name] = factor
                     injury_players[name] = players
 
+    nba_odds = _fetch_odds_today("basketball_nba")
     results = []
     for g in games:
         home    = g["homeTeam"]
@@ -890,9 +894,17 @@ def _fetch_day(
         away_impact = round((_adjust_for_injuries(p_raw, inj_away, 1.0) - p_raw) * 100, 1) if inj_away != 1.0 else 0.0
         home_impact = round((p_raw - _adjust_for_injuries(p_raw, 1.0, inj_home)) * 100, 1) if inj_home != 1.0 else 0.0
 
+        game_odds    = _get_game_odds(nba_odds, away_name, home_name)
+        nba_status   = STATUS.get(g["gameStatus"], "Scheduled")
+
+        # For finished games, only show confirmed pre-game odds
+        nba_game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
+        if nba_status == "Final" and nba_game_key not in _pregame_odds:
+            game_odds = {}
+
         results.append({
             "game_id":             g["gameId"],
-            "status":              STATUS.get(g["gameStatus"], "Scheduled"),
+            "status":              nba_status,
             "status_text":         g.get("gameStatusText", "TBD"),
             "away_team":           away_name,
             "home_team":           home_name,
@@ -905,6 +917,8 @@ def _fetch_day(
             "home_injury_impact":  home_impact,
             "away_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(away_name, [])],
             "home_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(home_name, [])],
+            "away_odds":           game_odds.get("away_odds"),
+            "home_odds":           game_odds.get("home_odds"),
         })
 
     # Remove scheduled playoff games that belong to an already-completed series
@@ -1128,6 +1142,137 @@ def get_predictions_log(n: int = 5):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Betting odds (The Odds API — Bet365)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_odds_cache:      dict[str, dict] = {}
+_odds_cache_time: dict[str, float] = {}
+_ODDS_TTL = 1800.0  # 30 minutes
+
+_PREGAME_ODDS_FILE = ROOT / "data" / "pregame_odds.json"
+
+
+def _load_pregame_odds() -> dict[str, dict]:
+    import json as _json
+    try:
+        return _json.loads(_PREGAME_ODDS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_pregame_odds(data: dict) -> None:
+    import json as _json
+    try:
+        _PREGAME_ODDS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _PREGAME_ODDS_FILE.write_text(_json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+_pregame_odds: dict[str, dict] = _load_pregame_odds()
+
+
+def _normalize_team(name: str) -> str:
+    return name.lower().strip()
+
+
+_BOOKMAKER_PRIORITY = [
+    "pinnacle", "draftkings", "fanduel", "betmgm", "williamhill",
+    "betrivers", "bovada", "unibet_us", "unibet_uk", "paddypower",
+    "coral", "ladbrokes_uk", "betway", "marathonbet", "betsson",
+]
+
+
+def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
+    """Return {away_team|home_team: {away_odds, home_odds}} using the sharpest available bookmaker.
+
+    For games not yet started: returns current market odds and caches them in _pregame_odds.
+    For games already in progress: returns the pre-game odds stored before tip-off/first pitch.
+    Falls back to empty dict silently on any error or missing key.
+    """
+    import json, time as _t, urllib.request
+    from datetime import datetime, timezone
+
+    if not ODDS_API_KEY:
+        return {}
+
+    now = _t.time()
+    if sport_key in _odds_cache and (now - _odds_cache_time.get(sport_key, 0)) < _ODDS_TTL:
+        return _odds_cache[sport_key]
+
+    url = (
+        f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds/"
+        f"?apiKey={ODDS_API_KEY}"
+        f"&regions=us,eu,uk"
+        f"&markets=h2h"
+        f"&oddsFormat=decimal"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            games = json.loads(resp.read())
+
+        now_dt = datetime.now(timezone.utc)
+        result: dict[str, dict] = {}
+        for g in games:
+            away = g.get("away_team", "")
+            home = g.get("home_team", "")
+            game_key = f"{_normalize_team(away)}|{_normalize_team(home)}"
+
+            # Determine if game has already started
+            try:
+                commence_dt = datetime.fromisoformat(g.get("commence_time", "").replace("Z", "+00:00"))
+                game_started = commence_dt <= now_dt
+            except Exception:
+                game_started = False
+
+            # If we have cached pre-game odds, always prefer them
+            if game_key in _pregame_odds:
+                result[game_key] = _pregame_odds[game_key]
+                continue
+
+            # Extract odds from best available bookmaker
+            bookmakers = g.get("bookmakers", [])
+            bm_map = {bm["key"]: bm for bm in bookmakers}
+            chosen_bm = None
+            for bk in _BOOKMAKER_PRIORITY:
+                if bk in bm_map:
+                    chosen_bm = bm_map[bk]
+                    break
+            if chosen_bm is None and bookmakers:
+                chosen_bm = bookmakers[0]
+            if chosen_bm is None:
+                continue
+
+            for market in chosen_bm.get("markets", []):
+                if market.get("key") != "h2h":
+                    continue
+                prices = {_normalize_team(o["name"]): o["price"] for o in market.get("outcomes", [])}
+                a_odds = prices.get(_normalize_team(away))
+                h_odds = prices.get(_normalize_team(home))
+                if a_odds and h_odds:
+                    odds_data = {"away_odds": round(a_odds, 2), "home_odds": round(h_odds, 2)}
+                    if not game_started:
+                        # Only persist pre-game odds, not live or post-game
+                        _pregame_odds[game_key] = odds_data
+                    result[game_key] = odds_data
+                break
+
+        _save_pregame_odds(_pregame_odds)
+        _odds_cache[sport_key]      = result
+        _odds_cache_time[sport_key] = now
+        return result
+    except Exception:
+        return {}
+
+
+def _get_game_odds(odds: dict, away: str, home: str) -> dict:
+    """Look up odds for a game, trying normalized team names."""
+    key = f"{_normalize_team(away)}|{_normalize_team(home)}"
+    return odds.get(key, {})
+
+
 #  MLB endpoints
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1142,6 +1287,7 @@ MLB_FEATURES = [
     "opp_sp_era",
     "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
     "home", "rest_days", "win_pct_last10", "park_factor",
+    "run_diff_last15", "opp_run_diff_last15",
 ]
 
 _mlb_model_cache = None
@@ -1267,10 +1413,12 @@ def _mlb_win_prob(
             "whip_diff":    float(ts.get("whip",    1.30))  - float(os.get("whip",    1.30)),
             "ops_diff":     float(ts.get("ops",     0.700)) - float(os.get("ops",     0.700)),
             "run_diff_diff":float(ts.get("run_diff", 0))    - float(os.get("run_diff", 0)),
-            "home":         home,
-            "rest_days":    4,
-            "win_pct_last10": 0.5,
-            "park_factor":  float(ts.get("park_factor", 1.0)),
+            "home":               home,
+            "rest_days":          4,
+            "win_pct_last10":     float(ts.get("win_pct_last10",    0.5)),
+            "park_factor":        float(ts.get("park_factor",       1.0)),
+            "run_diff_last15":    float(ts.get("run_diff_last15",   0.0)),
+            "opp_run_diff_last15": float(os.get("run_diff_last15",  0.0)),
         }
 
     r_team = _row(team, opp, is_home,     sp_era_override,     opp_sp_era_override)
@@ -1314,6 +1462,7 @@ def _fetch_mlb_today() -> dict:
                 pitcher_ids.append(pid)
     starter_eras: dict[int, float] = _fetch_pitcher_eras_batch(list(set(pitcher_ids)))
 
+    mlb_odds = _fetch_odds_today("baseball_mlb")
     results = []
     for g in all_games:
             teams     = g.get("teams", {})
@@ -1358,6 +1507,15 @@ def _fetch_mlb_today() -> dict:
             except Exception:
                 p_away = 0.5
 
+            game_odds = _get_game_odds(mlb_odds, away_name, home_name)
+
+            # For finished games, only show odds if they're confirmed pre-game (not distorted post-game odds)
+            is_done = status in ("Final", "Game Over", "Completed")
+            game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
+            has_pregame = game_key in _pregame_odds
+            if is_done and not has_pregame:
+                game_odds = {}
+
             results.append({
                 "game_id":          game_id,
                 "status":           status,
@@ -1374,6 +1532,8 @@ def _fetch_mlb_today() -> dict:
                 "home_pitcher":     home_sp,
                 "away_sp_era":      round(away_sp_era, 2) if away_sp_era is not None else None,
                 "home_sp_era":      round(home_sp_era, 2) if home_sp_era is not None else None,
+                "away_odds":        game_odds.get("away_odds"),
+                "home_odds":        game_odds.get("home_odds"),
             })
 
     return {
@@ -1924,3 +2084,22 @@ def get_model_stats():
         "features":     FEATURES,
         "coefficients": coefs,
     }
+
+
+@app.get("/api/debug/odds")
+def debug_odds(sport: str = "baseball_mlb"):
+    """Debug: return raw odds data from The Odds API."""
+    import json, urllib.request
+    if not ODDS_API_KEY:
+        return {"error": "No API key configured"}
+    url = (
+        f"https://api.the-odds-api.com/v4/sports/{sport}/odds/"
+        f"?apiKey={ODDS_API_KEY}&regions=eu,us,uk&markets=h2h&oddsFormat=decimal"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        return {"count": len(data), "games": data[:3]}
+    except Exception as e:
+        return {"error": str(e)}

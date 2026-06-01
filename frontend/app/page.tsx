@@ -21,6 +21,8 @@ interface TodayGame {
   home_injury_impact: number;
   away_injury_players: InjuryPlayerMin[];
   home_injury_players: InjuryPlayerMin[];
+  away_odds: number | null;
+  home_odds: number | null;
 }
 
 interface PredictionEntry {
@@ -217,6 +219,9 @@ function GameCard({ game }: { game: TodayGame }) {
             <span className={`text-sm font-bold ${game.predicted_winner === game.away_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
               {game.away_win_prob}%
             </span>
+            {game.away_odds && (
+              <span className="text-[11px] text-gray-400">x{game.away_odds}</span>
+            )}
             {showScore && game.away_score !== null && (
               <span className={`text-lg font-bold ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
                 {game.away_score}
@@ -232,6 +237,9 @@ function GameCard({ game }: { game: TodayGame }) {
             <span className={`text-sm font-bold ${game.predicted_winner === game.home_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
               {game.home_win_prob}%
             </span>
+            {game.home_odds && (
+              <span className="text-[11px] text-gray-400">x{game.home_odds}</span>
+            )}
             {showScore && game.home_score !== null && (
               <span className={`text-lg font-bold ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>
                 {game.home_score}
@@ -245,8 +253,21 @@ function GameCard({ game }: { game: TodayGame }) {
           <div className="h-full flex-1" style={{ background: getColor(game.home_team) }} />
         </div>
 
-        <div className="px-5 py-3">
+        <div className="px-5 py-3 flex items-center justify-between">
           <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
+          {(() => {
+            const winnerOdds = game.predicted_winner === game.away_team ? game.away_odds : game.home_odds;
+            if (!winnerOdds) return null;
+            const impliedProb = (1 / winnerOdds) * 100;
+            const modelProb   = game.predicted_winner === game.away_team ? game.away_win_prob : game.home_win_prob;
+            const edge = modelProb - impliedProb;
+            if (edge < 10) return null;
+            return (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                Value +{Math.round(edge)}%
+              </span>
+            );
+          })()}
         </div>
       </div>
     </Link>

@@ -333,16 +333,16 @@ def build_training_data(
                 continue
             gd = g.get("game_date", "")
             if hid in team_history:
-                team_history[hid].append({"date": gd, "won": hs > as_})
+                team_history[hid].append({"date": gd, "won": hs > as_, "run_diff": hs - as_})
             if aid in team_history:
-                team_history[aid].append({"date": gd, "won": as_ > hs})
+                team_history[aid].append({"date": gd, "won": as_ > hs, "run_diff": as_ - hs})
 
         # ── 5. Emit training rows ──────────────────────────────────────────────
         _progress(f"[{season}] Building training rows...")
         season_rows = 0
 
-        def _ctx(tid: int, gd_obj: date | None) -> tuple[int, float]:
-            """Return (rest_days, weighted_win_pct) using exponential decay over last 20 games."""
+        def _ctx(tid: int, gd_obj: date | None) -> tuple[int, float, float]:
+            """Return (rest_days, weighted_win_pct, run_diff_last15)."""
             hist = team_history.get(tid, [])
             past = [h for h in hist if h["date"] < str(gd_obj)] if gd_obj else hist
 
@@ -354,7 +354,6 @@ def build_training_data(
                 rest = 4
 
             # Exponentially weighted win% over last 20 games
-            # Weight decay = 0.88 per game back (most recent game gets weight 1.0)
             recent = past[-20:]
             if recent:
                 weights = [0.88 ** i for i in range(len(recent) - 1, -1, -1)]
@@ -364,7 +363,11 @@ def build_training_data(
             else:
                 pct = 0.5
 
-            return rest, round(pct, 3)
+            # Average run differential over last 15 games
+            recent15 = past[-15:]
+            rdl15 = sum(h["run_diff"] for h in recent15) / len(recent15) if recent15 else 0.0
+
+            return rest, round(pct, 3), round(rdl15, 2)
 
         for g in final_games:
             hid = g.get("home_id") or name_to_id.get(g.get("home_name", ""))
@@ -391,8 +394,8 @@ def build_training_data(
             hname = hs_["team_name"]
             aname = as_["team_name"]
 
-            h_rest, h_l10 = _ctx(hid, gd_obj)
-            a_rest, a_l10 = _ctx(aid, gd_obj)
+            h_rest, h_l10, h_rdl15 = _ctx(hid, gd_obj)
+            a_rest, a_l10, a_rdl15 = _ctx(aid, gd_obj)
 
             # ── Actual starter ERA (falls back to rotation avg if unknown) ──
             h_pitcher_id = g.get("home_pitcher_id")
@@ -400,9 +403,9 @@ def build_training_data(
             home_sp = era_lookup.get(h_pitcher_id, hs_.get("sp_era", 4.50)) if h_pitcher_id else hs_.get("sp_era", 4.50)
             away_sp = era_lookup.get(a_pitcher_id, as_.get("sp_era", 4.50)) if a_pitcher_id else as_.get("sp_era", 4.50)
 
-            for team_s, opp_s, is_home, won, rest, l10, tname, oname, t_sp, o_sp in [
-                (hs_,  as_, 1, int(home_won),     h_rest, h_l10, hname, aname, home_sp, away_sp),
-                (as_,  hs_, 0, int(not home_won), a_rest, a_l10, aname, hname, away_sp, home_sp),
+            for team_s, opp_s, is_home, won, rest, l10, rdl15, opp_rdl15, tname, oname, t_sp, o_sp in [
+                (hs_,  as_, 1, int(home_won),     h_rest, h_l10, h_rdl15, a_rdl15, hname, aname, home_sp, away_sp),
+                (as_,  hs_, 0, int(not home_won), a_rest, a_l10, a_rdl15, h_rdl15, aname, hname, away_sp, home_sp),
             ]:
                 all_rows.append({
                     "season":          season,
@@ -414,7 +417,7 @@ def build_training_data(
                     "whip":            team_s.get("whip",        1.30),
                     "k_per9":          team_s.get("k_per9",      8.00),
                     "bb_per9":         team_s.get("bb_per9",     3.20),
-                    "sp_era":          t_sp,                              # ← actual starter ERA
+                    "sp_era":          t_sp,
                     "bullpen_era":     team_s.get("bullpen_era", 4.00),
                     # Team hitting
                     "batting_avg":     team_s.get("batting_avg", 0.250),
@@ -427,17 +430,19 @@ def build_training_data(
                     "opp_whip":        opp_s.get("whip",        1.30),
                     "opp_ops":         opp_s.get("ops",         0.700),
                     "opp_run_diff":    opp_s.get("run_diff",    0),
-                    "opp_sp_era":      o_sp,                              # ← actual opp starter ERA
+                    "opp_sp_era":      o_sp,
                     # Differentials
                     "era_diff":        team_s.get("era",     4.50) - opp_s.get("era",     4.50),
                     "whip_diff":       team_s.get("whip",    1.30) - opp_s.get("whip",    1.30),
                     "ops_diff":        team_s.get("ops",     0.700) - opp_s.get("ops",    0.700),
                     "run_diff_diff":   team_s.get("run_diff", 0)   - opp_s.get("run_diff", 0),
-                    # Context
-                    "home":            is_home,
-                    "rest_days":       rest,
-                    "win_pct_last10":  l10,   # actually exponential-weighted last 20
-                    "park_factor":     PARK_FACTORS.get(tname, 1.0),
+                    # Context + rolling form
+                    "home":              is_home,
+                    "rest_days":         rest,
+                    "win_pct_last10":    l10,
+                    "run_diff_last15":   rdl15,
+                    "opp_run_diff_last15": opp_rdl15,
+                    "park_factor":       PARK_FACTORS.get(tname, 1.0),
                     # Target
                     "win":             won,
                 })
@@ -446,6 +451,77 @@ def build_training_data(
         _progress(f"  {season_rows} rows built for {season}")
 
     return pd.DataFrame(all_rows)
+
+
+# ── Current-season rolling form (inference) ───────────────────────────────────
+
+def compute_current_rolling_stats(
+    all_teams: dict[int, str],
+    season: int = CURRENT_SEASON,
+) -> dict[str, dict]:
+    """Fetch last 30 days of completed games and compute per-team rolling stats.
+
+    Returns {team_name: {win_pct_last10, run_diff_last15}}.
+    """
+    import datetime as dt
+    end_date   = dt.date.today()
+    start_date = end_date - dt.timedelta(days=30)
+
+    url = (
+        f"https://statsapi.mlb.com/api/v1/schedule"
+        f"?sportId=1&gameType=R"
+        f"&startDate={start_date}&endDate={end_date}"
+        f"&limit=600"
+    )
+
+    team_history: dict[int, list[dict]] = {tid: [] for tid in all_teams}
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+        for date_entry in data.get("dates", []):
+            for g in date_entry.get("games", []):
+                state = g.get("status", {}).get("codedGameState", "")
+                if state not in ("F", "O"):
+                    continue
+                t    = g.get("teams", {})
+                home = t.get("home", {})
+                away = t.get("away", {})
+                hid  = home.get("team", {}).get("id")
+                aid  = away.get("team", {}).get("id")
+                hs   = int(home.get("score", 0) or 0)
+                as_  = int(away.get("score", 0) or 0)
+                gd   = g.get("gameDate", "")[:10]
+                if hid in team_history:
+                    team_history[hid].append({"date": gd, "won": hs > as_, "run_diff": hs - as_})
+                if aid in team_history:
+                    team_history[aid].append({"date": gd, "won": as_ > hs, "run_diff": as_ - hs})
+    except Exception as e:
+        _progress(f"  WARNING: rolling stats fetch failed: {e}")
+        return {}
+
+    result: dict[str, dict] = {}
+    for tid, tname in all_teams.items():
+        hist    = sorted(team_history[tid], key=lambda h: h["date"])
+        r20     = hist[-20:]
+        r15     = hist[-15:]
+
+        if r20:
+            weights = [0.88 ** i for i in range(len(r20) - 1, -1, -1)]
+            ww = sum(w * (1.0 if h["won"] else 0.0) for w, h in zip(weights, r20))
+            win_pct = ww / sum(weights)
+        else:
+            win_pct = 0.5
+
+        rdl15 = sum(h["run_diff"] for h in r15) / len(r15) if r15 else 0.0
+
+        result[tname] = {
+            "win_pct_last10":    round(win_pct, 3),
+            "run_diff_last15":   round(rdl15, 2),
+        }
+
+    _progress(f"  Rolling stats computed for {len(result)} teams")
+    return result
 
 
 # ── Current-season stats (inference) ──────────────────────────────────────────
@@ -487,6 +563,17 @@ def build_current_stats(
         rows.append(s)
 
     df = pd.DataFrame(rows)
+
+    # Merge rolling form stats
+    _progress("  Computing rolling form (last 30 days)...")
+    rolling = compute_current_rolling_stats(all_teams, season)
+    if rolling:
+        df["win_pct_last10"]    = df["team_name"].map(lambda n: rolling.get(n, {}).get("win_pct_last10",  0.5))
+        df["run_diff_last15"]   = df["team_name"].map(lambda n: rolling.get(n, {}).get("run_diff_last15", 0.0))
+    else:
+        df["win_pct_last10"]  = 0.5
+        df["run_diff_last15"] = 0.0
+
     out = MLB_DIR / "mlb_stats_current.csv"
     df.to_csv(out, index=False)
     _progress(f"  Saved: {out}  ({len(df)} teams)\n")
