@@ -410,9 +410,9 @@ function ProbChart({ data, awayTeam, homeTeam }: {
               const s = (payload?.[0]?.payload as HistoryPoint | undefined)?.series;
               return s ? `${label} — ${s}` : label;
             }}
-            formatter={(v: unknown, name: string | undefined) => [
+            formatter={(v: unknown, name: string | number | undefined) => [
               `${v}%`,
-              name === "team_a_prob" ? getAbbr(awayTeam) : getAbbr(homeTeam),
+              name?.toString() === "team_a_prob" ? getAbbr(awayTeam) : getAbbr(homeTeam),
             ]}
           />
           <Line type="monotone" dataKey="team_a_prob" stroke={ac} strokeWidth={2} dot={EndDot(ac)} activeDot={{ r: 4 }}>
