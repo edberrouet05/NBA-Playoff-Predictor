@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, Tooltip, LabelList,
 } from "recharts";
 
-const API = "http://localhost:8000";
+const API = "https://nba-playoff-predictor-u8bj.onrender.com";
 
 interface TeamStats {
   off_rtg: number; def_rtg: number; net_rtg: number; pace: number;
@@ -410,7 +410,7 @@ function ProbChart({ data, awayTeam, homeTeam }: {
               const s = (payload?.[0]?.payload as HistoryPoint | undefined)?.series;
               return s ? `${label} — ${s}` : label;
             }}
-            formatter={(v: unknown, name: string) => [
+            formatter={(v: unknown, name: string | undefined) => [
               `${v}%`,
               name === "team_a_prob" ? getAbbr(awayTeam) : getAbbr(homeTeam),
             ]}
