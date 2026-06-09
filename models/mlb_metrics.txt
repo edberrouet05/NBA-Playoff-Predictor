@@ -1,33 +1,28 @@
-MLB Logistic Regression Model
-Features        : ['era', 'whip', 'k_per9', 'bb_per9', 'sp_era', 'bullpen_era', 'batting_avg', 'ops', 'obp', 'slg', 'run_diff', 'opp_era', 'opp_whip', 'opp_ops', 'opp_run_diff', 'opp_sp_era', 'era_diff', 'whip_diff', 'ops_diff', 'run_diff_diff', 'home', 'rest_days', 'win_pct_last10', 'park_factor', 'run_diff_last15', 'opp_run_diff_last15']
+MLB Models
+Features        : ['sp_era', 'opp_sp_era', 'era_diff', 'whip_diff', 'k_per9', 'bb_per9', 'bullpen_era', 'ops_diff', 'run_diff_diff', 'home', 'rest_days', 'win_pct_last10', 'park_factor', 'run_diff_last15', 'opp_run_diff_last15']
 Training rows   : 23,780
-Cross-val accuracy: 0.5864 +/- 0.0029
-Per-fold scores : [np.float64(0.59), np.float64(0.5852), np.float64(0.5894), np.float64(0.5854), np.float64(0.5822)]
+
+=== Logistic Regression ===
+Cross-val accuracy: 0.5860 +/- 0.0037
+Per-fold scores : [np.float64(0.5921), np.float64(0.5847), np.float64(0.5879), np.float64(0.5841), np.float64(0.5814)]
 
 Feature coefficients (sorted by |coef|):
-  run_diff_diff          +0.169386
-  home                   +0.130335
-  run_diff               +0.128973
-  opp_run_diff           -0.119407
-  bb_per9                -0.034907
-  opp_whip               +0.033958
-  sp_era                 -0.030960
-  opp_ops                -0.027216
-  opp_sp_era             +0.023724
-  ops_diff               +0.022144
-  win_pct_last10         -0.020730
-  whip_diff              -0.017173
-  batting_avg            +0.015460
-  opp_run_diff_last15    +0.014238
-  park_factor            -0.011729
-  whip                   +0.009386
-  obp                    +0.007731
-  rest_days              -0.005163
-  k_per9                 +0.004786
-  era_diff               +0.004572
-  opp_era                -0.003894
-  ops                    +0.003383
-  era                    +0.002608
-  run_diff_last15        -0.001544
-  slg                    +0.001102
+  run_diff_diff          +0.341462
+  home                   +0.130251
+  ops_diff               +0.064231
+  whip_diff              -0.052504
+  opp_sp_era             +0.028246
+  sp_era                 -0.023910
+  win_pct_last10         -0.020476
+  bb_per9                -0.018589
+  opp_run_diff_last15    +0.012801
+  park_factor            -0.009560
+  era_diff               +0.007649
+  rest_days              -0.005080
+  k_per9                 -0.003831
+  run_diff_last15        -0.003284
   bullpen_era            +0.000000
+
+=== XGBoost ===
+Cross-val accuracy: 0.5740 +/- 0.0023
+Per-fold scores : [np.float64(0.5715), np.float64(0.5742), np.float64(0.577), np.float64(0.5759), np.float64(0.5713)]

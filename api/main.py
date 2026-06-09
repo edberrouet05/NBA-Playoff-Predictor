@@ -1280,12 +1280,11 @@ MLB_MODEL_PATH = ROOT / "models" / "mlb_logistic_regression.pkl"
 MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
 
 MLB_FEATURES = [
-    "era", "whip", "k_per9", "bb_per9",
-    "sp_era", "bullpen_era",
-    "batting_avg", "ops", "obp", "slg", "run_diff",
-    "opp_era", "opp_whip", "opp_ops", "opp_run_diff",
-    "opp_sp_era",
-    "era_diff", "whip_diff", "ops_diff", "run_diff_diff",
+    "sp_era", "opp_sp_era",
+    "era_diff", "whip_diff",
+    "k_per9", "bb_per9",
+    "bullpen_era",
+    "ops_diff", "run_diff_diff",
     "home", "rest_days", "win_pct_last10", "park_factor",
     "run_diff_last15", "opp_run_diff_last15",
 ]
