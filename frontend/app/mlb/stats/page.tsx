@@ -40,8 +40,10 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
   run_diff_diff: { label: "Run Diff Differential", group: "Differentials", desc: "The model's top signal. Compares both teams' run differentials — the bigger the gap, the more one team has outplayed the other all season." },
   home:          { label: "Home Advantage",        group: "Context",       desc: "Whether the team is playing at home. Home teams win ~54% of MLB games due to crowd, familiarity, and no travel." },
   rest_days:     { label: "Rest Days",             group: "Context",       desc: "Days off since the last game. More rest helps pitchers recover, especially the bullpen." },
-  win_pct_last10:{ label: "Win % Last 10",         group: "Context",       desc: "Win rate over the last 10 games. Captures whether a team is on a hot streak or struggling lately." },
-  park_factor:   { label: "Park Factor",           group: "Context",       desc: "How much a stadium favors hitters or pitchers. Coors Field (Colorado) = 1.15 (easy to score), Petco Park (San Diego) = 0.93 (hard to score)." },
+  win_pct_last10:   { label: "Win % Last 10",          group: "Context",       desc: "Win rate over the last 10 games. Captures whether a team is on a hot streak or struggling lately." },
+  park_factor:      { label: "Park Factor",            group: "Context",       desc: "How much a stadium favors hitters or pitchers. Coors Field (Colorado) = 1.15 (easy to score), Petco Park (San Diego) = 0.93 (hard to score)." },
+  run_diff_last15:  { label: "Run Diff (Last 15)",     group: "Context",       desc: "Run differential over the last 15 games. Measures recent form — how much the team has been outscoring (or being outscored by) opponents lately." },
+  opp_run_diff_last15: { label: "Opp Run Diff (Last 15)", group: "Opponent",  desc: "The opponent's run differential over their last 15 games. Captures how the opposing team has been performing recently heading into this game." },
 };
 
 const GROUP_COLORS: Record<string, string> = {

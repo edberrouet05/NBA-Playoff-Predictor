@@ -458,10 +458,10 @@ export default function MLBGamePage({
         <div className="px-4 md:px-8 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6">
 
           {/* Away */}
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
             <TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" />
-            <div>
-              <p className={`font-bold text-base md:text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
+            <div className="min-w-0">
+              <p className={`font-bold text-base md:text-xl leading-tight truncate ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
                 {getNick(away)}
               </p>
               {showScore && g ? (
@@ -477,20 +477,20 @@ export default function MLBGamePage({
           </div>
 
           {/* Center */}
-          <div className="flex flex-col items-center gap-1 px-2 md:px-6">
-            <p className="text-[9px] md:text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win Prob</p>
-            <p className="text-lg md:text-2xl font-black tracking-tight whitespace-nowrap">
+          <div className="flex flex-col items-center gap-0.5 px-1 md:px-6 flex-shrink-0">
+            <p className="text-[8px] md:text-[10px] font-semibold text-gray-500 uppercase tracking-widest leading-tight">Win Prob</p>
+            <p className="text-xs md:text-2xl font-black tracking-tight text-center">
               <span style={{ color: awayWins ? "#16a34a" : "#6b7280" }}>{awayProb}%</span>
-              <span className="text-gray-300 dark:text-gray-700 mx-1 md:mx-2">·</span>
+              <span className="text-gray-300 dark:text-gray-700 mx-0.5 md:mx-2">·</span>
               <span style={{ color: homeWins ? "#16a34a" : "#6b7280" }}>{homeProb}%</span>
             </p>
           </div>
 
           {/* Home */}
-          <div className="flex items-center gap-2 md:gap-4 flex-row-reverse">
+          <div className="flex items-center gap-2 md:gap-4 flex-row-reverse min-w-0">
             <TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" />
-            <div className="text-right">
-              <p className={`font-bold text-base md:text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
+            <div className="text-right min-w-0">
+              <p className={`font-bold text-base md:text-xl leading-tight truncate ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
                 {getNick(home)}
               </p>
               {showScore && g ? (
@@ -540,7 +540,7 @@ export default function MLBGamePage({
         <>
           {/* ── Chart + Stats side by side ── */}
           {(hasChart || hasStats) && (
-            <div className={`grid gap-3 items-start ${hasChart && hasStats ? "grid-cols-[5fr_2fr]" : ""}`}>
+            <div className={`grid gap-3 items-start ${hasChart && hasStats ? "grid-cols-1 md:grid-cols-[5fr_2fr]" : ""}`}>
               {hasChart && (
                 <WinProbChart
                   data={g.win_prob_history}
