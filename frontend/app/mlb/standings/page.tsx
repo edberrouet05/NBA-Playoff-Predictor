@@ -243,7 +243,7 @@ export default function MLBStandingsPage() {
   const divisions = data ? data[league] : [];
 
   return (
-    <main className="px-6 py-8">
+    <main className="px-4 md:px-6 py-6 md:py-8">
 
       {/* Header */}
       <div className="mb-6 flex items-end justify-between">

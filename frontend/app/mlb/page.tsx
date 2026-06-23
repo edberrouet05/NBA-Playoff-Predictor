@@ -555,8 +555,8 @@ export default function MLBPage() {
   }, []);
 
   return (
-    <main className="px-6 pt-4 pb-8">
-      <div className="grid grid-cols-[1fr_340px] gap-6">
+    <main className="px-4 md:px-6 pt-4 pb-8">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
 
         {/* ── Left: game cards ── */}
         <div>

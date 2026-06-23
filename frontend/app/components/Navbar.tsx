@@ -173,23 +173,44 @@ export default function Sidebar() {
   const links = SPORT_SIDEBAR[sport];
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[68px] bg-[#0d0d0d] flex flex-col items-center pt-5 pb-6 z-20 border-r border-white/[0.06]">
-      <nav className="flex flex-col gap-1 mt-2">
+    <>
+      {/* Desktop: left sidebar */}
+      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-[68px] bg-[#0d0d0d] flex-col items-center pt-5 pb-6 z-20 border-r border-white/[0.06]">
+        <nav className="flex flex-col gap-1 mt-2">
+          {links.map(({ href, Icon, label, isActive }) => (
+            <Link
+              key={href}
+              href={href}
+              title={label}
+              className={`w-11 h-11 flex items-center justify-center rounded-xl transition-colors ${
+                isActive(path)
+                  ? "bg-white/10 text-white"
+                  : "text-gray-600 hover:text-gray-300 hover:bg-white/[0.05]"
+              }`}
+            >
+              <Icon />
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Mobile: bottom tab bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-[#0d0d0d] border-t border-white/[0.06] flex items-center justify-around px-2 h-16">
         {links.map(({ href, Icon, label, isActive }) => (
           <Link
             key={href}
             href={href}
-            title={label}
-            className={`w-11 h-11 flex items-center justify-center rounded-xl transition-colors ${
+            className={`flex flex-col items-center gap-1 flex-1 py-2 rounded-xl transition-colors ${
               isActive(path)
-                ? "bg-white/10 text-white"
-                : "text-gray-600 hover:text-gray-300 hover:bg-white/[0.05]"
+                ? "text-white"
+                : "text-gray-600 hover:text-gray-300"
             }`}
           >
             <Icon />
+            <span className="text-[10px] font-medium">{label}</span>
           </Link>
         ))}
       </nav>
-    </aside>
+    </>
   );
 }

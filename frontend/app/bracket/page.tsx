@@ -145,7 +145,7 @@ export default function BracketPage() {
   const doneSeries   = rounds.flatMap(r => r.series).filter(s => s.status === "complete").length;
 
   return (
-    <main className="px-6 py-8">
+    <main className="px-4 md:px-6 py-6 md:py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Playoff Bracket</h1>
         <p className="text-sm text-gray-500 mt-1">

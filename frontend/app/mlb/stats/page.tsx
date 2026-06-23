@@ -171,7 +171,7 @@ export default function MLBStatsPage() {
   }, []);
 
   if (loading) return (
-    <main className="px-6 py-8">
+    <main className="px-4 md:px-6 py-6 md:py-8">
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 text-sm">
         Loading…
       </div>
@@ -179,7 +179,7 @@ export default function MLBStatsPage() {
   );
 
   if (error || !data) return (
-    <main className="px-6 py-8">
+    <main className="px-4 md:px-6 py-6 md:py-8">
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">
         {error || "No data."}
       </div>
@@ -193,7 +193,7 @@ export default function MLBStatsPage() {
   const maxAbs = Math.max(...ranked.map(x => Math.abs(x.coef)), 0.001);
 
   return (
-    <main className="px-6 py-8">
+    <main className="px-4 md:px-6 py-6 md:py-8">
 
       {/* Header */}
       <div className="mb-6">

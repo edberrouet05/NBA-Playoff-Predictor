@@ -97,13 +97,13 @@ export default function TeamPage() {
   }, [teamData, teamName]);
 
   if (loading) return (
-    <main className="px-6 py-8 max-w-3xl mx-auto">
+    <main className="px-4 md:px-6 py-6 md:py-8 max-w-3xl mx-auto">
       <div className="text-center text-gray-400 text-sm py-16">Loading…</div>
     </main>
   );
 
   if (!teamData) return (
-    <main className="px-6 py-8 max-w-3xl mx-auto">
+    <main className="px-4 md:px-6 py-6 md:py-8 max-w-3xl mx-auto">
       <div className="text-center text-gray-400 text-sm py-16">Team not found.</div>
     </main>
   );
@@ -115,7 +115,7 @@ export default function TeamPage() {
   const acc = teamData.recent_games.length > 0 ? Math.round((correct / teamData.recent_games.length) * 100) : 0;
 
   return (
-    <main className="px-6 py-8 max-w-3xl mx-auto">
+    <main className="px-4 md:px-6 py-6 md:py-8 max-w-3xl mx-auto">
       {/* Header */}
       <div className="mb-8 flex items-center gap-4">
         <Link href="/bracket" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -134,7 +134,7 @@ export default function TeamPage() {
       </div>
 
       {/* Key stats grid */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {(["net_rtg", "off_rtg", "def_rtg", "pace"] as Array<keyof TeamStats>).map(k => (
           <div key={k} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-xl px-4 py-3">
             <p className="text-xs text-gray-400">{STAT_LABELS[k]}</p>
@@ -150,7 +150,7 @@ export default function TeamPage() {
 
       {/* Secondary stats */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-5 py-4 mb-6">
-        <div className="grid grid-cols-4 gap-y-3 gap-x-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-4">
           {(["ts_pct", "tov_pct", "oreb_pct", "fg3_rate", "srs", "point_diff", "win_streak"] as const).map(k => (
             <div key={k} className="flex flex-col">
               <span className="text-[11px] text-gray-400">{STAT_LABELS[k]}</span>

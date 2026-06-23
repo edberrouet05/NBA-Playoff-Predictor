@@ -138,10 +138,10 @@ export default function MLBPredictionsPage() {
     : "text-red-500 dark:text-red-400";
 
   return (
-    <main className="px-6 py-8">
+    <main className="px-4 md:px-6 py-6 md:py-8">
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/mlb"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -156,7 +156,7 @@ export default function MLBPredictionsPage() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 self-start sm:self-auto">
           {(["today", "yesterday", "week", "all"] as Filter[]).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -164,14 +164,14 @@ export default function MLBPredictionsPage() {
                   ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}>
-              {f === "all" ? "All" : f === "week" ? "This Week" : f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "all" ? "All" : f === "week" ? "Week" : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-[1fr_300px] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
 
         {/* ── Left: game list ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden min-h-[300px] flex flex-col">

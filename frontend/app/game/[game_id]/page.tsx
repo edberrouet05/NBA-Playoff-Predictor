@@ -181,7 +181,7 @@ export default function GamePage({
   }, [away, home]);
 
   return (
-    <main className="px-8 pt-5 pb-4 flex flex-col gap-3">
+    <main className="px-4 md:px-8 pt-4 md:pt-5 pb-4 flex flex-col gap-3">
 
       {/* Back */}
       <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -193,7 +193,7 @@ export default function GamePage({
 
       {/* ── Hero card ── */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden">
-        <div className="px-8 pt-4 flex items-center justify-between">
+        <div className="px-4 md:px-8 pt-4 flex items-center justify-between">
           <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{time}</p>
           {isLive && (
             <span className="flex items-center gap-1.5 text-xs font-bold text-red-400">
@@ -203,47 +203,47 @@ export default function GamePage({
           )}
         </div>
 
-        <div className="px-8 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-6">
+        <div className="px-4 md:px-8 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6">
 
           {/* Away */}
-          <div className="flex items-center gap-4">
-            <TeamLogo team={away} size="w-14 h-14" />
+          <div className="flex items-center gap-2 md:gap-4">
+            <TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" />
             <div>
-              <p className="text-gray-900 dark:text-white font-bold text-xl leading-tight">{lastName(away)}</p>
+              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight">{lastName(away)}</p>
               {showScore && awayScore !== null ? (
-                <p className={`text-2xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{awayScore}</p>
+                <p className={`text-xl md:text-2xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{awayScore}</p>
               ) : (
-                <p className={`text-base font-bold mt-1 ${winner === away ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{awayProb}%</p>
+                <p className={`text-sm md:text-base font-bold mt-1 ${winner === away ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{awayProb}%</p>
               )}
             </div>
           </div>
 
           {/* Center */}
-          <div className="flex flex-col items-center gap-1 px-8">
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win Prob</p>
-            <p className="text-2xl font-black tracking-tight">
+          <div className="flex flex-col items-center gap-1 px-2 md:px-8">
+            <p className="text-[9px] md:text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win Prob</p>
+            <p className="text-lg md:text-2xl font-black tracking-tight whitespace-nowrap">
               <span style={{ color: winner === away ? "#16a34a" : "#6b7280" }}>{awayProb}%</span>
-              <span className="text-gray-300 dark:text-gray-700 mx-2">·</span>
+              <span className="text-gray-300 dark:text-gray-700 mx-1 md:mx-2">·</span>
               <span style={{ color: winner === home ? "#16a34a" : "#6b7280" }}>{homeProb}%</span>
             </p>
           </div>
 
           {/* Home */}
-          <div className="flex items-center gap-4 flex-row-reverse">
-            <TeamLogo team={home} size="w-14 h-14" />
+          <div className="flex items-center gap-2 md:gap-4 flex-row-reverse">
+            <TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" />
             <div className="text-right">
-              <p className="text-gray-900 dark:text-white font-bold text-xl leading-tight">{lastName(home)}</p>
+              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight">{lastName(home)}</p>
               {showScore && homeScore !== null ? (
-                <p className={`text-2xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{homeScore}</p>
+                <p className={`text-xl md:text-2xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{homeScore}</p>
               ) : (
-                <p className={`text-base font-bold mt-1 ${winner === home ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{homeProb}%</p>
+                <p className={`text-sm md:text-base font-bold mt-1 ${winner === home ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{homeProb}%</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Probability bar */}
-        <div className="mx-8 mb-5 h-[3px] flex rounded-full overflow-hidden">
+        <div className="mx-4 md:mx-8 mb-5 h-[3px] flex rounded-full overflow-hidden">
           <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away) }} />
           <div className="h-full flex-1" style={{ background: getColor(home) }} />
         </div>
@@ -264,7 +264,7 @@ export default function GamePage({
       {!loading && !fetchErr && (
         <>
           {/* ── Win Prob chart + Injuries side by side ── */}
-          <div className="grid grid-cols-[5fr_2fr] gap-3 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-[5fr_2fr] gap-3 items-start">
             {history.length > 0 && (
               <ProbChart data={history} awayTeam={away} homeTeam={home} />
             )}

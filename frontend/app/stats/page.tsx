@@ -72,7 +72,7 @@ export default function StatsPage() {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
         <Metric label="Accuracy"  value={`${data.accuracy}%`} />
         <Metric label="Games"     value={data.n_games.toLocaleString()} />
         <Metric label="Seasons"   value={String(data.n_seasons)} />
