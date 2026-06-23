@@ -440,87 +440,100 @@ export default function MLBGamePage({
 
       {/* ── Hero card ── */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden">
+
+        {/* Status bar */}
         <div className="px-4 md:px-8 pt-4 flex items-center justify-between">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">
-            {statusLabel}
-          </p>
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{statusLabel}</p>
           {isLive && (
             <span className="flex items-center gap-1.5 text-xs font-bold text-red-400">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
               Live
             </span>
           )}
-          {g?.venue && (
-            <span className="text-[11px] text-gray-400 hidden sm:block">{g.venue}</span>
-          )}
+          {g?.venue && <span className="text-[11px] text-gray-400 hidden sm:block">{g.venue}</span>}
         </div>
 
-        <div className="px-4 md:px-8 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6">
+        {/* Mobile: two stacked rows */}
+        <div className="md:hidden px-4 pt-3 pb-0 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TeamLogo team={away} size="w-10 h-10" />
+              <div>
+                <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
+                  {getNick(away)}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{awayProb}%</p>
+              </div>
+            </div>
+            {showScore && g ? (
+              <p className={`text-3xl font-black ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{g.away_score}</p>
+            ) : (
+              <p className={`text-xl font-black ${awayProb > homeProb ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{awayProb}%</p>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TeamLogo team={home} size="w-10 h-10" />
+              <div>
+                <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
+                  {getNick(home)}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{homeProb}%</p>
+              </div>
+            </div>
+            {showScore && g ? (
+              <p className={`text-3xl font-black ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{g.home_score}</p>
+            ) : (
+              <p className={`text-xl font-black ${homeProb > awayProb ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{homeProb}%</p>
+            )}
+          </div>
+        </div>
 
-          {/* Away */}
-          <div className="flex items-center gap-2 md:gap-4 min-w-0">
-            <TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" />
-            <div className="min-w-0">
-              <p className={`font-bold text-base md:text-xl leading-tight truncate ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
-                {getNick(away)}
-              </p>
+        {/* Desktop: 3-col grid */}
+        <div className="hidden md:grid px-8 pt-4 pb-3 grid-cols-[1fr_auto_1fr] items-center gap-6">
+          <div className="flex items-center gap-4">
+            <TeamLogo team={away} size="w-14 h-14" />
+            <div>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(away)}</p>
               {showScore && g ? (
-                <p className={`text-2xl md:text-3xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>
-                  {g.away_score}
-                </p>
+                <p className={`text-3xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{g.away_score}</p>
               ) : (
-                <p className={`text-sm md:text-base font-bold mt-1 ${awayProb > homeProb ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-                  {awayProb}%
-                </p>
+                <p className={`text-base font-bold mt-1 ${awayProb > homeProb ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{awayProb}%</p>
               )}
             </div>
           </div>
-
-          {/* Center */}
-          <div className="flex flex-col items-center gap-0.5 px-1 md:px-6 flex-shrink-0">
-            <p className="text-[8px] md:text-[10px] font-semibold text-gray-500 uppercase tracking-widest leading-tight">Win Prob</p>
-            <p className="text-xs md:text-2xl font-black tracking-tight text-center">
+          <div className="flex flex-col items-center gap-1 px-6">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win Prob</p>
+            <p className="text-2xl font-black tracking-tight whitespace-nowrap">
               <span style={{ color: awayWins ? "#16a34a" : "#6b7280" }}>{awayProb}%</span>
-              <span className="text-gray-300 dark:text-gray-700 mx-0.5 md:mx-2">·</span>
+              <span className="text-gray-300 dark:text-gray-700 mx-2">·</span>
               <span style={{ color: homeWins ? "#16a34a" : "#6b7280" }}>{homeProb}%</span>
             </p>
           </div>
-
-          {/* Home */}
-          <div className="flex items-center gap-2 md:gap-4 flex-row-reverse min-w-0">
-            <TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" />
-            <div className="text-right min-w-0">
-              <p className={`font-bold text-base md:text-xl leading-tight truncate ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
-                {getNick(home)}
-              </p>
+          <div className="flex items-center gap-4 flex-row-reverse">
+            <TeamLogo team={home} size="w-14 h-14" />
+            <div className="text-right">
+              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(home)}</p>
               {showScore && g ? (
-                <p className={`text-2xl md:text-3xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>
-                  {g.home_score}
-                </p>
+                <p className={`text-3xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{g.home_score}</p>
               ) : (
-                <p className={`text-sm md:text-base font-bold mt-1 ${homeProb > awayProb ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-                  {homeProb}%
-                </p>
+                <p className={`text-base font-bold mt-1 ${homeProb > awayProb ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{homeProb}%</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Probability bar */}
-        <div className="mx-4 md:mx-8 mb-0 h-[3px] flex rounded-full overflow-hidden">
+        <div className="mx-4 md:mx-8 mt-3 h-[3px] flex rounded-full overflow-hidden">
           <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away) }} />
           <div className="h-full flex-1" style={{ background: getColor(home) }} />
         </div>
 
         {/* Pitcher row */}
         <div className="px-4 md:px-8 pt-2.5 pb-4 flex items-center justify-between gap-2">
-          <span className="text-[11px] text-gray-400 truncate max-w-[44%]">
-            {g?.away_pitcher ?? "—"}
-          </span>
+          <span className="text-[11px] text-gray-400 truncate max-w-[44%]">{g?.away_pitcher ?? "—"}</span>
           <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest flex-shrink-0">vs</span>
-          <span className="text-[11px] text-gray-400 truncate max-w-[44%] text-right">
-            {g?.home_pitcher ?? "—"}
-          </span>
+          <span className="text-[11px] text-gray-400 truncate max-w-[44%] text-right">{g?.home_pitcher ?? "—"}</span>
         </div>
       </div>
 
