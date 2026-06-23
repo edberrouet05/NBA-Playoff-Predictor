@@ -427,7 +427,7 @@ export default function MLBGamePage({
   const hasStats = g && Object.keys(g.away_stats ?? {}).length > 0;
 
   return (
-    <main className="px-4 md:px-8 pt-4 md:pt-5 pb-8 flex flex-col gap-3">
+    <main className="px-4 lg:px-8 pt-4 lg:pt-5 pb-8 flex flex-col gap-3">
 
       {/* Back */}
       <Link href="/mlb"
@@ -442,7 +442,7 @@ export default function MLBGamePage({
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden">
 
         {/* Status bar */}
-        <div className="px-4 md:px-8 pt-4 flex items-center justify-between">
+        <div className="px-4 pt-4 flex items-center justify-between">
           <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{statusLabel}</p>
           {isLive && (
             <span className="flex items-center gap-1.5 text-xs font-bold text-red-400">
@@ -453,8 +453,8 @@ export default function MLBGamePage({
           {g?.venue && <span className="text-[11px] text-gray-400 hidden sm:block">{g.venue}</span>}
         </div>
 
-        {/* Mobile: two stacked rows */}
-        <div className="md:hidden px-4 pt-3 pb-0 flex flex-col gap-2">
+        {/* Mobile + tablet: two stacked rows */}
+        <div className="lg:hidden px-4 pt-3 pb-0 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <TeamLogo team={away} size="w-10 h-10" />
@@ -489,8 +489,8 @@ export default function MLBGamePage({
           </div>
         </div>
 
-        {/* Desktop: 3-col grid */}
-        <div className="hidden md:grid px-8 pt-4 pb-3 grid-cols-[1fr_auto_1fr] items-center gap-6">
+        {/* Desktop (lg+): 3-col grid */}
+        <div className="hidden lg:grid px-8 pt-4 pb-3 grid-cols-[1fr_auto_1fr] items-center gap-6">
           <div className="flex items-center gap-4">
             <TeamLogo team={away} size="w-14 h-14" />
             <div>
@@ -524,13 +524,13 @@ export default function MLBGamePage({
         </div>
 
         {/* Probability bar */}
-        <div className="mx-4 md:mx-8 mt-3 h-[3px] flex rounded-full overflow-hidden">
+        <div className="mx-4 lg:mx-8 mt-3 h-[3px] flex rounded-full overflow-hidden">
           <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away) }} />
           <div className="h-full flex-1" style={{ background: getColor(home) }} />
         </div>
 
         {/* Pitcher row */}
-        <div className="px-4 md:px-8 pt-2.5 pb-4 flex items-center justify-between gap-2">
+        <div className="px-4 lg:px-8 pt-2.5 pb-4 flex items-center justify-between gap-2">
           <span className="text-[11px] text-gray-400 truncate max-w-[44%]">{g?.away_pitcher ?? "—"}</span>
           <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest flex-shrink-0">vs</span>
           <span className="text-[11px] text-gray-400 truncate max-w-[44%] text-right">{g?.home_pitcher ?? "—"}</span>
@@ -553,7 +553,7 @@ export default function MLBGamePage({
         <>
           {/* ── Chart + Stats side by side ── */}
           {(hasChart || hasStats) && (
-            <div className={`grid gap-3 items-start ${hasChart && hasStats ? "grid-cols-1 md:grid-cols-[5fr_2fr]" : ""}`}>
+            <div className={`grid gap-3 items-start ${hasChart && hasStats ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : ""}`}>
               {hasChart && (
                 <WinProbChart
                   data={g.win_prob_history}
