@@ -214,5 +214,65 @@
   "boston red sox|seattle mariners": {
     "away_odds": 2.0,
     "home_odds": 1.85
+  },
+  "washington nationals|baltimore orioles": {
+    "away_odds": 2.69,
+    "home_odds": 1.54
+  },
+  "cincinnati reds|pittsburgh pirates": {
+    "away_odds": 2.17,
+    "home_odds": 1.79
+  },
+  "texas rangers|toronto blue jays": {
+    "away_odds": 2.17,
+    "home_odds": 1.79
+  },
+  "arizona diamondbacks|tampa bay rays": {
+    "away_odds": 2.67,
+    "home_odds": 1.55
+  },
+  "seattle mariners|cleveland guardians": {
+    "away_odds": 2.0,
+    "home_odds": 1.92
+  },
+  "houston astros|detroit tigers": {
+    "away_odds": 1.76,
+    "home_odds": 2.2
+  },
+  "philadelphia phillies|new york mets": {
+    "away_odds": 1.71,
+    "home_odds": 2.27
+  },
+  "colorado rockies|minnesota twins": {
+    "away_odds": 2.3,
+    "home_odds": 1.69
+  },
+  "chicago cubs|milwaukee brewers": {
+    "away_odds": 2.66,
+    "home_odds": 1.54
+  },
+  "kansas city royals|chicago white sox": {
+    "away_odds": 2.23,
+    "home_odds": 1.75
+  },
+  "miami marlins|st. louis cardinals": {
+    "away_odds": 2.14,
+    "home_odds": 1.79
+  },
+  "athletics|los angeles angels": {
+    "away_odds": 1.88,
+    "home_odds": 2.04
+  },
+  "atlanta braves|san francisco giants": {
+    "away_odds": 1.64,
+    "home_odds": 2.43
+  },
+  "los angeles dodgers|san diego padres": {
+    "away_odds": 1.76,
+    "home_odds": 2.22
+  },
+  "new york yankees|boston red sox": {
+    "away_odds": 2.01,
+    "home_odds": 1.92
   }
 }

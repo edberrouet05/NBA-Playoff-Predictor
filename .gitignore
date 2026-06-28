@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.env
+.venv/
+venv/
+
+# Data / models — keep tracked except large binaries if needed
+# (currently committing CSVs and .pkl files intentionally)
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,28 +1,28 @@
 MLB Models
-Features        : ['sp_era', 'opp_sp_era', 'era_diff', 'whip_diff', 'k_per9', 'bb_per9', 'bullpen_era', 'ops_diff', 'run_diff_diff', 'home', 'rest_days', 'win_pct_last10', 'park_factor', 'run_diff_last15', 'opp_run_diff_last15']
-Training rows   : 23,780
+Features        : ['sp_era', 'opp_sp_era', 'era_diff', 'whip_diff', 'fip_diff', 'k_per9', 'bb_per9', 'ops_diff', 'run_diff_diff', 'home', 'rest_days', 'win_pct_last10', 'park_factor', 'run_diff_last15', 'opp_run_diff_last15']
+Training rows   : 18,882
 
 === Logistic Regression ===
-Cross-val accuracy: 0.5860 +/- 0.0037
-Per-fold scores : [np.float64(0.5921), np.float64(0.5847), np.float64(0.5879), np.float64(0.5841), np.float64(0.5814)]
+Cross-val accuracy: 0.5683 +/- 0.0084
+Per-fold scores : [np.float64(0.5592), np.float64(0.5798), np.float64(0.5765), np.float64(0.5654), np.float64(0.5604)]
 
 Feature coefficients (sorted by |coef|):
-  run_diff_diff          +0.341462
-  home                   +0.130251
-  ops_diff               +0.064231
-  whip_diff              -0.052504
-  opp_sp_era             +0.028246
-  sp_era                 -0.023910
-  win_pct_last10         -0.020476
-  bb_per9                -0.018589
-  opp_run_diff_last15    +0.012801
-  park_factor            -0.009560
-  era_diff               +0.007649
-  rest_days              -0.005080
-  k_per9                 -0.003831
-  run_diff_last15        -0.003284
-  bullpen_era            +0.000000
+  whip_diff              -0.147839
+  sp_era                 -0.141616
+  opp_sp_era             +0.133919
+  home                   +0.130370
+  fip_diff               +0.120816
+  ops_diff               +0.098625
+  run_diff_last15        +0.089601
+  opp_run_diff_last15    -0.079595
+  era_diff               +0.038304
+  run_diff_diff          +0.030948
+  park_factor            -0.021538
+  k_per9                 -0.020373
+  win_pct_last10         -0.013499
+  bb_per9                +0.005015
+  rest_days              +0.000334
 
 === XGBoost ===
-Cross-val accuracy: 0.5740 +/- 0.0023
-Per-fold scores : [np.float64(0.5715), np.float64(0.5742), np.float64(0.577), np.float64(0.5759), np.float64(0.5713)]
+Cross-val accuracy: 0.5496 +/- 0.0099
+Per-fold scores : [np.float64(0.542), np.float64(0.5618), np.float64(0.5572), np.float64(0.5522), np.float64(0.5347)]

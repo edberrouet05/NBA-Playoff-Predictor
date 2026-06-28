@@ -31,7 +31,7 @@ PROCESSED  = ROOT / "data" / "processed"
 MLB_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED.mkdir(parents=True, exist_ok=True)
 
-TRAIN_SEASONS  = [2021, 2022, 2023, 2024, 2025]
+TRAIN_SEASONS  = [2021, 2022, 2023, 2024, 2025, 2026]
 CURRENT_SEASON = 2026
 
 # ── Park factors (2023-2025 multi-year average, neutral = 1.0) ─────────────────
@@ -136,8 +136,8 @@ def get_pitcher_era_lookup(season: int) -> dict[int, float]:
 
 # ── Starter / bullpen ERA split ────────────────────────────────────────────────
 
-def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float]:
-    """Return (sp_era, bullpen_era) for a team/season."""
+def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float, float]:
+    """Return (sp_era, bullpen_era, fip) for a team/season."""
     url = (
         f"https://statsapi.mlb.com/api/v1/stats"
         f"?stats=season&group=pitching&season={season}"
@@ -148,16 +148,22 @@ def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float]:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())
     except Exception:
-        return 4.50, 4.00
+        return 4.50, 4.00, 4.20
 
     sp_er = sp_ip = 0.0
     bp_er = bp_ip = 0.0
+    fip_hr = fip_bb = fip_hbp = fip_k = 0
+    fip_ip = 0.0
 
     for group in data.get("stats", []):
         for split in group.get("splits", []):
             s      = split.get("stat", {})
             gs     = int(s.get("gamesStarted", 0) or 0)
             er     = int(s.get("earnedRuns",   0) or 0)
+            hr     = int(s.get("homeRuns",     0) or 0)
+            bb     = int(s.get("baseOnBalls",  0) or 0)
+            hbp    = int(s.get("hitBatsmen",   0) or 0)
+            k      = int(s.get("strikeOuts",   0) or 0)
             ip_str = str(s.get("inningsPitched", "0") or "0")
             try:
                 parts = ip_str.split(".")
@@ -170,10 +176,20 @@ def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float]:
                 sp_er += er;  sp_ip += ip
             else:
                 bp_er += er;  bp_ip += ip
+            fip_hr  += hr
+            fip_bb  += bb
+            fip_hbp += hbp
+            fip_k   += k
+            fip_ip  += ip
 
     sp_era      = round(sp_er / sp_ip * 9, 2) if sp_ip > 0 else 4.50
     bullpen_era = round(bp_er / bp_ip * 9, 2) if bp_ip > 0 else 4.00
-    return sp_era, bullpen_era
+    if fip_ip > 0:
+        raw_fip = (13 * fip_hr + 3 * (fip_bb + fip_hbp) - 2 * fip_k) / fip_ip + 3.10
+        fip = round(max(1.0, min(raw_fip, 9.0)), 2)
+    else:
+        fip = 4.20
+    return sp_era, bullpen_era, fip
 
 
 # ── Season team stats ──────────────────────────────────────────────────────────
@@ -195,7 +211,7 @@ def get_team_stats(team_id: int, season: int) -> dict:
         rs = _safe_float(h.get("runs"), 700.0)
         ra = _safe_float(p.get("runs"), 700.0)
 
-        sp_era, bullpen_era = get_pitcher_splits(team_id, season)
+        sp_era, bullpen_era, fip = get_pitcher_splits(team_id, season)
 
         return {
             "batting_avg":  _safe_float(h.get("avg"),                0.250),
@@ -209,6 +225,7 @@ def get_team_stats(team_id: int, season: int) -> dict:
             "bb_per9":      _safe_float(p.get("walksPer9Inn"),       3.2),
             "sp_era":       sp_era,
             "bullpen_era":  bullpen_era,
+            "fip":          fip,
             "runs_allowed": ra,
             "run_diff":     rs - ra,
         }
@@ -288,17 +305,20 @@ def build_training_data(
     all_rows: list[dict] = []
 
     for season in seasons:
-        # ── 1. Team stats ──────────────────────────────────────────────────────
-        _progress(f"\n[{season}] Fetching team stats ({len(all_teams)} teams)...")
+        # ── 1. PREVIOUS season team stats (avoids data leakage) ───────────────
+        # Using season-1 stats prevents the model from seeing future game outcomes
+        # embedded in season totals. Rolling features still use current-season history.
+        prev_season = season - 1
+        _progress(f"\n[{season}] Fetching {prev_season} team stats (prior for {season} games)...")
         team_stats: dict[int, dict] = {}
         for i, (tid, tname) in enumerate(all_teams.items()):
-            s = get_team_stats(tid, season)
+            s = get_team_stats(tid, prev_season)
             if s:
                 s["team_name"] = tname
                 team_stats[tid] = s
             if (i + 1) % 10 == 0:
                 _progress(f"    {i+1}/{len(all_teams)} done")
-        _progress(f"  Got stats for {len(team_stats)} teams")
+        _progress(f"  Got prev-season ({prev_season}) stats for {len(team_stats)} teams")
 
         # ── 2. Per-pitcher ERA lookup ──────────────────────────────────────────
         _progress(f"[{season}] Fetching pitcher ERA lookup...")
@@ -397,15 +417,18 @@ def build_training_data(
             h_rest, h_l10, h_rdl15 = _ctx(hid, gd_obj)
             a_rest, a_l10, a_rdl15 = _ctx(aid, gd_obj)
 
+            h_fip = float(hs_.get("fip", 4.20))
+            a_fip = float(as_.get("fip", 4.20))
+
             # ── Actual starter ERA (falls back to rotation avg if unknown) ──
             h_pitcher_id = g.get("home_pitcher_id")
             a_pitcher_id = g.get("away_pitcher_id")
             home_sp = era_lookup.get(h_pitcher_id, hs_.get("sp_era", 4.50)) if h_pitcher_id else hs_.get("sp_era", 4.50)
             away_sp = era_lookup.get(a_pitcher_id, as_.get("sp_era", 4.50)) if a_pitcher_id else as_.get("sp_era", 4.50)
 
-            for team_s, opp_s, is_home, won, rest, l10, rdl15, opp_rdl15, tname, oname, t_sp, o_sp in [
-                (hs_,  as_, 1, int(home_won),     h_rest, h_l10, h_rdl15, a_rdl15, hname, aname, home_sp, away_sp),
-                (as_,  hs_, 0, int(not home_won), a_rest, a_l10, a_rdl15, h_rdl15, aname, hname, away_sp, home_sp),
+            for team_s, opp_s, is_home, won, rest, l10, rdl15, opp_rdl15, tname, oname, t_sp, o_sp, t_fip, o_fip in [
+                (hs_,  as_, 1, int(home_won),     h_rest, h_l10, h_rdl15, a_rdl15, hname, aname, home_sp, away_sp, h_fip, a_fip),
+                (as_,  hs_, 0, int(not home_won), a_rest, a_l10, a_rdl15, h_rdl15, aname, hname, away_sp, home_sp, a_fip, h_fip),
             ]:
                 all_rows.append({
                     "season":          season,
@@ -436,6 +459,7 @@ def build_training_data(
                     "whip_diff":       team_s.get("whip",    1.30) - opp_s.get("whip",    1.30),
                     "ops_diff":        team_s.get("ops",     0.700) - opp_s.get("ops",    0.700),
                     "run_diff_diff":   team_s.get("run_diff", 0)   - opp_s.get("run_diff", 0),
+                    "fip_diff":        round(t_fip - o_fip, 3),
                     # Context + rolling form
                     "home":              is_home,
                     "rest_days":         rest,

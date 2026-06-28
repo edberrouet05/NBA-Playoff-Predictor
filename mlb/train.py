@@ -37,12 +37,10 @@ METRICS_PATH   = MODELS_DIR / "mlb_metrics.txt"
 FEATURES = [
     # Game-specific starter ERA
     "sp_era", "opp_sp_era",
-    # Pitching differentials
-    "era_diff", "whip_diff",
+    # Pitching differentials (FIP removes defense/luck noise vs ERA)
+    "era_diff", "whip_diff", "fip_diff",
     # K/9 and BB/9 add info not captured by ERA alone
     "k_per9", "bb_per9",
-    # Bullpen separate from starter
-    "bullpen_era",
     # Offense and run differential
     "ops_diff", "run_diff_diff",
     # Context

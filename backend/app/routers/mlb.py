@@ -7,6 +7,7 @@ import os
 import pickle
 import time
 import json
+import threading
 import urllib.request
 from pathlib import Path
 
@@ -24,9 +25,8 @@ ODDS_API_KEY = os.getenv("ODDS_API_KEY", "09bb7105d888c7ad840a18fdc316b0c8")
 
 MLB_FEATURES = [
     "sp_era", "opp_sp_era",
-    "era_diff", "whip_diff",
+    "era_diff", "whip_diff", "fip_diff",
     "k_per9", "bb_per9",
-    "bullpen_era",
     "ops_diff", "run_diff_diff",
     "home", "rest_days", "win_pct_last10", "park_factor",
     "run_diff_last15", "opp_run_diff_last15",
@@ -254,7 +254,6 @@ def _mlb_win_prob(
             "k_per9":       float(ts.get("k_per9",      8.0)),
             "bb_per9":      float(ts.get("bb_per9",     3.2)),
             "sp_era":       sp_era_ov if sp_era_ov is not None else float(ts.get("sp_era", 4.50)),
-            "bullpen_era":  float(ts.get("bullpen_era", 4.00)),
             "batting_avg":  float(ts.get("batting_avg", 0.250)),
             "ops":          float(ts.get("ops",         0.700)),
             "obp":          float(ts.get("obp",         0.320)),
@@ -267,6 +266,7 @@ def _mlb_win_prob(
             "opp_sp_era":   opp_sp_era_ov if opp_sp_era_ov is not None else float(os_.get("sp_era", 4.50)),
             "era_diff":     float(ts.get("era",     4.50))  - float(os_.get("era",     4.50)),
             "whip_diff":    float(ts.get("whip",    1.30))  - float(os_.get("whip",    1.30)),
+            "fip_diff":     float(ts.get("fip",     4.20))  - float(os_.get("fip",     4.20)),
             "ops_diff":     float(ts.get("ops",     0.700)) - float(os_.get("ops",     0.700)),
             "run_diff_diff":float(ts.get("run_diff", 0))    - float(os_.get("run_diff", 0)),
             "home":               home,
@@ -840,3 +840,96 @@ def get_mlb_game_detail(game_id: int):
 
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"MLB game detail fetch failed: {e}")
+
+
+# ── Daily rolling-stats refresh ───────────────────────────────────────────────
+
+def _refresh_mlb_rolling_stats() -> None:
+    """Recompute win_pct_last10 / run_diff_last15 for each team from the last
+    30 days of completed games and update mlb_stats_current.csv in place."""
+    import datetime as _dt
+
+    try:
+        age = time.time() - MLB_STATS_PATH.stat().st_mtime
+    except FileNotFoundError:
+        age = float("inf")
+
+    if age < 82800:          # skip if refreshed within 23 h
+        return
+
+    end_date   = _dt.date.today()
+    start_date = end_date - _dt.timedelta(days=30)
+    url = (
+        f"https://statsapi.mlb.com/api/v1/schedule"
+        f"?sportId=1&gameType=R"
+        f"&startDate={start_date}&endDate={end_date}"
+        f"&limit=600"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+    except Exception as exc:
+        print(f"[MLB refresh] schedule fetch failed: {exc}")
+        return
+
+    team_history: dict[str, list[dict]] = {}
+    for date_entry in data.get("dates", []):
+        for g in date_entry.get("games", []):
+            if g.get("status", {}).get("codedGameState", "") not in ("F", "O"):
+                continue
+            t     = g.get("teams", {})
+            hname = t.get("home", {}).get("team", {}).get("name", "")
+            aname = t.get("away", {}).get("team", {}).get("name", "")
+            hs    = int(t.get("home", {}).get("score", 0) or 0)
+            as_   = int(t.get("away", {}).get("score", 0) or 0)
+            gd    = g.get("gameDate", "")[:10]
+            for name, won, rd in [(hname, hs > as_, hs - as_), (aname, as_ > hs, as_ - hs)]:
+                if name:
+                    team_history.setdefault(name, []).append({"date": gd, "won": won, "run_diff": rd})
+
+    if not team_history:
+        return
+
+    rolling: dict[str, dict] = {}
+    for tname, hist in team_history.items():
+        hist = sorted(hist, key=lambda h: h["date"])
+        r20  = hist[-20:]
+        r15  = hist[-15:]
+        if r20:
+            weights = [0.88 ** i for i in range(len(r20) - 1, -1, -1)]
+            ww = sum(w * (1.0 if h["won"] else 0.0) for w, h in zip(weights, r20))
+            win_pct = ww / sum(weights)
+        else:
+            win_pct = 0.5
+        rdl15 = sum(h["run_diff"] for h in r15) / len(r15) if r15 else 0.0
+        rolling[tname] = {
+            "win_pct_last10":  round(win_pct, 3),
+            "run_diff_last15": round(rdl15,   2),
+        }
+
+    try:
+        df = pd.read_csv(MLB_STATS_PATH)
+        for idx, row in df.iterrows():
+            tname = row.get("team_name", "")
+            if tname in rolling:
+                df.at[idx, "win_pct_last10"]  = rolling[tname]["win_pct_last10"]
+                df.at[idx, "run_diff_last15"] = rolling[tname]["run_diff_last15"]
+        df.to_csv(MLB_STATS_PATH, index=False)
+        global _mlb_stats_cache
+        _mlb_stats_cache = None          # force reload on next request
+        print(f"[MLB refresh] updated rolling stats for {len(rolling)} teams")
+    except Exception as exc:
+        print(f"[MLB refresh] CSV update failed: {exc}")
+
+
+def _mlb_refresh_loop() -> None:
+    while True:
+        try:
+            _refresh_mlb_rolling_stats()
+        except Exception as exc:
+            print(f"[MLB refresh] unexpected error: {exc}")
+        time.sleep(3600)          # wake up every hour, skip if < 23 h old
+
+
+threading.Thread(target=_mlb_refresh_loop, daemon=True).start()

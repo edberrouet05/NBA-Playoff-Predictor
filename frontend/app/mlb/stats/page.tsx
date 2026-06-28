@@ -23,7 +23,7 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
   k_per9:        { label: "K/9",                   group: "Pitching",      desc: "Strikeouts per 9 innings. More strikeouts = pitchers who overpower hitters." },
   bb_per9:       { label: "BB/9",                  group: "Pitching",      desc: "Free walks given up per 9 innings. High number = pitchers losing control of the strike zone." },
   sp_era:        { label: "Starter ERA",           group: "Pitching",      desc: "Run average for starting pitchers only. Starters set the tone for the first 5–6 innings." },
-  bullpen_era:   { label: "Bullpen ERA",           group: "Pitching",      desc: "Run average for relief pitchers. A bad bullpen can blow leads in the final innings." },
+  fip_diff:      { label: "FIP Differential",      group: "Differentials", desc: "Fielding-Independent Pitching gap between teams. FIP removes luck and defense from ERA, isolating pitcher skill (strikeouts, walks, home runs). Negative = this team's pitchers are more dominant." },
   batting_avg:   { label: "Batting Average",       group: "Hitting",       desc: "How often batters get a hit. .250 is league average; higher means a more consistent offense." },
   ops:           { label: "OPS",                   group: "Hitting",       desc: "Overall offensive strength — combines how often players get on base with how hard they hit. Higher is better." },
   obp:           { label: "On-Base %",             group: "Hitting",       desc: "How often batters reach base (hits, walks, etc.). More baserunners = more scoring opportunities." },

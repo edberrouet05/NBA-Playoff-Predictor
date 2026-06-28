@@ -1281,9 +1281,8 @@ MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
 
 MLB_FEATURES = [
     "sp_era", "opp_sp_era",
-    "era_diff", "whip_diff",
+    "era_diff", "whip_diff", "fip_diff",
     "k_per9", "bb_per9",
-    "bullpen_era",
     "ops_diff", "run_diff_diff",
     "home", "rest_days", "win_pct_last10", "park_factor",
     "run_diff_last15", "opp_run_diff_last15",
@@ -1397,7 +1396,7 @@ def _mlb_win_prob(
             "k_per9":       float(ts.get("k_per9",      8.0)),
             "bb_per9":      float(ts.get("bb_per9",     3.2)),
             "sp_era":       sp_era_ov if sp_era_ov is not None else float(ts.get("sp_era", 4.50)),
-            "bullpen_era":  float(ts.get("bullpen_era", 4.00)),
+            "fip_diff":     float(ts.get("fip", 4.20)) - float(os.get("fip", 4.20)),
             "batting_avg":  float(ts.get("batting_avg", 0.250)),
             "ops":          float(ts.get("ops",         0.700)),
             "obp":          float(ts.get("obp",         0.320)),
