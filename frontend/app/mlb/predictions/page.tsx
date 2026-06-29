@@ -132,6 +132,13 @@ export default function MLBPredictionsPage() {
   }
   const months = MONTH_ORDER.filter(m => monthMap[m]);
 
+  const confTiers = [55, 60, 65].map(min => {
+    const subset = log.filter(e => e.predicted_prob >= min);
+    const c = subset.filter(e => e.correct).length;
+    const pct = subset.length > 0 ? Math.round((c / subset.length) * 100) : null;
+    return { label: `${min}%+`, total: subset.length, correct: c, pct };
+  });
+
   const accuracyColor = accuracy >= 60
     ? "text-green-600 dark:text-green-400"
     : accuracy >= 55 ? "text-yellow-600 dark:text-yellow-400"
@@ -290,6 +297,37 @@ export default function MLBPredictionsPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Accuracy by confidence tier */}
+              {confTiers.some(t => t.total > 0) && (
+                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">By confidence</p>
+                  <div className="flex flex-col gap-3">
+                    {confTiers.map(t => (
+                      <div key={t.label}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{t.label}</span>
+                          {t.pct === null ? (
+                            <span className="text-xs text-gray-400">—</span>
+                          ) : (
+                            <span className={`text-xs font-bold ${
+                              t.pct >= 60 ? "text-green-600 dark:text-green-400"
+                              : t.pct >= 50 ? "text-yellow-600 dark:text-yellow-400"
+                              : "text-red-500 dark:text-red-400"
+                            }`}>{t.pct}% <span className="text-gray-400 font-normal">{t.correct}/{t.total}</span></span>
+                          )}
+                        </div>
+                        {t.pct !== null && (
+                          <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${t.pct >= 60 ? "bg-green-500" : t.pct >= 50 ? "bg-yellow-400" : "bg-red-400"}`}
+                              style={{ width: `${t.pct}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

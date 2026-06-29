@@ -268,7 +268,7 @@ function fmtShortDate(d: string): string {
   } catch { return d; }
 }
 
-function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
+function PredictionsLog({ log, loading }: { log: MLBPredEntry[]; loading: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const visible = log.slice(0, expanded ? 10 : 3);
 
@@ -288,7 +288,9 @@ function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
         </svg>
       </button>
 
-      {log.length === 0 ? (
+      {loading ? (
+        <p className="text-xs text-gray-400 text-center py-3">Loading…</p>
+      ) : log.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet.</p>
       ) : (
         <>
@@ -331,7 +333,7 @@ function PredictionsLog({ log }: { log: MLBPredEntry[] }) {
 
 // ── Sidebar: top confidence picks ─────────────────────────────────────────────
 
-function ConfidencePicks({ games }: { games: MLBGame[] }) {
+function ConfidencePicks({ games, loading }: { games: MLBGame[]; loading: boolean }) {
   const picks = games
     .map(g => ({
       team: g.predicted_winner,
@@ -358,7 +360,9 @@ function ConfidencePicks({ games }: { games: MLBGame[] }) {
         </div>
       </div>
 
-      {picks.length === 0 ? (
+      {loading ? (
+        <p className="text-xs text-gray-400 text-center py-3">Loading…</p>
+      ) : picks.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-3">No games today.</p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -620,8 +624,8 @@ export default function MLBPage() {
 
         {/* ── Right: insight panels ── */}
         <div className="flex flex-col gap-4">
-          <PredictionsLog log={predLog} />
-          <ConfidencePicks games={games} />
+          <PredictionsLog log={predLog} loading={loading} />
+          <ConfidencePicks games={games} loading={loading} />
           <KeyPitchers games={games} />
           <StreakLeaders />
         </div>
