@@ -534,7 +534,8 @@ export default function MLBPage() {
   const [date,    setDate]    = useState("");
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
-  const [predLog, setPredLog] = useState<MLBPredEntry[]>([]);
+  const [predLog,    setPredLog]    = useState<MLBPredEntry[]>([]);
+  const [logLoading, setLogLoading] = useState(true);
 
   useEffect(() => {
     const load = () =>
@@ -553,7 +554,8 @@ export default function MLBPage() {
     fetch(`${API}/api/mlb/predictions_log?n=10`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => setPredLog(d.log ?? []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLogLoading(false));
 
     return () => clearInterval(id);
   }, []);
@@ -624,7 +626,7 @@ export default function MLBPage() {
 
         {/* ── Right: insight panels ── */}
         <div className="flex flex-col gap-4">
-          <PredictionsLog log={predLog} loading={loading} />
+          <PredictionsLog log={predLog} loading={logLoading} />
           <ConfidencePicks games={games} loading={loading} />
           <KeyPitchers games={games} />
           <StreakLeaders />

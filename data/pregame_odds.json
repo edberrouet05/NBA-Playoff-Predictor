@@ -326,5 +326,13 @@
   "los angeles angels|seattle mariners": {
     "away_odds": 2.78,
     "home_odds": 1.51
+  },
+  "st. louis cardinals|atlanta braves": {
+    "away_odds": 2.35,
+    "home_odds": 1.61
+  },
+  "tampa bay rays|kansas city royals": {
+    "away_odds": 1.82,
+    "home_odds": 2.02
   }
 }
