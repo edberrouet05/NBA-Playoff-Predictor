@@ -1300,6 +1300,8 @@ _mlb_standings_cache: dict | None = None
 _mlb_standings_cache_time: float = 0.0
 _MLB_STANDINGS_TTL = 300.0  # 5 minutes
 
+_mlb_game_pred_cache: dict[str, dict] = {}  # str(game_id) → {away_win_prob, home_win_prob, predicted_winner}
+
 
 def _load_mlb_model():
     global _mlb_model_cache
@@ -1514,6 +1516,18 @@ def _fetch_mlb_today() -> dict:
             if is_done and not has_pregame:
                 game_odds = {}
 
+            away_wp     = round(p_away * 100, 1)
+            home_wp     = round((1 - p_away) * 100, 1)
+            pred_winner = away_name if p_away >= 0.5 else home_name
+
+            gid_str = str(game_id)
+            if gid_str not in _mlb_game_pred_cache:
+                _mlb_game_pred_cache[gid_str] = {
+                    "away_win_prob":    away_wp,
+                    "home_win_prob":    home_wp,
+                    "predicted_winner": pred_winner,
+                }
+
             results.append({
                 "game_id":          game_id,
                 "status":           status,
@@ -1523,9 +1537,9 @@ def _fetch_mlb_today() -> dict:
                 "home_team":        home_name,
                 "away_score":       away_score,
                 "home_score":       home_score,
-                "away_win_prob":    round(p_away * 100, 1),
-                "home_win_prob":    round((1 - p_away) * 100, 1),
-                "predicted_winner": away_name if p_away >= 0.5 else home_name,
+                "away_win_prob":    away_wp,
+                "home_win_prob":    home_wp,
+                "predicted_winner": pred_winner,
                 "away_pitcher":     away_sp,
                 "home_pitcher":     home_sp,
                 "away_sp_era":      round(away_sp_era, 2) if away_sp_era is not None else None,
@@ -1648,24 +1662,32 @@ def get_mlb_predictions_log(n: int = 500):
                 if away_score is None or home_score is None:
                     continue
 
-                away_sp_id  = away_info.get("probablePitcher", {}).get("id")
-                home_sp_id  = home_info.get("probablePitcher", {}).get("id")
-                away_sp_era = starter_eras.get(away_sp_id) if away_sp_id else None
-                home_sp_era = starter_eras.get(home_sp_id) if home_sp_id else None
+                game_id = g.get("gamePk")
+                cached  = _mlb_game_pred_cache.get(str(game_id))
+                if cached:
+                    away_win_prob    = cached["away_win_prob"]
+                    home_win_prob    = cached["home_win_prob"]
+                    predicted_winner = cached["predicted_winner"]
+                else:
+                    away_sp_id  = away_info.get("probablePitcher", {}).get("id")
+                    home_sp_id  = home_info.get("probablePitcher", {}).get("id")
+                    away_sp_era = starter_eras.get(away_sp_id) if away_sp_id else None
+                    home_sp_era = starter_eras.get(home_sp_id) if home_sp_id else None
+                    try:
+                        p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0,
+                                               sp_era_override=away_sp_era,
+                                               opp_sp_era_override=home_sp_era)
+                    except Exception:
+                        continue
+                    away_win_prob    = round(p_away * 100, 1)
+                    home_win_prob    = round((1 - p_away) * 100, 1)
+                    predicted_winner = away_name if p_away >= 0.5 else home_name
 
-                try:
-                    p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0,
-                                           sp_era_override=away_sp_era,
-                                           opp_sp_era_override=home_sp_era)
-                except Exception:
-                    continue
-
-                predicted_winner = away_name if p_away >= 0.5 else home_name
-                predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
-                actual_winner    = away_name if away_score > home_score else home_name
+                predicted_prob = away_win_prob if predicted_winner == away_name else home_win_prob
+                actual_winner  = away_name if away_score > home_score else home_name
 
                 log.append({
-                    "game_id":          g.get("gamePk"),
+                    "game_id":          game_id,
                     "date":             date_str,
                     "month":            month_name,
                     "away_team":        away_name,
@@ -1676,8 +1698,8 @@ def get_mlb_predictions_log(n: int = 500):
                     "correct":          predicted_winner == actual_winner,
                     "away_score":       away_score,
                     "home_score":       home_score,
-                    "away_win_prob":    round(p_away * 100, 1),
-                    "home_win_prob":    round((1 - p_away) * 100, 1),
+                    "away_win_prob":    away_win_prob,
+                    "home_win_prob":    home_win_prob,
                 })
 
         result = {"log": log}
