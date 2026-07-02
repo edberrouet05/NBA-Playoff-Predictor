@@ -268,7 +268,7 @@ function fmtShortDate(d: string): string {
   } catch { return d; }
 }
 
-function PredictionsLog({ log, loading }: { log: MLBPredEntry[]; loading: boolean }) {
+function PredictionsLog({ log, loading, error }: { log: MLBPredEntry[]; loading: boolean; error: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const visible = log.slice(0, expanded ? 10 : 3);
 
@@ -289,6 +289,8 @@ function PredictionsLog({ log, loading }: { log: MLBPredEntry[]; loading: boolea
       </button>
 
       {loading ? (
+        <p className="text-xs text-gray-400 text-center py-3">Loading…</p>
+      ) : error ? (
         <p className="text-xs text-gray-400 text-center py-3">Loading…</p>
       ) : log.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet.</p>
@@ -536,6 +538,7 @@ export default function MLBPage() {
   const [error,   setError]   = useState("");
   const [predLog,    setPredLog]    = useState<MLBPredEntry[]>([]);
   const [logLoading, setLogLoading] = useState(true);
+  const [logError,   setLogError]   = useState(false);
 
   useEffect(() => {
     const load = () =>
@@ -552,9 +555,9 @@ export default function MLBPage() {
     const id = setInterval(load, 120_000);
 
     fetch(`${API}/api/mlb/predictions_log?n=10`, { cache: "no-store" })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(d => setPredLog(d.log ?? []))
-      .catch(() => {})
+      .catch(() => setLogError(true))
       .finally(() => setLogLoading(false));
 
     return () => clearInterval(id);
@@ -626,7 +629,7 @@ export default function MLBPage() {
 
         {/* ── Right: insight panels ── */}
         <div className="flex flex-col gap-4">
-          <PredictionsLog log={predLog} loading={logLoading} />
+          <PredictionsLog log={predLog} loading={logLoading} error={logError} />
           <ConfidencePicks games={games} loading={loading} />
           <KeyPitchers games={games} />
           <StreakLeaders />
