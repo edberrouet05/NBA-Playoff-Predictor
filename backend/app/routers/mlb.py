@@ -292,9 +292,10 @@ def _mlb_win_prob(
 # ── Today fetch ───────────────────────────────────────────────────────────────
 
 def _fetch_mlb_today() -> dict:
-    import datetime as _dt
+    import datetime as _dt, zoneinfo as _zi
 
-    today_iso = _dt.date.today().isoformat()
+    _eastern  = _zi.ZoneInfo("America/New_York")
+    today_iso = _dt.datetime.now(_eastern).date().isoformat()
     url = (
         "https://statsapi.mlb.com/api/v1/schedule"
         f"?sportId=1&date={today_iso}"
@@ -435,7 +436,8 @@ def get_mlb_today():
     import datetime as _dt
     global _mlb_today_cache, _mlb_today_cache_date, _mlb_today_cache_time
 
-    today = _dt.date.today().isoformat()
+    import zoneinfo as _zi
+    today = _dt.datetime.now(_zi.ZoneInfo("America/New_York")).date().isoformat()
     now   = time.time()
 
     if (

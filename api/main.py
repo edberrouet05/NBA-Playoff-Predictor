@@ -1432,7 +1432,8 @@ def _fetch_mlb_today() -> dict:
     """Fetch today's MLB games directly from statsapi.mlb.com (no third-party package needed)."""
     import datetime, json, urllib.request
 
-    today_iso = datetime.date.today().isoformat()   # YYYY-MM-DD
+    import zoneinfo
+    today_iso = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
 
     url = (
         "https://statsapi.mlb.com/api/v1/schedule"
@@ -1561,7 +1562,8 @@ def get_mlb_today():
     global _mlb_today_cache, _mlb_today_cache_date, _mlb_today_cache_time
     import datetime
 
-    today = datetime.date.today().isoformat()
+    import zoneinfo
+    today = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
     now   = _t.time()
 
     # Serve cache si même jour ET TTL pas expiré
