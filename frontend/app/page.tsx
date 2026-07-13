@@ -127,9 +127,25 @@ export default function GamesPage() {
       .catch(() => setError("Could not load schedule. Make sure the backend is running."))
       .finally(() => setLoading(false));
 
+    // Show cached predictions immediately, fetch fresh in background
+    try {
+      const raw = localStorage.getItem("nba_pred_log_v1");
+      if (raw) {
+        const { log, ts } = JSON.parse(raw);
+        if (Date.now() - ts < 2 * 3600 * 1000) {
+          setPredLog(log);
+          setLogLoading(false);
+        }
+      }
+    } catch {}
+
     fetch(`${API}/api/predictions_log?n=500`, { cache: "no-store" })
       .then(r => r.json())
-      .then(d => setPredLog(d.log ?? []))
+      .then(d => {
+        const log = d.log ?? [];
+        setPredLog(log);
+        try { localStorage.setItem("nba_pred_log_v1", JSON.stringify({ log, ts: Date.now() })); } catch {}
+      })
       .catch(() => {})
       .finally(() => setLogLoading(false));
 
@@ -203,7 +219,7 @@ export default function GamesPage() {
 
         {/* ── Right: insight panels ── */}
         <div className="flex flex-col gap-4">
-          <PredictionsLog log={predLog} />
+          <PredictionsLog log={predLog} logLoading={logLoading} />
           <ConfidencePicks games={allGames} />
           <InjuryImpactPanel games={allGames} />
         </div>
@@ -314,7 +330,7 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
 
 // ── Insight panel: recent predictions log ─────────────────────────────────────
 
-function PredictionsLog({ log }: { log: PredictionEntry[] }) {
+function PredictionsLog({ log, logLoading }: { log: PredictionEntry[]; logLoading: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? log : log.slice(0, 3);
 
@@ -336,7 +352,9 @@ function PredictionsLog({ log }: { log: PredictionEntry[] }) {
         </svg>
       </button>
 
-      {log.length === 0 ? (
+      {logLoading && log.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-3">Loading…</p>
+      ) : log.length === 0 ? (
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet this season.</p>
       ) : (
         <>
@@ -463,20 +481,14 @@ function SeasonRecap({ log }: { log: PredictionEntry[] }) {
   const bestPicks     = filtered.filter(e => e.correct).sort((a, b) => b.predicted_prob - a.predicted_prob).slice(0, 4);
   const biggestMisses = filtered.filter(e => !e.correct).sort((a, b) => b.predicted_prob - a.predicted_prob).slice(0, 4);
 
-  const accuracyColor = accuracy >= 65
-    ? "text-green-600 dark:text-green-400"
-    : accuracy >= 55 ? "text-yellow-600 dark:text-yellow-400"
-    : "text-red-500 dark:text-red-400";
-
-  const barColor = accuracy >= 65 ? "bg-green-500" : accuracy >= 55 ? "bg-yellow-400" : "bg-red-400";
-
-  function pctColor(pct: number) {
-    return pct >= 65 ? "text-green-600 dark:text-green-400"
-      : pct >= 55 ? "text-yellow-600 dark:text-yellow-400"
-      : "text-red-500 dark:text-red-400";
+  function gradientColor(pct: number): string {
+    // 40% → hue 0 (red), 75% → hue 120 (green), smooth HSL interpolation
+    const hue = Math.max(0, Math.min(120, ((pct - 40) / 35) * 120));
+    return `hsl(${Math.round(hue)}, 80%, 42%)`;
   }
-  function barCol(pct: number) {
-    return pct >= 65 ? "bg-green-500" : pct >= 55 ? "bg-yellow-400" : "bg-red-400";
+  function gradientBarColor(pct: number): string {
+    const hue = Math.max(0, Math.min(120, ((pct - 40) / 35) * 120));
+    return `hsl(${Math.round(hue)}, 75%, 50%)`;
   }
 
   return (
@@ -489,7 +501,7 @@ function SeasonRecap({ log }: { log: PredictionEntry[] }) {
         </div>
         <div className="flex items-end gap-8">
           <div>
-            <p className={`text-6xl font-black leading-none ${accuracyColor}`}>{accuracy}%</p>
+            <p className="text-6xl font-black leading-none" style={{ color: gradientColor(accuracy) }}>{accuracy}%</p>
             <p className="text-sm text-gray-500 mt-1">overall accuracy</p>
           </div>
           <div className="pb-1">
@@ -498,7 +510,7 @@ function SeasonRecap({ log }: { log: PredictionEntry[] }) {
           </div>
         </div>
         <div className="mt-4 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${accuracy}%` }} />
+          <div className="h-full rounded-full transition-all" style={{ width: `${accuracy}%`, background: gradientBarColor(accuracy) }} />
         </div>
       </div>
 
@@ -517,10 +529,10 @@ function SeasonRecap({ log }: { log: PredictionEntry[] }) {
                   <div key={r}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{short}</span>
-                      <span className={`text-xs font-bold ${pctColor(pct)}`}>{pct}% <span className="text-gray-400 font-normal">{rc}/{rt}</span></span>
+                      <span className="text-xs font-bold" style={{ color: gradientColor(pct) }}>{pct}% <span className="text-gray-400 font-normal">{rc}/{rt}</span></span>
                     </div>
                     <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${barCol(pct)}`} style={{ width: `${pct}%` }} />
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: gradientBarColor(pct) }} />
                     </div>
                   </div>
                 );
@@ -540,12 +552,12 @@ function SeasonRecap({ log }: { log: PredictionEntry[] }) {
                     {t.pct === null ? (
                       <span className="text-xs text-gray-400">—</span>
                     ) : (
-                      <span className={`text-xs font-bold ${pctColor(t.pct)}`}>{t.pct}% <span className="text-gray-400 font-normal">{t.correct}/{t.total}</span></span>
+                      <span className="text-xs font-bold" style={{ color: gradientColor(t.pct) }}>{t.pct}% <span className="text-gray-400 font-normal">{t.correct}/{t.total}</span></span>
                     )}
                   </div>
                   {t.pct !== null && (
                     <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${barCol(t.pct)}`} style={{ width: `${t.pct}%` }} />
+                      <div className="h-full rounded-full" style={{ width: `${t.pct}%`, background: gradientBarColor(t.pct) }} />
                     </div>
                   )}
                 </div>
