@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -383,21 +383,51 @@ export default function MLBGamePage({
   const [gameData, setGameData] = useState<MLBGameDetail | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [fetchErr, setFetchErr] = useState(false);
+  const retriedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
+    retriedRef.current = false;
 
-    const fetchData = () => {
-      fetch(`${API}/api/mlb/game/${game_id}`)
+    let ctrl  = new AbortController();
+    let timer = setTimeout(() => ctrl.abort(), 55000);
+
+    function doFetch() {
+      fetch(`${API}/api/mlb/game/${game_id}`, { signal: ctrl.signal })
         .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-        .then((d: MLBGameDetail) => { if (active) { setGameData(d); setLoading(false); } })
-        .catch(() => { if (active) { setFetchErr(true); setLoading(false); } });
-    };
+        .then((d: MLBGameDetail) => {
+          clearTimeout(timer);
+          if (active) { setGameData(d); setLoading(false); }
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          if (!active) return;
+          if ((err as Error)?.name === "AbortError" && !retriedRef.current) {
+            retriedRef.current = true;
+            ctrl  = new AbortController();
+            timer = setTimeout(() => ctrl.abort(), 30000);
+            doFetch();
+            return;
+          }
+          setFetchErr(true);
+          setLoading(false);
+        });
+    }
 
-    fetchData();
-    // Refresh every 30 s (cache serves instantly for Final games)
-    const id = setInterval(fetchData, 30_000);
-    return () => { active = false; clearInterval(id); };
+    doFetch();
+    // Refresh every 30 s for live games (cache serves instantly for Final)
+    const id = setInterval(() => {
+      if (!active) return;
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 10000);
+      fetch(`${API}/api/mlb/game/${game_id}`, { signal: c.signal })
+        .then(r => r.json())
+        .then((d: MLBGameDetail) => { if (active) setGameData(d); })
+        .catch(() => {})
+        .finally(() => clearTimeout(t));
+    }, 30_000);
+
+    return () => { active = false; ctrl.abort(); clearTimeout(timer); clearInterval(id); };
   }, [game_id]);
 
   const g       = gameData;
@@ -545,7 +575,7 @@ export default function MLBGamePage({
       )}
       {!loading && fetchErr && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6 text-center text-xs text-gray-400">
-          Could not load game data — make sure the backend is running on port 8000.
+          Could not load game data.
         </div>
       )}
 
