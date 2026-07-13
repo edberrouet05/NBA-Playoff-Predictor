@@ -1075,68 +1075,72 @@ def get_predictions_log(n: int = 5):
 
     try:
         from nba_api.stats.endpoints import leaguegamelog
-        _time.sleep(0.6)
-        df = leaguegamelog.LeagueGameLog(
-            season="2025-26", season_type_all_star="Playoffs"
-        ).get_data_frames()[0]
-
         abbr_to_team = {v: k for k, v in TEAM_TO_ABBR.items()}
-        home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)].copy()
-        home_rows = home_rows.sort_values("GAME_DATE", ascending=False)
-
         model = _load_model()
         stats = _load_stats_by_name()
 
-        # Build a map from GAME_ID to away row for score lookup
-        away_rows = df[df["MATCHUP"].str.contains(" @ ", na=False)].set_index("GAME_ID")
-
         log: list[dict] = []
-        for _, row in home_rows.iterrows():
-            parts = row["MATCHUP"].split(" vs. ")
-            if len(parts) != 2:
-                continue
-            home_abbr, away_abbr = parts[0].strip(), parts[1].strip()
-            home_team = abbr_to_team.get(home_abbr)
-            away_team = abbr_to_team.get(away_abbr)
-            if not home_team or not away_team:
-                continue
-            if home_team not in stats.index or away_team not in stats.index:
-                continue
-            try:
-                p_away = _game_prob(model, stats, away_team, home_team, team_a_is_home=False)
-            except Exception:
-                continue
-            predicted_winner = away_team if p_away >= 0.5 else home_team
-            predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
-            actual_winner    = home_team if row["WL"] == "W" else away_team
-            home_score = int(row["PTS"]) if "PTS" in row.index and pd.notna(row["PTS"]) else None
-            away_score = None
-            game_id    = str(row["GAME_ID"]) if "GAME_ID" in row.index else ""
-            if game_id and game_id in away_rows.index:
-                away_row   = away_rows.loc[game_id]
-                away_score = int(away_row["PTS"]) if "PTS" in away_row.index and pd.notna(away_row["PTS"]) else None
-            log.append({
-                "game_id":          game_id,
-                "date":             row["GAME_DATE"],
-                "away_team":        away_team,
-                "home_team":        home_team,
-                "predicted_winner": predicted_winner,
-                "predicted_prob":   predicted_prob,
-                "actual_winner":    actual_winner,
-                "correct":          predicted_winner == actual_winner,
-                "away_score":       away_score,
-                "home_score":       home_score,
-                "away_win_prob":    round(p_away * 100, 1),
-                "home_win_prob":    round((1 - p_away) * 100, 1),
-                "round":            ROUND_NAMES.get(_playoff_round(game_id), "Playoffs"),
-            })
-            if len(log) >= n:
-                break
+
+        for season_type in ("Playoffs", "Regular Season"):
+            _time.sleep(0.6)
+            df = leaguegamelog.LeagueGameLog(
+                season="2025-26", season_type_all_star=season_type
+            ).get_data_frames()[0]
+
+            home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)].copy()
+            home_rows = home_rows.sort_values("GAME_DATE", ascending=False)
+            away_rows = df[df["MATCHUP"].str.contains(" @ ", na=False)].set_index("GAME_ID")
+
+            for _, row in home_rows.iterrows():
+                parts = row["MATCHUP"].split(" vs. ")
+                if len(parts) != 2:
+                    continue
+                home_abbr, away_abbr = parts[0].strip(), parts[1].strip()
+                home_team = abbr_to_team.get(home_abbr)
+                away_team = abbr_to_team.get(away_abbr)
+                if not home_team or not away_team:
+                    continue
+                if home_team not in stats.index or away_team not in stats.index:
+                    continue
+                try:
+                    p_away = _game_prob(model, stats, away_team, home_team, team_a_is_home=False)
+                except Exception:
+                    continue
+                predicted_winner = away_team if p_away >= 0.5 else home_team
+                predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
+                actual_winner    = home_team if row["WL"] == "W" else away_team
+                home_score = int(row["PTS"]) if "PTS" in row.index and pd.notna(row["PTS"]) else None
+                away_score = None
+                game_id    = str(row["GAME_ID"]) if "GAME_ID" in row.index else ""
+                if game_id and game_id in away_rows.index:
+                    away_row   = away_rows.loc[game_id]
+                    away_score = int(away_row["PTS"]) if "PTS" in away_row.index and pd.notna(away_row["PTS"]) else None
+
+                if season_type == "Playoffs":
+                    round_label = ROUND_NAMES.get(_playoff_round(game_id), "Playoffs")
+                else:
+                    round_label = "Regular Season"
+
+                log.append({
+                    "game_id":          game_id,
+                    "date":             row["GAME_DATE"],
+                    "away_team":        away_team,
+                    "home_team":        home_team,
+                    "predicted_winner": predicted_winner,
+                    "predicted_prob":   predicted_prob,
+                    "actual_winner":    actual_winner,
+                    "correct":          predicted_winner == actual_winner,
+                    "away_score":       away_score,
+                    "home_score":       home_score,
+                    "away_win_prob":    round(p_away * 100, 1),
+                    "home_win_prob":    round((1 - p_away) * 100, 1),
+                    "round":            round_label,
+                })
 
         result = {"log": log}
         _predictions_log_cache = result
         _predictions_log_cache_time = now
-        return result
+        return {"log": log[:n]}
     except Exception:
         return {"log": []}
 

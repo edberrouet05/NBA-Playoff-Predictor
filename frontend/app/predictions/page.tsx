@@ -46,7 +46,7 @@ const TEAM_IDS: Record<string, number> = {
   TOR: 1610612761, UTA: 1610612762, WAS: 1610612764,
 };
 
-const ROUND_ORDER = ["First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
+const ROUND_ORDER = ["Regular Season", "First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
 
 function getAbbr(t: string) {
   return TEAM_ABBR[t] ?? t.split(" ").pop()?.substring(0, 3).toUpperCase() ?? "???";

@@ -38,6 +38,7 @@ interface PredictionEntry {
   home_score: number | null;
   away_win_prob: number;
   home_win_prob: number;
+  round?: string;
 }
 
 const TEAM_ABBR: Record<string, string> = {
@@ -113,10 +114,11 @@ function gameUrl(g: TodayGame): string {
 }
 
 export default function GamesPage() {
-  const [schedule, setSchedule] = useState<{ date: string; games: TodayGame[] }[]>([]);
-  const [predLog,  setPredLog]  = useState<PredictionEntry[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState("");
+  const [schedule,   setSchedule]   = useState<{ date: string; games: TodayGame[] }[]>([]);
+  const [predLog,    setPredLog]    = useState<PredictionEntry[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [logLoading, setLogLoading] = useState(true);
+  const [error,      setError]      = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/schedule?days=1`)
@@ -125,10 +127,14 @@ export default function GamesPage() {
       .catch(() => setError("Could not load schedule. Make sure the backend is running."))
       .finally(() => setLoading(false));
 
-    fetch(`${API}/api/predictions_log?n=10`, { cache: "no-store" })
+    fetch(`${API}/api/predictions_log?n=500`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => setPredLog(d.log ?? []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLogLoading(false));
+
+    // Wake up Render backend so game pages load without delay
+    fetch("https://nba-playoff-predictor-u8bj.onrender.com/api/health").catch(() => {});
   }, []);
 
   const allGames = schedule.flatMap(d => d.games);
@@ -139,12 +145,19 @@ export default function GamesPage() {
 
         {/* ── Left: game cards ── */}
         <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tonight&apos;s Games</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Live win probability · injury-adjusted · click a game for details
-            </p>
-          </div>
+          {/* Title */}
+          {!loading && (
+            <div className="mb-6">
+              {schedule.length > 0 ? (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tonight&apos;s Games</h1>
+                  <p className="text-gray-500 text-sm mt-1">Live win probability · injury-adjusted · click a game for details</p>
+                </>
+              ) : !logLoading && predLog.length > 0 ? (
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Season Recap</h1>
+              ) : null}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm mb-6">
@@ -152,16 +165,28 @@ export default function GamesPage() {
             </div>
           )}
 
+          {/* Loading: schedule still pending */}
           {!error && loading && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
-              Loading tonight&apos;s games…
+              Loading…
             </div>
           )}
 
-          {!error && !loading && schedule.length === 0 && (
+          {/* Schedule done, no games — waiting for predictions to decide recap vs empty */}
+          {!error && !loading && schedule.length === 0 && logLoading && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
+              Loading…
+            </div>
+          )}
+
+          {!error && !loading && !logLoading && schedule.length === 0 && predLog.length === 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
               No games scheduled for today.
             </div>
+          )}
+
+          {!error && !loading && !logLoading && schedule.length === 0 && predLog.length > 0 && (
+            <SeasonRecap log={predLog} />
           )}
 
           {schedule.map(day => (
@@ -403,6 +428,204 @@ function ConfidencePicks({ games }: { games: TodayGame[] }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Season Recap (off-season) ─────────────────────────────────────────────────
+
+const ROUND_ORDER = ["First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
+
+function SeasonRecap({ log }: { log: PredictionEntry[] }) {
+  const filtered = log.filter(e => e.round !== "Regular Season");
+
+  const total    = filtered.length;
+  const correct  = filtered.filter(e => e.correct).length;
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  const PLAYOFF_ROUNDS = ["First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
+  const roundMap: Record<string, { correct: number; total: number }> = {};
+  for (const e of filtered) {
+    const r = e.round ?? "Playoffs";
+    if (!roundMap[r]) roundMap[r] = { correct: 0, total: 0 };
+    roundMap[r].total++;
+    if (e.correct) roundMap[r].correct++;
+  }
+  const rounds = PLAYOFF_ROUNDS.filter(r => roundMap[r]);
+
+  const tiers = [55, 60, 65].map(min => {
+    const subset = filtered.filter(e => e.predicted_prob >= min);
+    const c      = subset.filter(e => e.correct).length;
+    const pct    = subset.length > 0 ? Math.round((c / subset.length) * 100) : null;
+    return { label: `${min}%+`, total: subset.length, correct: c, pct };
+  });
+
+  const bestPicks     = filtered.filter(e => e.correct).sort((a, b) => b.predicted_prob - a.predicted_prob).slice(0, 4);
+  const biggestMisses = filtered.filter(e => !e.correct).sort((a, b) => b.predicted_prob - a.predicted_prob).slice(0, 4);
+
+  const accuracyColor = accuracy >= 65
+    ? "text-green-600 dark:text-green-400"
+    : accuracy >= 55 ? "text-yellow-600 dark:text-yellow-400"
+    : "text-red-500 dark:text-red-400";
+
+  const barColor = accuracy >= 65 ? "bg-green-500" : accuracy >= 55 ? "bg-yellow-400" : "bg-red-400";
+
+  function pctColor(pct: number) {
+    return pct >= 65 ? "text-green-600 dark:text-green-400"
+      : pct >= 55 ? "text-yellow-600 dark:text-yellow-400"
+      : "text-red-500 dark:text-red-400";
+  }
+  function barCol(pct: number) {
+    return pct >= 65 ? "bg-green-500" : pct >= 55 ? "bg-yellow-400" : "bg-red-400";
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+
+      {/* Hero accuracy card */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">NBA 2025–26 · Playoffs</p>
+        </div>
+        <div className="flex items-end gap-8">
+          <div>
+            <p className={`text-6xl font-black leading-none ${accuracyColor}`}>{accuracy}%</p>
+            <p className="text-sm text-gray-500 mt-1">overall accuracy</p>
+          </div>
+          <div className="pb-1">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{correct}<span className="text-gray-400 font-normal text-lg">/{total}</span></p>
+            <p className="text-sm text-gray-500">games correct</p>
+          </div>
+        </div>
+        <div className="mt-4 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${accuracy}%` }} />
+        </div>
+      </div>
+
+      {/* By round + By confidence */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+        {rounds.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">By round</p>
+            <div className="flex flex-col gap-3">
+              {rounds.map(r => {
+                const { correct: rc, total: rt } = roundMap[r];
+                const pct = Math.round((rc / rt) * 100);
+                const short = r === "Conference Semifinals" ? "Conf. Semis" : r === "Conference Finals" ? "Conf. Finals" : r;
+                return (
+                  <div key={r}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{short}</span>
+                      <span className={`text-xs font-bold ${pctColor(pct)}`}>{pct}% <span className="text-gray-400 font-normal">{rc}/{rt}</span></span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${barCol(pct)}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {tiers.some(t => t.total > 0) && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">By confidence</p>
+            <div className="flex flex-col gap-3">
+              {tiers.map(t => (
+                <div key={t.label}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{t.label}</span>
+                    {t.pct === null ? (
+                      <span className="text-xs text-gray-400">—</span>
+                    ) : (
+                      <span className={`text-xs font-bold ${pctColor(t.pct)}`}>{t.pct}% <span className="text-gray-400 font-normal">{t.correct}/{t.total}</span></span>
+                    )}
+                  </div>
+                  {t.pct !== null && (
+                    <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${barCol(t.pct)}`} style={{ width: `${t.pct}%` }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Best picks + Biggest misses */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {bestPicks.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">Best picks</p>
+            <div className="flex flex-col gap-2.5">
+              {bestPicks.map((e, i) => {
+                const params = new URLSearchParams({
+                  away: e.away_team, home: e.home_team,
+                  time: "Final", status: "Final",
+                  away_prob: String(e.away_win_prob), home_prob: String(e.home_win_prob),
+                  winner: e.predicted_winner,
+                  away_score: e.away_score !== null ? String(e.away_score) : "",
+                  home_score: e.home_score !== null ? String(e.home_score) : "",
+                });
+                return (
+                  <Link key={i} href={`/game/${e.game_id}?${params.toString()}`}
+                    className="flex items-center justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl px-2 py-1 -mx-2 transition-colors">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                        {getNick(e.predicted_winner)} · {fmtShortDate(e.date)}
+                      </p>
+                      <p className="text-[10px] text-gray-400">{e.away_team.split(" ").pop()} vs {e.home_team.split(" ").pop()}</p>
+                    </div>
+                    <span className="text-xs font-bold text-green-600 dark:text-green-400 flex-shrink-0">{e.predicted_prob}%</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {biggestMisses.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">Biggest misses</p>
+            <div className="flex flex-col gap-2.5">
+              {biggestMisses.map((e, i) => {
+                const params = new URLSearchParams({
+                  away: e.away_team, home: e.home_team,
+                  time: "Final", status: "Final",
+                  away_prob: String(e.away_win_prob), home_prob: String(e.home_win_prob),
+                  winner: e.predicted_winner,
+                  away_score: e.away_score !== null ? String(e.away_score) : "",
+                  home_score: e.home_score !== null ? String(e.home_score) : "",
+                });
+                return (
+                  <Link key={i} href={`/game/${e.game_id}?${params.toString()}`}
+                    className="flex items-center justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl px-2 py-1 -mx-2 transition-colors">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                        {getNick(e.predicted_winner)} · {fmtShortDate(e.date)}
+                      </p>
+                      <p className="text-[10px] text-gray-400">{e.away_team.split(" ").pop()} vs {e.home_team.split(" ").pop()}</p>
+                    </div>
+                    <span className="text-xs font-bold text-red-500 dark:text-red-400 flex-shrink-0">{e.predicted_prob}%</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Link href="/predictions"
+        className="flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+        View full predictions log
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 4l4 4-4 4" />
+        </svg>
+      </Link>
+
     </div>
   );
 }

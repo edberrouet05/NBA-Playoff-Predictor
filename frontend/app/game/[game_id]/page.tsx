@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -133,30 +133,17 @@ export default function GamePage({
   const [history,  setHistory]  = useState<HistoryPoint[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [fetchErr, setFetchErr] = useState(false);
+  const retriedRef = useRef(false);
 
   useEffect(() => {
     if (!away || !home) { setLoading(false); return; }
 
     const qa = `team_a=${encodeURIComponent(away)}&team_b=${encodeURIComponent(home)}`;
-
-    // ── Primary fetch: compare only (instant from backend cache) ──
-    const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-
-    fetch(`${API}/api/compare?${qa}`, { signal: ctrl.signal })
-      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(cmp => setCompare(cmp as CompareResult))
-      .catch((err) => {
-        if ((err as Error)?.name === "AbortError") return;
-        console.error("[GamePage] compare fetch error:", err);
-        setFetchErr(true);
-      })
-      .finally(() => { clearTimeout(timer); setLoading(false); });
+    retriedRef.current = false;
 
     // ── Series history — slow (Monte Carlo + nba_api), fetched independently ──
     const histCtrl  = new AbortController();
     const histTimer = setTimeout(() => histCtrl.abort(), 60000);
-
     fetch(`${API}/api/series_history?${qa}`, { signal: histCtrl.signal })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(hist => setHistory((hist as { history: HistoryPoint[] }).history ?? []))
@@ -166,12 +153,38 @@ export default function GamePage({
     // ── Injuries — fetched independently so ESPN latency doesn't block stats ──
     const injCtrl  = new AbortController();
     const injTimer = setTimeout(() => injCtrl.abort(), 30000);
-
     fetch(`${API}/api/injuries?${qa}`, { signal: injCtrl.signal })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(inj => setInjuries(inj as InjuryReport))
       .catch(() => {})
       .finally(() => clearTimeout(injTimer));
+
+    // ── Primary fetch: compare — auto-retries once on timeout (Render cold start) ──
+    let ctrl  = new AbortController();
+    let timer = setTimeout(() => ctrl.abort(), 55000);
+
+    function doCompare() {
+      fetch(`${API}/api/compare?${qa}`, { signal: ctrl.signal })
+        .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(cmp => { clearTimeout(timer); setCompare(cmp as CompareResult); setLoading(false); })
+        .catch((err) => {
+          clearTimeout(timer);
+          if ((err as Error)?.name === "AbortError" && !retriedRef.current) {
+            // Backend was waking up — retry once now that it's likely ready
+            retriedRef.current = true;
+            ctrl  = new AbortController();
+            timer = setTimeout(() => ctrl.abort(), 30000);
+            doCompare();
+            return;
+          }
+          if ((err as Error)?.name !== "AbortError") {
+            console.error("[GamePage] compare fetch error:", err);
+          }
+          setFetchErr(true);
+          setLoading(false);
+        });
+    }
+    doCompare();
 
     return () => {
       ctrl.abort();     clearTimeout(timer);
@@ -257,7 +270,8 @@ export default function GamePage({
 
       {!loading && fetchErr && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center text-xs text-gray-400 dark:text-gray-600">
-          Could not load stats — make sure the backend is running on port 8000.
+          Stats unavailable — backend timed out.{" "}
+          <button onClick={() => window.location.reload()} className="underline hover:text-gray-600 dark:hover:text-gray-400">Retry</button>
         </div>
       )}
 
