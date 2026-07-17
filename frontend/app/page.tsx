@@ -162,18 +162,16 @@ export default function GamesPage() {
         {/* ── Left: game cards ── */}
         <div>
           {/* Title */}
-          {!loading && (
-            <div className="mb-6">
-              {schedule.length > 0 ? (
-                <>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tonight&apos;s Games</h1>
-                  <p className="text-gray-500 text-sm mt-1">Live win probability · injury-adjusted · click a game for details</p>
-                </>
-              ) : !logLoading && predLog.length > 0 ? (
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Season Recap</h1>
-              ) : null}
-            </div>
-          )}
+          <div className="mb-6">
+            {schedule.length > 0 ? (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tonight&apos;s Games</h1>
+                <p className="text-gray-500 text-sm mt-1">Live win probability · injury-adjusted · click a game for details</p>
+              </>
+            ) : !logLoading && predLog.length > 0 ? (
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Season Recap</h1>
+            ) : null}
+          </div>
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm mb-6">
@@ -181,27 +179,22 @@ export default function GamesPage() {
             </div>
           )}
 
-          {/* Loading: schedule still pending */}
-          {!error && loading && (
+          {/* Loading: no data yet from either fetch */}
+          {!error && (loading || logLoading) && predLog.length === 0 && schedule.length === 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
               Loading…
             </div>
           )}
 
-          {/* Schedule done, no games — waiting for predictions to decide recap vs empty */}
-          {!error && !loading && schedule.length === 0 && logLoading && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
-              Loading…
-            </div>
-          )}
-
+          {/* No data at all */}
           {!error && !loading && !logLoading && schedule.length === 0 && predLog.length === 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
               No games scheduled for today.
             </div>
           )}
 
-          {!error && !loading && !logLoading && schedule.length === 0 && predLog.length > 0 && (
+          {/* Season Recap — show as soon as predLog has data, even if schedule is still loading */}
+          {!error && !logLoading && predLog.length > 0 && schedule.length === 0 && (
             <SeasonRecap log={predLog} />
           )}
 

@@ -1669,7 +1669,8 @@ def get_mlb_predictions_log(n: int = 500):
                     continue
 
                 game_id = g.get("gamePk")
-                cached  = _mlb_game_pred_cache.get(str(game_id))
+                gid_str = str(game_id)
+                cached  = _mlb_game_pred_cache.get(gid_str)
                 if cached:
                     away_win_prob    = cached["away_win_prob"]
                     home_win_prob    = cached["home_win_prob"]
@@ -1961,15 +1962,30 @@ def get_mlb_game_detail(game_id: int):
         is_final    = "Final" in status or "Over" in status or "Completed" in status
 
         # ── Pre-game win probability ─────────────────────────────────────────
-        try:
-            mlb_model = _load_mlb_model()
-            mlb_stats = _load_mlb_stats()
-            if away_name in mlb_stats.index and home_name in mlb_stats.index:
-                p_away = _mlb_win_prob(mlb_model, mlb_stats, away_name, home_name, is_home=0)
-            else:
+        # Use cached value from schedule endpoint (computed with real pitcher ERAs)
+        # so the chart's "Pre" point matches what the schedule card showed.
+        cached_pred = _mlb_game_pred_cache.get(cache_key)
+        if cached_pred:
+            p_away = cached_pred["away_win_prob"] / 100.0
+        else:
+            # Fetch pitcher ERAs directly so the detail page matches the schedule card
+            away_sp_id2 = away_info.get("probablePitcher", {}).get("id")
+            home_sp_id2 = home_info.get("probablePitcher", {}).get("id")
+            ids2 = [pid for pid in [away_sp_id2, home_sp_id2] if pid]
+            eras2 = _fetch_pitcher_eras_batch(ids2) if ids2 else {}
+            away_era2 = eras2.get(away_sp_id2) if away_sp_id2 else None
+            home_era2 = eras2.get(home_sp_id2) if home_sp_id2 else None
+            try:
+                mlb_model = _load_mlb_model()
+                mlb_stats = _load_mlb_stats()
+                if away_name in mlb_stats.index and home_name in mlb_stats.index:
+                    p_away = _mlb_win_prob(mlb_model, mlb_stats, away_name, home_name, is_home=0,
+                                           sp_era_override=away_era2,
+                                           opp_sp_era_override=home_era2)
+                else:
+                    p_away = 0.5
+            except Exception:
                 p_away = 0.5
-        except Exception:
-            p_away = 0.5
         p_home = 1.0 - p_away
 
         # ── Inning-by-inning win probability ─────────────────────────────────

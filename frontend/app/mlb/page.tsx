@@ -337,6 +337,7 @@ function PredictionsLog({ log, loading, error }: { log: MLBPredEntry[]; loading:
 
 function ConfidencePicks({ games, loading }: { games: MLBGame[]; loading: boolean }) {
   const picks = games
+    .filter(g => !g.status.startsWith("Final") && g.status !== "Game Over" && g.status !== "Completed")
     .map(g => ({
       team: g.predicted_winner,
       opp:  g.predicted_winner === g.away_team ? g.home_team : g.away_team,

@@ -62,6 +62,15 @@ function getLogoUrl(t: string): string {
 
 function getNick(t: string) { return t.split(" ").slice(-1)[0]; }
 
+function gradientColor(pct: number): string {
+  const hue = Math.max(0, Math.min(120, ((pct - 40) / 35) * 120));
+  return `hsl(${Math.round(hue)}, 80%, 42%)`;
+}
+function gradientBarColor(pct: number): string {
+  const hue = Math.max(0, Math.min(120, ((pct - 40) / 35) * 120));
+  return `hsl(${Math.round(hue)}, 75%, 50%)`;
+}
+
 function fmtDate(d: string): string {
   try {
     const [y, mo, day] = d.split("-").map(Number);
@@ -139,10 +148,6 @@ export default function MLBPredictionsPage() {
     return { label: `${min}%+`, total: subset.length, correct: c, pct };
   });
 
-  const accuracyColor = accuracy >= 60
-    ? "text-green-600 dark:text-green-400"
-    : accuracy >= 55 ? "text-yellow-600 dark:text-yellow-400"
-    : "text-red-500 dark:text-red-400";
 
   return (
     <main className="px-4 md:px-6 py-6 md:py-8">
@@ -261,12 +266,11 @@ export default function MLBPredictionsPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-500">Accuracy</span>
-                    <span className={`text-sm font-bold ${accuracyColor}`}>{accuracy}%</span>
+                    <span className="text-sm font-bold" style={{ color: gradientColor(accuracy) }}>{accuracy}%</span>
                   </div>
                   {visible.length > 0 && (
                     <div className="mt-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${accuracy >= 60 ? "bg-green-500" : accuracy >= 55 ? "bg-yellow-400" : "bg-red-400"}`}
-                        style={{ width: `${accuracy}%` }} />
+                      <div className="h-full rounded-full" style={{ width: `${accuracy}%`, background: gradientBarColor(accuracy) }} />
                     </div>
                   )}
                 </div>
@@ -284,15 +288,10 @@ export default function MLBPredictionsPage() {
                         <div key={m}>
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{m}</span>
-                            <span className={`text-xs font-bold ${
-                              pct >= 60 ? "text-green-600 dark:text-green-400"
-                              : pct >= 50 ? "text-yellow-600 dark:text-yellow-400"
-                              : "text-red-500 dark:text-red-400"
-                            }`}>{pct}% <span className="text-gray-400 font-normal">{mc}/{mt}</span></span>
+                            <span className="text-xs font-bold" style={{ color: gradientColor(pct) }}>{pct}% <span className="text-gray-400 font-normal">{mc}/{mt}</span></span>
                           </div>
                           <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${pct >= 60 ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-red-400"}`}
-                              style={{ width: `${pct}%` }} />
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: gradientBarColor(pct) }} />
                           </div>
                         </div>
                       );
@@ -313,17 +312,12 @@ export default function MLBPredictionsPage() {
                           {t.pct === null ? (
                             <span className="text-xs text-gray-400">—</span>
                           ) : (
-                            <span className={`text-xs font-bold ${
-                              t.pct >= 60 ? "text-green-600 dark:text-green-400"
-                              : t.pct >= 50 ? "text-yellow-600 dark:text-yellow-400"
-                              : "text-red-500 dark:text-red-400"
-                            }`}>{t.pct}% <span className="text-gray-400 font-normal">{t.correct}/{t.total}</span></span>
+                            <span className="text-xs font-bold" style={{ color: gradientColor(t.pct) }}>{t.pct}% <span className="text-gray-400 font-normal">{t.correct}/{t.total}</span></span>
                           )}
                         </div>
                         {t.pct !== null && (
                           <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${t.pct >= 60 ? "bg-green-500" : t.pct >= 50 ? "bg-yellow-400" : "bg-red-400"}`}
-                              style={{ width: `${t.pct}%` }} />
+                            <div className="h-full rounded-full" style={{ width: `${t.pct}%`, background: gradientBarColor(t.pct) }} />
                           </div>
                         )}
                       </div>
