@@ -86,10 +86,29 @@ STATUS_WEIGHTS: dict[str, float] = {
     "Out": 1.0, "Doubtful": 0.75, "Questionable": 0.5, "Day-To-Day": 0.25,
 }
 
+ROUND_NAMES = {1: "First Round", 2: "Conference Semifinals", 3: "Conference Finals", 4: "NBA Finals"}
+
+
+def _playoff_round(game_id: str) -> int:
+    try:
+        s = str(int(game_id))
+        if len(s) == 8:
+            return int(s[5])
+        if len(s) == 10:
+            return int(s[7])
+        return 0
+    except Exception:
+        return 0
+
+
 # ── Caches ────────────────────────────────────────────────────────────────────
 _odds_cache:      dict[str, dict] = {}
 _odds_cache_time: dict[str, float] = {}
 _ODDS_TTL = 1800.0
+
+_predictions_log_cache: dict | None = None
+_predictions_log_cache_time: float = 0.0
+_PREDICTIONS_LOG_TTL = 300.0
 
 _PREGAME_ODDS_FILE = ROOT / "data" / "pregame_odds.json"
 _pregame_odds: dict[str, dict] = {}
@@ -601,3 +620,80 @@ def get_schedule(days: int = 7):
             continue
 
     return {"schedule": schedule}
+
+
+@router.get("/predictions_log")
+def get_predictions_log(n: int = 5):
+    global _predictions_log_cache, _predictions_log_cache_time
+
+    now = time.time()
+    if _predictions_log_cache is not None and (now - _predictions_log_cache_time) < _PREDICTIONS_LOG_TTL:
+        cached = _predictions_log_cache.get("log", [])
+        return {"log": cached[:n]}
+
+    try:
+        from nba_api.stats.endpoints import leaguegamelog
+        abbr_to_team = {v: k for k, v in TEAM_TO_ABBR.items()}
+        model         = _load_model()
+        stats_by_name = _load_stats_by_name()
+
+        log: list[dict] = []
+
+        for season_type in ("Playoffs", "Regular Season"):
+            time.sleep(0.6)
+            df = leaguegamelog.LeagueGameLog(
+                season="2025-26", season_type_all_star=season_type
+            ).get_data_frames()[0]
+
+            home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)].copy()
+            home_rows = home_rows.sort_values("GAME_DATE", ascending=False)
+            away_rows = df[df["MATCHUP"].str.contains(" @ ", na=False)].set_index("GAME_ID")
+
+            for _, row in home_rows.iterrows():
+                parts = row["MATCHUP"].split(" vs. ")
+                if len(parts) != 2:
+                    continue
+                home_abbr, away_abbr = parts[0].strip(), parts[1].strip()
+                home_team = abbr_to_team.get(home_abbr)
+                away_team = abbr_to_team.get(away_abbr)
+                if not home_team or not away_team:
+                    continue
+                if home_team not in stats_by_name.index or away_team not in stats_by_name.index:
+                    continue
+                try:
+                    p_away = _game_prob(model, stats_by_name, away_team, home_team, team_a_is_home=False)
+                except Exception:
+                    continue
+                predicted_winner = away_team if p_away >= 0.5 else home_team
+                predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
+                actual_winner    = home_team if row["WL"] == "W" else away_team
+                home_score = int(row["PTS"]) if "PTS" in row.index and pd.notna(row["PTS"]) else None
+                away_score = None
+                game_id    = str(row["GAME_ID"]) if "GAME_ID" in row.index else ""
+                if game_id and game_id in away_rows.index:
+                    away_row   = away_rows.loc[game_id]
+                    away_score = int(away_row["PTS"]) if "PTS" in away_row.index and pd.notna(away_row["PTS"]) else None
+
+                round_label = ROUND_NAMES.get(_playoff_round(game_id), "Playoffs") if season_type == "Playoffs" else "Regular Season"
+
+                log.append({
+                    "game_id":          game_id,
+                    "date":             row["GAME_DATE"],
+                    "away_team":        away_team,
+                    "home_team":        home_team,
+                    "predicted_winner": predicted_winner,
+                    "predicted_prob":   predicted_prob,
+                    "actual_winner":    actual_winner,
+                    "correct":          predicted_winner == actual_winner,
+                    "away_score":       away_score,
+                    "home_score":       home_score,
+                    "away_win_prob":    round(p_away * 100, 1),
+                    "home_win_prob":    round((1 - p_away) * 100, 1),
+                    "round":            round_label,
+                })
+
+        _predictions_log_cache      = {"log": log}
+        _predictions_log_cache_time = now
+        return {"log": log[:n]}
+    except Exception:
+        return {"log": []}
