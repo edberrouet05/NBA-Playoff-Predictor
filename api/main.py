@@ -98,7 +98,7 @@ TEAM_TO_ABBR = {
 app = FastAPI(title="NBA Playoff Predictor")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],  # same as the previous Render backend: Vercel previews + prod + localhost
     allow_methods=["*"],
     allow_headers=["*"],
 )
