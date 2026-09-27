@@ -6,6 +6,7 @@ Builds NFL features from nflverse open data and outputs:
   data/nfl/nfl_game_features_current.csv  — per-game feature rows for every current-season
                                             game (played → pre-game values, upcoming → latest)
   data/nfl/nfl_qb_ratings.csv             — shrunk EPA/dropback for every QB (API QB overrides)
+  data/nfl/nfl_power_history.csv          — every team's state entering each week (power-index trend)
   data/processed/nfl_training_data.csv    — labelled rows for model training
 
 Sources (no API key, cached under data/nfl/raw/):
@@ -195,7 +196,7 @@ def load_games() -> pd.DataFrame:
 
 def load_pbp(seasons: list[int]) -> pd.DataFrame:
     """Play-by-play for the given seasons (past seasons cached; current season refreshed)."""
-    cols = ["game_id", "posteam", "defteam", "epa", "pass", "rush", "qb_dropback", "qb_epa", "id"]
+    cols = ["game_id", "posteam", "defteam", "epa", "pass", "rush", "qb_dropback", "qb_epa", "id", "play_type"]
     frames = []
     for season in seasons:
         path = RAW_DIR / f"play_by_play_{season}.csv.gz"
@@ -218,7 +219,8 @@ def load_pbp(seasons: list[int]) -> pd.DataFrame:
 def summarise_pbp(pbp: pd.DataFrame) -> tuple[dict, dict]:
     """Return per-game team EPA and per-game QB dropback totals.
 
-    team_game[(game_id, team)] = {off_epa, off_pass_epa, def_epa, def_pass_epa}
+    team_game[(game_id, team)] = {off_epa, off_pass_epa, def_epa, def_pass_epa,   (per play)
+                                  off_pts, def_pts, st_pts}                         (per game totals)
     qb_game[game_id]           = [(qb_id, epa_sum, dropbacks), ...]
     """
     plays = pbp[((pbp["pass"] == 1) | (pbp["rush"] == 1)) & pbp["epa"].notna() & pbp["posteam"].notna()]
@@ -238,6 +240,18 @@ def summarise_pbp(pbp: pd.DataFrame) -> tuple[dict, dict]:
         team_game.setdefault(key, {})["def_epa"] = v
     for key, v in dfnp.items():
         team_game.setdefault(key, {})["def_pass_epa"] = v
+
+    # Per-game EPA totals ≈ points added: offense, defense allowed, special teams
+    for key, v in plays.groupby(["game_id", "posteam"])["epa"].sum().items():
+        team_game.setdefault(key, {})["off_pts"] = v
+    for key, v in plays.groupby(["game_id", "defteam"])["epa"].sum().items():
+        team_game.setdefault(key, {})["def_pts"] = v
+    # Special-teams EPA is from the possession team's view (receiving team on kickoffs/punts)
+    st = pbp[pbp["play_type"].isin(["kickoff", "punt", "field_goal", "extra_point"]) & pbp["epa"].notna()]
+    st_for = st.groupby(["game_id", "posteam"])["epa"].sum()
+    st_against = st.groupby(["game_id", "defteam"])["epa"].sum()
+    for key in set(st_for.index) | set(st_against.index):
+        team_game.setdefault(key, {})["st_pts"] = st_for.get(key, 0.0) - st_against.get(key, 0.0)
 
     db = pbp[(pbp["qb_dropback"] == 1) & pbp["qb_epa"].notna() & pbp["id"].notna()]
     agg = db.groupby(["game_id", "id"])["qb_epa"].agg(["sum", "count"]).reset_index()
@@ -276,7 +290,7 @@ class Elo:
 
 class TeamEPA:
     """Exponentially-weighted EPA per play, shrunk toward league average (0)."""
-    KEYS = ("off_epa", "off_pass_epa", "def_epa", "def_pass_epa")
+    KEYS = ("off_epa", "off_pass_epa", "def_epa", "def_pass_epa", "off_pts", "def_pts", "st_pts")
 
     def __init__(self):
         self.sums: dict[str, dict[str, list[float]]] = defaultdict(lambda: {k: [0.0, 0.0] for k in self.KEYS})
@@ -345,11 +359,24 @@ def build_features(games: pd.DataFrame, team_game: dict, qb_game: dict, first_ro
     season_record: dict[tuple[str, int], list[float]] = defaultdict(lambda: [0.0, 0.0, 0.0])  # games, win pts, point diff
 
     rows: list[dict] = []
+    snapshots: list[dict] = []      # current season: every team's state entering each week
+    snap_week = 0
+    week_games: dict[int, list[bool]] = defaultdict(list)   # current season: week -> [completed?]
     for g in games.itertuples(index=False):
         season, home, away = int(g.season), g.home_team, g.away_team
         if home not in TEAM_NAMES or away not in TEAM_NAMES:
             continue
         completed = not pd.isna(g.home_score) and not pd.isna(g.away_score)
+
+        if season == CURRENT_SEASON and g.game_type == "REG" and int(g.week) > snap_week:
+            snap_week = int(g.week)
+            for team in TEAM_NAMES:
+                snapshots.append({"week": snap_week, "team": team,
+                                  "elo": round(elo.start_game(team, season), 1),
+                                  **{k: round(v, 4) for k, v in epa.value(team, season).items()},
+                                  "qb_epa": round(qbs.rating(last_qb.get(team)), 4)})
+        if season == CURRENT_SEASON and g.game_type == "REG":
+            week_games[int(g.week)].append(completed)
         neutral = g.location == "Neutral"
 
         elo_h, elo_a = elo.start_game(home, season), elo.start_game(away, season)
@@ -460,7 +487,13 @@ def build_features(games: pd.DataFrame, team_game: dict, qb_game: dict, first_ro
             "prev_season_point_diff_per_game": round(prev[2] / prev[0], 2) if prev[0] else 0.0,
             "win_pct_last5": l5, "point_diff_last5": pd5,
         }
-    return pd.DataFrame(rows), state, qbs
+    # Keep snapshots up to the last fully completed week: "entering week N" is last
+    # week's ranking once week N is over, which is what the power-index trend compares to
+    full_weeks = [w for w, done in week_games.items() if done and all(done)]
+    snaps = pd.DataFrame(snapshots)
+    if not snaps.empty:
+        snaps = snaps[snaps["week"] <= max(full_weeks, default=1)]
+    return pd.DataFrame(rows), state, qbs, snaps
 
 
 # ── Current-season team table (inference + standings page) ──────────────────────
@@ -478,13 +511,15 @@ def get_espn_standings(season: int) -> dict[str, dict]:
                 name  = entry.get("team", {}).get("displayName", "")
                 stats = {s["name"]: s.get("value") for s in entry.get("stats", [])}
                 w, l, t = (float(stats.get(k, 0) or 0) for k in ("wins", "losses", "ties"))
+                result.setdefault(name, {}).update(
+                    conference=conf.get("abbreviation") or conf.get("name", ""), division=div.get("name", ""))
                 gp = w + l + t
                 pd_ = float(stats.get("pointDifferential", 0) or 0)
-                result[name] = {
+                result[name].update({
                     "wins": int(w), "losses": int(l), "ties": int(t), "games_played": int(gp),
                     "win_pct": round((w + 0.5 * t) / gp, 3) if gp > 0 else 0.5,
                     "point_diff_per_game": round(pd_ / gp, 2) if gp > 0 else 0.0,
-                }
+                })
     return result
 
 
@@ -502,7 +537,8 @@ def build_current_stats(state: dict) -> pd.DataFrame:
     for abbr, s in state.items():
         name = TEAM_NAMES[abbr]
         cur = standings.get(name, {"wins": 0, "losses": 0, "ties": 0, "games_played": 0,
-                                   "win_pct": 0.5, "point_diff_per_game": 0.0})
+                                   "win_pct": 0.5, "point_diff_per_game": 0.0,
+                                   "conference": "", "division": ""})
         rows.append({"team_id": team_ids.get(name), "team_name": name, "abbr": abbr, **cur, **s})
 
     df = pd.DataFrame(rows)
@@ -537,7 +573,9 @@ if __name__ == "__main__":
     del pbp
 
     _progress("\nBuilding features...")
-    rows, state, qbs = build_features(games, team_game, qb_game, first_row_season=TRAIN_SEASONS[0])
+    rows, state, qbs, snaps = build_features(games, team_game, qb_game, first_row_season=TRAIN_SEASONS[0])
+    snaps.to_csv(NFL_DIR / "nfl_power_history.csv", index=False)
+    _progress(f"  Saved: {NFL_DIR / 'nfl_power_history.csv'}  (weeks {sorted(snaps['week'].unique().tolist()) if not snaps.empty else []})")
 
     train_df = rows[rows["season"].isin(TRAIN_SEASONS) & rows["win"].notna()].copy()
     train_df["win"] = train_df["win"].astype(int)

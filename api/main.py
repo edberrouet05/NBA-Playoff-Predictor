@@ -2580,118 +2580,297 @@ _nfl_proj_cache: dict | None = None
 _nfl_proj_cache_time: float = 0.0
 _NFL_PROJ_TTL = 600.0  # 10 minutes
 NFL_SIMS = 10_000
+NFL_MARGIN_SD = 13.5   # SD of NFL final margins — converts win probability <-> point spread
+NFL_HFA_PTS = 1.5      # home-field edge in points for simulated playoff games
+NFL_POWER_HISTORY_PATH = ROOT / "data" / "nfl" / "nfl_power_history.csv"
+
+
+def _nfl_fetch_standings() -> dict[str, dict]:
+    """{team: {wins, losses, ties, conference, division}} from ESPN (live), falling back to
+    the team table written by nfl/pipeline.py when ESPN is unreachable."""
+    import json, urllib.request
+    try:
+        req = urllib.request.Request(f"{NFL_STANDINGS_BASE}?season={NFL_CURRENT_SEASON}&level=3", headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+    except Exception:
+        stats = _load_nfl_stats()
+        if "division" not in stats.columns:
+            raise
+        return {t: {"wins": int(r["wins"]), "losses": int(r["losses"]), "ties": int(r["ties"]),
+                    "conference": r["conference"], "division": r["division"]}
+                for t, r in stats.iterrows()}
+    out: dict[str, dict] = {}
+    for conf in data.get("children", []):
+        conf_abbr = conf.get("abbreviation") or conf.get("name", "")
+        for div in conf.get("children", []):
+            for entry in div.get("standings", {}).get("entries", []):
+                st = {x["name"]: float(x.get("value") or 0) for x in entry.get("stats", [])}
+                out[entry.get("team", {}).get("displayName", "")] = {
+                    "wins": int(st.get("wins", 0)), "losses": int(st.get("losses", 0)), "ties": int(st.get("ties", 0)),
+                    "conference": conf_abbr, "division": div.get("name", ""),
+                }
+    return out
+
+
+def _nfl_split_schedule() -> tuple[int, list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+    """(current week, played, remaining) regular-season games as (event id, home, away).
+
+    Earlier weeks count as played; this week's games are played once ESPN marks them final.
+    """
+    games = _load_nfl_game_features()
+    try:
+        week_data = get_nfl_week()
+        cur_week = int(week_data.get("week", 1))
+        done_this_week = {str(g["game_id"]) for g in week_data.get("games", []) if g.get("status_state") == "post"}
+    except Exception:
+        # ESPN unreachable: trust the results recorded by the last pipeline run
+        done_this_week = {gid for gid, rows in games.items()
+                          if not pd.isna(next(iter(rows.values())).get("win"))}
+        pending = [int(next(iter(rows.values()))["week"]) for gid, rows in games.items() if gid not in done_this_week]
+        cur_week = min(pending, default=18)
+    played, remaining = [], []
+    for gid, rows in games.items():
+        r = next((x for x in rows.values() if x.get("home") == 1), None) or next(iter(rows.values()))
+        game = (gid, r["team_name"], r["opp_name"])
+        week = int(r.get("week", 0))
+        if week < cur_week or (week == cur_week and gid in done_this_week):
+            played.append(game)
+        else:
+            remaining.append(game)
+    return cur_week, played, remaining
+
+
+def _nfl_power_ratings(state: pd.DataFrame) -> pd.Series:
+    """Expected point margin vs an average team on a neutral field, from the model.
+
+    Each team is scored against a synthetic league-average opponent (mean Elo, EPA and
+    QB rating); the head-to-head win probability is converted to points via NFL_MARGIN_SD.
+    """
+    from statistics import NormalDist
+    model = _load_nfl_model()
+    net = state["off_epa"] - state["def_epa"]
+    zero = {f: 0.0 for f in NFL_FEATURES}
+    rows = []
+    for t in state.index:
+        diff = {"elo_diff": state.at[t, "elo"] - state["elo"].mean(),
+                "net_epa_diff": net[t] - net.mean(),
+                "qb_epa_diff": state.at[t, "qb_epa"] - state["qb_epa"].mean()}
+        rows.append({**zero, **diff})
+        rows.append({**zero, **{k: -v for k, v in diff.items()}})
+    raw = model.predict_proba(pd.DataFrame(rows)[NFL_FEATURES])[:, 1].reshape(-1, 2)
+    p = np.clip(raw[:, 0] / raw.sum(axis=1), 1e-4, 1 - 1e-4)
+    nd = NormalDist()
+    return pd.Series([NFL_MARGIN_SD * nd.inv_cdf(float(x)) for x in p], index=state.index)
+
+
+def _nfl_current_power() -> pd.Series:
+    stats = _load_nfl_stats()
+    return _nfl_power_ratings(stats[["elo", "off_epa", "def_epa", "qb_epa"]])
 
 
 @app.get("/api/nfl/projections")
 def get_nfl_projections():
-    """Monte Carlo of the rest of the regular season → playoff / division / #1-seed odds.
+    """Monte Carlo of the rest of the season and the playoffs.
 
-    Current records come from ESPN standings; every remaining game is simulated with
-    the model's pre-game probability (held fixed — ratings don't update mid-simulation).
-    Seeding follows the NFL format (4 division winners + 3 wild cards per conference);
-    ties in the win column are broken at random rather than by the official tiebreakers.
+    Regular season: current records from ESPN; every remaining game uses the model's
+    pre-game probability (held fixed — ratings don't update mid-simulation). Seeding
+    follows the NFL format (4 division winners + 3 wild cards per conference); ties in
+    the win column are broken at random rather than by the official tiebreakers.
+    Playoffs: single elimination, #1 seed bye, games decided from power ratings with a
+    small home edge for the higher seed (Super Bowl neutral).
     """
-    import json, urllib.request
     global _nfl_proj_cache, _nfl_proj_cache_time
+    from scipy.special import ndtr
     now = _time_mod.time()
     if _nfl_proj_cache is not None and (now - _nfl_proj_cache_time) < _NFL_PROJ_TTL:
         return _nfl_proj_cache
 
     try:
-        req = urllib.request.Request(f"{NFL_STANDINGS_BASE}?season={NFL_CURRENT_SEASON}&level=3", headers=NFL_UA)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            standings = json.loads(resp.read())
+        standings = _nfl_fetch_standings()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"NFL standings fetch failed: {e}")
-
-    teams: list[str] = []
-    conf_of: dict[str, str] = {}
-    div_of: dict[str, str] = {}
-    base_wins: dict[str, float] = {}
-    for conf in standings.get("children", []):
-        conf_abbr = conf.get("abbreviation") or conf.get("name", "")
-        for div in conf.get("children", []):
-            for entry in div.get("standings", {}).get("entries", []):
-                name = entry.get("team", {}).get("displayName", "")
-                st = {x["name"]: float(x.get("value") or 0) for x in entry.get("stats", [])}
-                teams.append(name)
-                conf_of[name], div_of[name] = conf_abbr, div.get("name", "")
-                base_wins[name] = st.get("wins", 0.0) + 0.5 * st.get("ties", 0.0)
+    teams = list(standings)
     idx = {t: i for i, t in enumerate(teams)}
+    conf_of = {t: s["conference"] for t, s in standings.items()}
+    div_of = {t: s["division"] for t, s in standings.items()}
 
-    # Remaining games: later weeks from the precomputed schedule + this week's unfinished games
-    week_data = get_nfl_week()
-    cur_week = int(week_data.get("week", 1))
-    done_this_week = {str(g["game_id"]) for g in week_data.get("games", []) if g.get("status_state") == "post"}
+    cur_week, _, remaining_games = _nfl_split_schedule()
     model, stats = _load_nfl_model(), _load_nfl_stats()
-    pairs: list[tuple[int, int]] = []   # (home idx, away idx)
-    feat_rows: list[dict] = []          # home row, away row per game — scored in one batch
-    for gid, rows in _load_nfl_game_features().items():
-        home_row = next((r for r in rows.values() if r.get("home") == 1), None) or next(iter(rows.values()))
-        away_name = home_row["opp_name"]
-        home_name = home_row["team_name"]
-        week = int(home_row.get("week", 0))
-        if week < cur_week or (week == cur_week and gid in done_this_week):
-            continue
+    pairs, feat_rows = [], []
+    for gid, home_name, away_name in remaining_games:
         if home_name not in idx or away_name not in idx:
             continue
-        r_home, r_away = _nfl_rows_for_game(gid, home_name, away_name) or             _nfl_rows_from_team_state(stats, home_name, away_name, 1)
+        r_home, r_away = _nfl_rows_for_game(gid, home_name, away_name) or \
+            _nfl_rows_from_team_state(stats, home_name, away_name, 1)
         pairs.append((idx[home_name], idx[away_name]))
         feat_rows += [r_home, r_away]
 
-    remaining: list[tuple[int, int, float]] = []   # (home idx, away idx, P(home wins))
+    rng = np.random.default_rng()
+    n_t = len(teams)
+    wins = np.tile(np.array([standings[t]["wins"] + 0.5 * standings[t]["ties"] for t in teams], float), (NFL_SIMS, 1))
     if pairs:
         raw = model.predict_proba(pd.DataFrame(feat_rows)[NFL_FEATURES])[:, 1].reshape(-1, 2)
         p_home = raw[:, 0] / raw.sum(axis=1)   # same head-to-head normalisation as _nfl_win_prob
-        remaining = [(h, a, float(p)) for (h, a), p in zip(pairs, p_home)]
-
-    rng = np.random.default_rng()
-    n_t = len(teams)
-    wins = np.tile(np.array([base_wins[t] for t in teams]), (NFL_SIMS, 1))
-    if remaining:
-        h_idx = np.array([g[0] for g in remaining])
-        a_idx = np.array([g[1] for g in remaining])
-        p = np.array([g[2] for g in remaining])
-        home_won = rng.random((NFL_SIMS, len(remaining))) < p
+        h_idx, a_idx = np.array([p[0] for p in pairs]), np.array([p[1] for p in pairs])
+        home_won = rng.random((NFL_SIMS, len(pairs))) < p_home
         np.add.at(wins, (slice(None), h_idx), home_won.astype(float))
         np.add.at(wins, (slice(None), a_idx), (~home_won).astype(float))
     noisy = wins + rng.random(wins.shape) * 1e-3   # random tiebreak
 
+    power = _nfl_current_power()
+    pw = np.array([float(power.get(t, 0.0)) for t in teams])
+    rows_ix = np.arange(NFL_SIMS)
+
+    def play(home: np.ndarray, away: np.ndarray, hfa: float) -> np.ndarray:
+        p = ndtr((pw[home] - pw[away] + hfa) / NFL_MARGIN_SD)
+        return np.where(rng.random(NFL_SIMS) < p, home, away)
+
     made = np.zeros((NFL_SIMS, n_t), bool)
     div_win = np.zeros((NFL_SIMS, n_t), bool)
     top_seed = np.zeros((NFL_SIMS, n_t), bool)
-    rows_ix = np.arange(NFL_SIMS)
-    for conf in set(conf_of.values()):
+    conf_champ = np.zeros((NFL_SIMS, n_t), bool)
+    champs = []
+    for conf in sorted(set(conf_of.values())):
         c_teams = [idx[t] for t in teams if conf_of[t] == conf]
         leaders = []
-        for div in {div_of[teams[i]] for i in c_teams}:
+        for div in sorted({div_of[teams[i]] for i in c_teams}):
             d_teams = np.array([i for i in c_teams if div_of[teams[i]] == div])
             leader = d_teams[noisy[:, d_teams].argmax(axis=1)]
             div_win[rows_ix, leader] = True
             leaders.append(leader)
-        leaders = np.stack(leaders, axis=1)                       # (sims, 4)
-        best = leaders[rows_ix, noisy[rows_ix[:, None], leaders].argmax(axis=1)]
-        top_seed[rows_ix, best] = True
+        leaders = np.stack(leaders, axis=1)                                   # (sims, 4)
+        order = np.argsort(-noisy[rows_ix[:, None], leaders], axis=1)
+        div_seeds = np.take_along_axis(leaders, order, axis=1)               # seeds 1-4
         c_arr = np.array(c_teams)
         wc_score = np.where(div_win[:, c_arr], -np.inf, noisy[:, c_arr])
-        wc = c_arr[np.argsort(-wc_score, axis=1)[:, :3]]
-        made[rows_ix[:, None], wc] = True
-    made |= div_win
+        wc_seeds = c_arr[np.argsort(-wc_score, axis=1)[:, :3]]               # seeds 5-7
+        seeds = np.concatenate([div_seeds, wc_seeds], axis=1)                # (sims, 7)
+        made[rows_ix[:, None], seeds] = True
+        top_seed[rows_ix, seeds[:, 0]] = True
+
+        # Bracket on seed positions (0 = #1 seed); the higher seed hosts
+        def game_pos(hp: np.ndarray, ap: np.ndarray, seeds=seeds) -> np.ndarray:
+            winner = play(seeds[rows_ix, hp], seeds[rows_ix, ap], NFL_HFA_PTS)
+            return np.where(winner == seeds[rows_ix, hp], hp, ap)
+        full = lambda k: np.full(NFL_SIMS, k)
+        wc = np.sort(np.stack([game_pos(full(1), full(6)), game_pos(full(2), full(5)),
+                               game_pos(full(3), full(4))], axis=1), axis=1)
+        d1 = game_pos(full(0), wc[:, 2])             # #1 seed hosts the lowest survivor
+        d2 = game_pos(wc[:, 0], wc[:, 1])
+        champ = seeds[rows_ix, game_pos(np.minimum(d1, d2), np.maximum(d1, d2))]
+        conf_champ[rows_ix, champ] = True
+        champs.append(champ)
+
+    sb = play(champs[0], champs[1], 0.0)
+    sb_win = np.zeros((NFL_SIMS, n_t), bool)
+    sb_win[rows_ix, sb] = True
 
     out = [{
         "team":           t,
         "conference":     conf_of[t],
         "division":       div_of[t],
+        "power":          round(float(pw[i]), 1),
         "projected_wins": round(float(wins[:, i].mean()), 1),
         "playoff_pct":    round(float(made[:, i].mean()) * 100, 1),
         "division_pct":   round(float(div_win[:, i].mean()) * 100, 1),
         "top_seed_pct":   round(float(top_seed[:, i].mean()) * 100, 1),
+        "conf_pct":       round(float(conf_champ[:, i].mean()) * 100, 1),
+        "sb_win_pct":     round(float(sb_win[:, i].mean()) * 100, 1),
     } for t, i in idx.items()]
-    out.sort(key=lambda r: (-r["playoff_pct"], -r["projected_wins"]))
+    out.sort(key=lambda r: (-r["sb_win_pct"], -r["playoff_pct"]))
 
     result = {"season": NFL_CURRENT_SEASON, "week": cur_week, "simulations": NFL_SIMS,
-              "games_remaining": len(remaining), "teams": out}
+              "games_remaining": len(pairs), "teams": out}
     _nfl_proj_cache, _nfl_proj_cache_time = result, now
+    return result
+
+
+_nfl_power_cache: dict | None = None
+_nfl_power_cache_time: float = 0.0
+
+
+@app.get("/api/nfl/power")
+def get_nfl_power():
+    """Power index: model-based rating (points vs an average team, neutral field), rank,
+    rank change since the start of the latest week, EPA-based offense / defense /
+    special-teams components, strength of schedule and efficiency stats."""
+    global _nfl_power_cache, _nfl_power_cache_time
+    now = _time_mod.time()
+    if _nfl_power_cache is not None and (now - _nfl_power_cache_time) < _NFL_PROJ_TTL:
+        return _nfl_power_cache
+
+    try:
+        standings = _nfl_fetch_standings()
+    except Exception:
+        standings = {}
+    stats = _load_nfl_stats()
+    power = _nfl_current_power()
+    rank = power.rank(ascending=False, method="first").astype(int)
+
+    prev_rank: pd.Series | None = None
+    prev_week = None
+    if NFL_POWER_HISTORY_PATH.exists():
+        hist = pd.read_csv(NFL_POWER_HISTORY_PATH)
+        if not hist.empty:
+            prev_week = int(hist["week"].max())
+            name_of = {str(stats.at[n, "abbr"]): n for n in stats.index}
+            snap = hist[hist["week"] == prev_week].copy()
+            snap["team_name"] = snap["team"].map(name_of)
+            snap = snap.dropna(subset=["team_name"]).set_index("team_name")[["elo", "off_epa", "def_epa", "qb_epa"]]
+            prev_rank = _nfl_power_ratings(snap).rank(ascending=False, method="first").astype(int)
+
+    # Strength of schedule: mean opponent power, ranked (1 = toughest)
+    _, played, remaining = _nfl_split_schedule()
+    opp_played: dict[str, list[float]] = {t: [] for t in stats.index}
+    opp_left: dict[str, list[float]] = {t: [] for t in stats.index}
+    for games, bucket in ((played, opp_played), (remaining, opp_left)):
+        for _, home, away in games:
+            if home in bucket and away in power.index:
+                bucket[home].append(float(power[away]))
+            if away in bucket and home in power.index:
+                bucket[away].append(float(power[home]))
+    sos_rank = pd.Series({t: np.mean(v) if v else np.nan for t, v in opp_played.items()}).rank(ascending=False, method="min")
+    rem_rank = pd.Series({t: np.mean(v) if v else np.nan for t, v in opp_left.items()}).rank(ascending=False, method="min")
+
+    def rk(series: pd.Series, t: str, ascending: bool = False) -> int:
+        return int(series.rank(ascending=ascending, method="min")[t])
+
+    off_pts, def_pts, st_pts = stats["off_pts"], -stats["def_pts"], stats["st_pts"]
+    teams = []
+    for t in stats.index:
+        rec = standings.get(t, {})
+        teams.append({
+            "team":   t,
+            "wins":   rec.get("wins", int(stats.at[t, "wins"])),
+            "losses": rec.get("losses", int(stats.at[t, "losses"])),
+            "ties":   rec.get("ties", int(stats.at[t, "ties"])),
+            "power":  round(float(power[t]), 1),
+            "rank":   int(rank[t]),
+            "trend":  None if prev_rank is None or t not in prev_rank.index else int(prev_rank[t] - rank[t]),
+            "off":    round(float(off_pts[t]), 1),
+            "def":    round(float(def_pts[t]), 1),
+            "st":     round(float(st_pts[t]), 1),
+            "sos_rank":     None if pd.isna(sos_rank[t]) else int(sos_rank[t]),
+            "rem_sos_rank": None if pd.isna(rem_rank[t]) else int(rem_rank[t]),
+            "elo":     round(float(stats.at[t, "elo"])),
+            "qb_name": str(stats.at[t, "qb_name"]),
+            "qb_epa":  round(float(stats.at[t, "qb_epa"]), 3),
+            # Efficiencies (EPA per play; defense = EPA allowed, lower is better)
+            "off_epa":      round(float(stats.at[t, "off_epa"]), 3),
+            "def_epa":      round(float(stats.at[t, "def_epa"]), 3),
+            "off_pass_epa": round(float(stats.at[t, "off_pass_epa"]), 3),
+            "def_pass_epa": round(float(stats.at[t, "def_pass_epa"]), 3),
+            "off_epa_rank":      rk(stats["off_epa"], t),
+            "def_epa_rank":      rk(stats["def_epa"], t, ascending=True),
+            "off_pass_epa_rank": rk(stats["off_pass_epa"], t),
+            "def_pass_epa_rank": rk(stats["def_pass_epa"], t, ascending=True),
+            "st_rank":           rk(st_pts, t),
+            "qb_rank":           rk(stats["qb_epa"], t),
+        })
+    teams.sort(key=lambda r: r["rank"])
+    result = {"season": NFL_CURRENT_SEASON, "trend_since_week": prev_week, "teams": teams}
+    _nfl_power_cache, _nfl_power_cache_time = result, now
     return result
 
 

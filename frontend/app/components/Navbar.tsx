@@ -65,6 +65,15 @@ function IconLog() {
   );
 }
 
+function IconPower() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 15l4.5-5 3 3L16 5" />
+      <path d="M11.5 5H16v4.5" />
+    </svg>
+  );
+}
+
 // ── Sport detection ────────────────────────────────────────────────────────────
 
 type Sport = "nba" | "mlb" | "nfl" | "nhl";
@@ -150,6 +159,12 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       Icon: IconStandings,
       label: "Standings",
       isActive: (p) => p === "/nfl/standings",
+    },
+    {
+      href: "/nfl/power",
+      Icon: IconPower,
+      label: "Power",
+      isActive: (p) => p === "/nfl/power",
     },
     {
       href: "/nfl/predictions",
