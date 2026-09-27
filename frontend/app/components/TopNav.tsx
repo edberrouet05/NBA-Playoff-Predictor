@@ -3,8 +3,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SPORT_LINKS = [
-  { href: "/",    label: "NBA", match: (p: string) => !p.startsWith("/mlb") },
+  { href: "/",    label: "NBA", match: (p: string) => !p.startsWith("/mlb") && !p.startsWith("/nfl") },
   { href: "/mlb", label: "MLB", match: (p: string) =>  p.startsWith("/mlb") },
+  { href: "/nfl", label: "NFL", match: (p: string) =>  p.startsWith("/nfl") },
   { href: "#",    label: "NHL", match: () => false, disabled: true },
 ];
 

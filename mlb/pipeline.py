@@ -1,38 +1,78 @@
 #!/usr/bin/env python3
 """
-MLB Data Pipeline — Step 2
-Fetches 5 seasons of regular-season game data, engineers features,
-and outputs:
-  data/mlb/mlb_stats_current.csv   — live team stats for inference
+MLB Data Pipeline — v3 (game-by-game, leak-free)
+Walks every regular-season game since 2019 in date order, recording each team's
+state BEFORE the game, and outputs:
+  data/mlb/mlb_stats_current.csv       — live team table (season stats + model state)
+  data/mlb/mlb_pitcher_ratings.csv     — current FIP rating for every starter (API lookups)
   data/processed/mlb_training_data.csv — labelled rows for model training
 
-Key improvements vs v1:
-  - Actual game-day starter ERA per training row (fixes train/inference mismatch)
-  - Exponentially weighted recent win% (last 20 games, recency-weighted)
-  - 5 seasons of data (2021–2025) instead of 3
+Features (one row per team per game, mirrored for the opponent):
+  - Elo rating (K=4, 1/3 regression between seasons)
+  - Starting pitcher FIP to date: decayed across his previous starts, shrunk toward
+    league average for pitchers with little history. (v2 used the pitcher's
+    full-season ERA, which leaked the results of future games into training.)
+  - Bullpen quality (decayed bullpen ERA) and fatigue (bullpen innings in the
+    3 days before the game)
+  - Recent offense (decayed OPS) and recent run differential
+  - Home field
+
+Sources: MLB Stats API — schedules, team game logs (hitting + pitching) and
+starting-pitcher game logs. Past seasons are cached under data/mlb/raw/.
 
 Run:
     python mlb/pipeline.py
 
-Estimated runtime: ~15-20 minutes (API rate limiting).
+Estimated runtime: ~10 min on first run, ~2-3 min afterwards (only the current
+season is re-downloaded).
 """
 
-import statsapi
 import json
-import urllib.request
-import pandas as pd
-from pathlib import Path
-from datetime import date
 import time
+import urllib.request
+import zoneinfo
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+import pandas as pd
+import statsapi
 
 ROOT       = Path(__file__).parent.parent
 MLB_DIR    = ROOT / "data" / "mlb"
+RAW_DIR    = MLB_DIR / "raw"
 PROCESSED  = ROOT / "data" / "processed"
-MLB_DIR.mkdir(parents=True, exist_ok=True)
-PROCESSED.mkdir(parents=True, exist_ok=True)
+for _d in (MLB_DIR, RAW_DIR, PROCESSED):
+    _d.mkdir(parents=True, exist_ok=True)
 
-TRAIN_SEASONS  = [2021, 2022, 2023, 2024, 2025, 2026]
 CURRENT_SEASON = 2026
+DATA_SEASONS   = list(range(2019, CURRENT_SEASON + 1))  # 2019-2020 = burn-in for ratings
+TRAIN_SEASONS  = list(range(2021, CURRENT_SEASON))
+
+API = "https://statsapi.mlb.com/api/v1"
+UA  = {"User-Agent": "CourtEdge/1.0"}
+
+# ── Model constants ─────────────────────────────────────────────────────────────
+ELO_MEAN, ELO_K, ELO_HFA, ELO_REVERT = 1500.0, 4.0, 24.0, 1 / 3
+
+GAME_DECAY   = 0.97   # per-game decay for team offense / run diff (~23-game half-life)
+SEASON_DECAY = 0.50   # extra decay at a season boundary
+PRIOR_GAMES  = 10.0   # pseudo-games of league-average play
+
+LG_OBP, LG_SLG = 0.315, 0.405
+PRIOR_PA, PRIOR_AB = 380.0, 340.0
+
+SP_DECAY      = 0.95  # per-start decay (~13-start half-life)
+SP_PRIOR_IP   = 25.0
+LG_FIP        = 4.20
+SP_UNKNOWN    = 4.40  # rating for a starter with no history (debuts skew below average)
+FIP_CONST     = 3.10
+
+BP_DECAY      = 0.98  # per-game decay for bullpen ERA
+BP_PRIOR_IP   = 60.0
+LG_BP_ERA     = 4.10
+FATIGUE_DAYS  = 3
 
 # ── Park factors (2023-2025 multi-year average, neutral = 1.0) ─────────────────
 PARK_FACTORS: dict[str, float] = {
@@ -85,6 +125,39 @@ def _progress(msg: str) -> None:
     print(msg, flush=True)
 
 
+def _ip(val: object) -> float:
+    """MLB innings notation ("5.2" = 5⅔) → float innings."""
+    s = str(val or "0")
+    whole, _, frac = s.partition(".")
+    try:
+        return float(whole) + (float(frac) / 3 if frac else 0.0)
+    except ValueError:
+        return 0.0
+
+
+def _get(url: str, retries: int = 3, timeout: int = 30) -> dict:
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=UA)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read())
+        except Exception:
+            if attempt == retries - 1:
+                raise
+            time.sleep(1.5 * (attempt + 1))
+    return {}
+
+
+def _cached(name: str, season: int, fetch):
+    """Past seasons are immutable → cache on disk; the current season is always refetched."""
+    path = RAW_DIR / f"{name}_{season}.json"
+    if season < CURRENT_SEASON and path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    data = fetch()
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return data
+
+
 # ── Team catalogue ─────────────────────────────────────────────────────────────
 
 def get_all_teams() -> dict[int, str]:
@@ -92,49 +165,259 @@ def get_all_teams() -> dict[int, str]:
     return {t["id"]: t["name"] for t in raw.get("teams", [])}
 
 
-# ── Pitcher ERA lookup ─────────────────────────────────────────────────────────
+# ── Raw data fetchers ──────────────────────────────────────────────────────────
 
-def get_pitcher_era_lookup(season: int) -> dict[int, float]:
-    """Return {player_id: era} for all pitchers with >= 5 IP in a season.
-
-    Used to substitute actual game-day starter ERA into each training row
-    instead of the team's rotation-average sp_era.
-    """
-    url = (
-        f"https://statsapi.mlb.com/api/v1/stats"
-        f"?stats=season&group=pitching&season={season}"
-        f"&sportId=1&gameType=R&limit=1000"
-    )
-    lookup: dict[int, float] = {}
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            data = json.loads(resp.read())
-        for group in data.get("stats", []):
-            for split in group.get("splits", []):
-                pid  = split.get("player", {}).get("id")
-                stat = split.get("stat", {})
-                era_str = str(stat.get("era", "") or "")
-                ip_str  = str(stat.get("inningsPitched", "0") or "0")
-                try:
-                    parts = ip_str.split(".")
-                    ip = float(parts[0]) + (float(parts[1]) / 3 if len(parts) > 1 and parts[1] else 0.0)
-                except Exception:
-                    ip = 0.0
-                if pid and ip >= 5.0:
-                    try:
-                        era = float(era_str) if era_str not in ("", "-.--") else 4.50
-                        # Cap absurd small-sample ERAs
-                        lookup[pid] = min(era, 18.0)
-                    except (ValueError, TypeError):
-                        lookup[pid] = 4.50
-    except Exception as e:
-        _progress(f"    WARNING: pitcher ERA lookup failed for {season}: {e}")
-    _progress(f"  Pitcher ERA lookup: {len(lookup)} pitchers for {season}")
-    return lookup
+def fetch_schedule(season: int) -> list[dict]:
+    """All regular-season games (any status) with probable/actual starters."""
+    def _fetch():
+        games: dict[int, dict] = {}
+        for start, end in ((f"{season}-03-01", f"{season}-05-31"),
+                           (f"{season}-06-01", f"{season}-08-15"),
+                           (f"{season}-08-16", f"{season}-11-30")):
+            data = _get(f"{API}/schedule?sportId=1&gameType=R&startDate={start}&endDate={end}"
+                        f"&hydrate=probablePitcher&limit=2000")
+            for d in data.get("dates", []):
+                for g in d.get("games", []):
+                    t = g.get("teams", {})
+                    home, away = t.get("home", {}), t.get("away", {})
+                    games[g["gamePk"]] = {   # later entries (resumed games) overwrite earlier ones
+                        "game_pk":     g["gamePk"],
+                        "date":        d.get("date"),
+                        "game_number": g.get("gameNumber", 1),
+                        "state":       g.get("status", {}).get("codedGameState", ""),
+                        "home_id":     home.get("team", {}).get("id"),
+                        "away_id":     away.get("team", {}).get("id"),
+                        "home_score":  home.get("score"),
+                        "away_score":  away.get("score"),
+                        "home_sp":     home.get("probablePitcher", {}).get("id"),
+                        "away_sp":     away.get("probablePitcher", {}).get("id"),
+                        "home_sp_name": home.get("probablePitcher", {}).get("fullName"),
+                        "away_sp_name": away.get("probablePitcher", {}).get("fullName"),
+                    }
+            time.sleep(0.3)
+        return sorted(games.values(), key=lambda g: (g["date"], g["game_number"], g["game_pk"]))
+    return _cached("schedule", season, _fetch)
 
 
-# ── Starter / bullpen ERA split ────────────────────────────────────────────────
+def fetch_team_logs(season: int, team_ids: list[int]) -> dict[str, dict]:
+    """{"team_id:gamePk": {"pit": stat, "hit": stat}} from team game logs."""
+    def _one(args):
+        tid, group = args
+        try:
+            data = _get(f"{API}/teams/{tid}/stats?stats=gameLog&group={group}&season={season}&gameType=R")
+        except Exception as e:
+            _progress(f"    WARNING: {group} log failed team={tid} season={season}: {e}")
+            return tid, group, []
+        splits = data.get("stats", [{}])[0].get("splits", []) if data.get("stats") else []
+        return tid, group, [(s.get("game", {}).get("gamePk"), s.get("stat", {})) for s in splits]
+
+    def _fetch():
+        out: dict[str, dict] = {}
+        jobs = [(tid, grp) for tid in team_ids for grp in ("pitching", "hitting")]
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            for tid, group, rows in ex.map(_one, jobs):
+                for pk, stat in rows:
+                    out.setdefault(f"{tid}:{pk}", {})["pit" if group == "pitching" else "hit"] = stat
+        return out
+    return _cached("team_logs", season, _fetch)
+
+
+def fetch_pitcher_logs(season: int, pitcher_ids: list[int]) -> dict[str, list]:
+    """{pitcher_id: [{pk, team_id, date, gs, ip, er, hr, bb, hbp, k, name}, ...]}"""
+    def _one(pid):
+        try:
+            data = _get(f"{API}/people/{pid}/stats?stats=gameLog&group=pitching&season={season}&gameType=R")
+        except Exception:
+            return pid, []
+        rows = []
+        for s in (data.get("stats", [{}])[0].get("splits", []) if data.get("stats") else []):
+            st = s.get("stat", {})
+            rows.append({
+                "pk": s.get("game", {}).get("gamePk"), "team_id": s.get("team", {}).get("id"),
+                "gs": int(st.get("gamesStarted", 0) or 0), "ip": _ip(st.get("inningsPitched")),
+                "er": int(st.get("earnedRuns", 0) or 0), "hr": int(st.get("homeRuns", 0) or 0),
+                "bb": int(st.get("baseOnBalls", 0) or 0), "hbp": int(st.get("hitByPitch", 0) or 0),
+                "k": int(st.get("strikeOuts", 0) or 0), "name": s.get("player", {}).get("fullName", ""),
+            })
+        return pid, rows
+
+    def _fetch():
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            return {str(pid): rows for pid, rows in ex.map(_one, pitcher_ids)}
+    return _cached("pitcher_logs", season, _fetch)
+
+
+# ── Rolling state ──────────────────────────────────────────────────────────────
+
+class TeamState:
+    def __init__(self):
+        self.elo = ELO_MEAN
+        self.season: int | None = None
+        # offense: decayed on-base numerator/denominator, total bases, at-bats
+        self.ob = self.pa = self.tb = self.ab = 0.0
+        self.rd = self.rd_w = 0.0              # run differential sum / weight
+        self.bp_er = self.bp_ip = 0.0          # bullpen earned runs / innings (decayed)
+        self.bp_usage: list[tuple[str, float]] = []  # (date, bullpen IP)
+        self.results: list[tuple[bool, int]] = []    # current-season (won, run diff)
+
+    def new_season(self, season: int) -> None:
+        if self.season is not None and self.season != season:
+            self.elo = self.elo * (1 - ELO_REVERT) + ELO_MEAN * ELO_REVERT
+            for k in ("ob", "pa", "tb", "ab", "rd", "rd_w"):
+                setattr(self, k, getattr(self, k) * SEASON_DECAY)
+            self.results = []
+        self.season = season
+
+    def ops(self) -> float:
+        obp = (self.ob + LG_OBP * PRIOR_PA) / (self.pa + PRIOR_PA)
+        slg = (self.tb + LG_SLG * PRIOR_AB) / (self.ab + PRIOR_AB)
+        return obp + slg
+
+    def run_diff(self) -> float:
+        return self.rd / (self.rd_w + PRIOR_GAMES)
+
+    def bullpen_era(self) -> float:
+        return 9 * (self.bp_er + LG_BP_ERA / 9 * BP_PRIOR_IP) / (self.bp_ip + BP_PRIOR_IP)
+
+    def bullpen_ip_before(self, game_date: str) -> float:
+        d = date.fromisoformat(game_date)
+        lo = (d - timedelta(days=FATIGUE_DAYS)).isoformat()
+        return sum(ip for dt, ip in self.bp_usage[-12:] if lo <= dt < game_date)
+
+    def form(self) -> tuple[float, float]:
+        r20, r15 = self.results[-20:], self.results[-15:]
+        if not r20:
+            return 0.5, 0.0
+        w = [0.88 ** i for i in range(len(r20) - 1, -1, -1)]
+        return (round(sum(wi * won for wi, (won, _) in zip(w, r20)) / sum(w), 3),
+                round(sum(rd for _, rd in r15) / len(r15), 2))
+
+
+class PitcherRatings:
+    def __init__(self):
+        self.num: dict[int, float] = defaultdict(float)   # decayed 13HR + 3(BB+HBP) − 2K
+        self.ip: dict[int, float] = defaultdict(float)
+        self.starts: dict[int, int] = defaultdict(int)
+        self.name: dict[int, str] = {}
+
+    def fip(self, pid: int | None) -> float:
+        if not pid or pid not in self.ip:
+            return SP_UNKNOWN
+        return (self.num[pid] + SP_PRIOR_IP * (LG_FIP - FIP_CONST)) / (self.ip[pid] + SP_PRIOR_IP) + FIP_CONST
+
+    def update(self, pid: int, line: dict) -> None:
+        self.num[pid] = self.num[pid] * SP_DECAY + 13 * line["hr"] + 3 * (line["bb"] + line["hbp"]) - 2 * line["k"]
+        self.ip[pid]  = self.ip[pid] * SP_DECAY + line["ip"]
+        self.starts[pid] += 1
+        if line.get("name"):
+            self.name[pid] = line["name"]
+
+
+# ── Feature builder ────────────────────────────────────────────────────────────
+
+def build_features(all_teams: dict[int, str]) -> tuple[pd.DataFrame, dict[int, TeamState], PitcherRatings]:
+    teams: dict[int, TeamState] = defaultdict(TeamState)
+    sps = PitcherRatings()
+    rows: list[dict] = []
+    team_ids = list(all_teams)
+
+    for season in DATA_SEASONS:
+        _progress(f"\n[{season}] schedule...")
+        sched = fetch_schedule(season)
+        final = [g for g in sched if g["state"] in ("F", "O") and g["home_id"] and g["away_id"]
+                 and g["home_score"] is not None and g["away_score"] is not None]
+        _progress(f"  {len(final)} final games — team logs...")
+        tlogs = fetch_team_logs(season, team_ids)
+        sp_ids = sorted({pid for g in sched for pid in (g["home_sp"], g["away_sp"]) if pid})
+        _progress(f"  pitcher logs for {len(sp_ids)} starters...")
+        plogs = fetch_pitcher_logs(season, sp_ids)
+
+        # actual starter line per (gamePk, team)
+        starter_line: dict[tuple[int, int], tuple[int, dict]] = {}
+        for pid, games in plogs.items():
+            for ln in games:
+                if ln["gs"] == 1 and ln["pk"]:
+                    starter_line[(ln["pk"], ln["team_id"])] = (int(pid), ln)
+
+        n_rows = 0
+        for g in final:
+            hid, aid, pk = g["home_id"], g["away_id"], g["game_pk"]
+            h, a = teams[hid], teams[aid]
+            h.new_season(season)
+            a.new_season(season)
+
+            side = {}
+            for tid, st, sp_key in ((hid, h, "home_sp"), (aid, a, "away_sp")):
+                pid, line = starter_line.get((pk, tid), (g[sp_key], None))
+                side[tid] = {"sp": pid, "line": line, "sp_fip": sps.fip(pid),
+                             "elo": st.elo, "ops": st.ops(), "rd": st.run_diff(),
+                             "bp_era": st.bullpen_era(), "bp_ip3": st.bullpen_ip_before(g["date"])}
+
+            home_won = g["home_score"] > g["away_score"]
+            if season in TRAIN_SEASONS and g["home_score"] != g["away_score"]:
+                for tid, oid, is_home in ((hid, aid, 1), (aid, hid, 0)):
+                    t, o = side[tid], side[oid]
+                    rows.append({
+                        "season": season, "game_date": g["date"], "game_pk": pk,
+                        "team_name": all_teams.get(tid, str(tid)), "opp_name": all_teams.get(oid, str(oid)),
+                        "home": is_home,
+                        "elo_diff":           round(t["elo"] - o["elo"], 1),
+                        "sp_fip":             round(t["sp_fip"], 3),
+                        "opp_sp_fip":         round(o["sp_fip"], 3),
+                        "sp_fip_diff":        round(t["sp_fip"] - o["sp_fip"], 3),
+                        "ops_diff":           round(t["ops"] - o["ops"], 4),
+                        "run_diff_ewm_diff":  round(t["rd"] - o["rd"], 3),
+                        "bullpen_era_diff":   round(t["bp_era"] - o["bp_era"], 3),
+                        "bullpen_ip3":        round(t["bp_ip3"], 2),
+                        "opp_bullpen_ip3":    round(o["bp_ip3"], 2),
+                        "bullpen_ip3_diff":   round(t["bp_ip3"] - o["bp_ip3"], 2),
+                        "win": int(home_won == bool(is_home)),
+                    })
+                    n_rows += 1
+
+            # ── post-game updates ──────────────────────────────────────────────
+            margin = g["home_score"] - g["away_score"]
+            dr = h.elo + ELO_HFA - a.elo
+            shift = ELO_K * ((1.0 if home_won else 0.0) - 1 / (1 + 10 ** (-dr / 400)))
+            h.elo += shift
+            a.elo -= shift
+
+            for tid, st, m in ((hid, h, margin), (aid, a, -margin)):
+                st.rd = st.rd * GAME_DECAY + m
+                st.rd_w = st.rd_w * GAME_DECAY + 1
+                st.results.append((m > 0, m))
+                log = tlogs.get(f"{tid}:{pk}", {})
+                hit, pit = log.get("hit"), log.get("pit")
+                if hit:
+                    for k in ("ob", "pa", "tb", "ab"):
+                        setattr(st, k, getattr(st, k) * GAME_DECAY)
+                    st.ob += sum(int(hit.get(k, 0) or 0) for k in ("hits", "baseOnBalls", "hitByPitch"))
+                    st.pa += sum(int(hit.get(k, 0) or 0) for k in ("atBats", "baseOnBalls", "hitByPitch", "sacFlies"))
+                    st.tb += int(hit.get("totalBases", 0) or 0)
+                    st.ab += int(hit.get("atBats", 0) or 0)
+                sp_line = side[tid]["line"]
+                if pit and sp_line:
+                    bp_ip = max(0.0, _ip(pit.get("inningsPitched")) - sp_line["ip"])
+                    bp_er = max(0, int(pit.get("earnedRuns", 0) or 0) - sp_line["er"])
+                    st.bp_er = st.bp_er * BP_DECAY + bp_er
+                    st.bp_ip = st.bp_ip * BP_DECAY + bp_ip
+                    st.bp_usage.append((g["date"], bp_ip))
+                if sp_line:
+                    sps.update(side[tid]["sp"], sp_line)
+
+        # names for probable starters without a line yet (debuts)
+        for g in sched:
+            for k in ("home", "away"):
+                if g[f"{k}_sp"] and g[f"{k}_sp_name"]:
+                    sps.name.setdefault(g[f"{k}_sp"], g[f"{k}_sp_name"])
+        _progress(f"  {n_rows} training rows")
+
+    for st in teams.values():
+        st.new_season(CURRENT_SEASON)
+    return pd.DataFrame(rows), teams, sps
+
+
+# ── Season team stats (display + standings) ────────────────────────────────────
 
 def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float, float]:
     """Return (sp_era, bullpen_era, fip) for a team/season."""
@@ -164,12 +447,7 @@ def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float, float]:
             bb     = int(s.get("baseOnBalls",  0) or 0)
             hbp    = int(s.get("hitBatsmen",   0) or 0)
             k      = int(s.get("strikeOuts",   0) or 0)
-            ip_str = str(s.get("inningsPitched", "0") or "0")
-            try:
-                parts = ip_str.split(".")
-                ip = float(parts[0]) + (float(parts[1]) / 3 if len(parts) > 1 and parts[1] else 0.0)
-            except Exception:
-                ip = 0.0
+            ip = _ip(s.get("inningsPitched"))
             if ip < 1.0:
                 continue
             if gs >= 3:
@@ -191,8 +469,6 @@ def get_pitcher_splits(team_id: int, season: int) -> tuple[float, float, float]:
         fip = 4.20
     return sp_era, bullpen_era, fip
 
-
-# ── Season team stats ──────────────────────────────────────────────────────────
 
 def get_team_stats(team_id: int, season: int) -> dict:
     time.sleep(0.25)
@@ -234,332 +510,13 @@ def get_team_stats(team_id: int, season: int) -> dict:
         return {}
 
 
-# ── Season schedule with pitcher hydration ─────────────────────────────────────
-
-def get_season_schedule_with_pitchers(season: int) -> list[dict]:
-    """Fetch all final regular-season games for a season via direct MLB Stats API.
-
-    Uses hydrate=probablePitcher to get the starting pitcher for each game.
-    For completed games the 'probable' pitcher field = actual starter ~95% of the time.
-    """
-    games: list[dict] = []
-    halves = [
-        (f"{season}-04-01", f"{season}-06-30"),
-        (f"{season}-07-01", f"{season}-09-30"),
-    ]
-    for start, end in halves:
-        url = (
-            f"https://statsapi.mlb.com/api/v1/schedule"
-            f"?sportId=1&gameType=R"
-            f"&startDate={start}&endDate={end}"
-            f"&hydrate=probablePitcher"
-            f"&limit=1500"
-        )
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                data = json.loads(resp.read())
-            for date_entry in data.get("dates", []):
-                for g in date_entry.get("games", []):
-                    state = g.get("status", {}).get("codedGameState", "")
-                    if state not in ("F", "O"):   # F=Final, O=Game Over
-                        continue
-                    t    = g.get("teams", {})
-                    home = t.get("home", {})
-                    away = t.get("away", {})
-                    games.append({
-                        "game_id":         g.get("gamePk"),
-                        "game_date":       g.get("gameDate", "")[:10],
-                        "status":          "Final",
-                        "home_id":         home.get("team", {}).get("id"),
-                        "away_id":         away.get("team", {}).get("id"),
-                        "home_name":       home.get("team", {}).get("name", ""),
-                        "away_name":       away.get("team", {}).get("name", ""),
-                        "home_score":      home.get("score", 0),
-                        "away_score":      away.get("score", 0),
-                        # Actual starting pitcher IDs (None if unknown)
-                        "home_pitcher_id": home.get("probablePitcher", {}).get("id"),
-                        "away_pitcher_id": away.get("probablePitcher", {}).get("id"),
-                    })
-        except Exception as e:
-            _progress(f"    WARNING: schedule fetch failed {start}–{end}: {e}")
-        time.sleep(0.5)
-    return games
-
-
-# ── Training data builder ──────────────────────────────────────────────────────
-
-def build_training_data(
-    seasons: list[int],
-    all_teams: dict[int, str],
-) -> pd.DataFrame:
-    """
-    For each season:
-      1. Fetch season-level team stats (used for most features).
-      2. Fetch per-pitcher ERA lookup (used to substitute actual starter ERA).
-      3. Fetch the full schedule WITH starter IDs hydrated.
-      4. For each completed game, emit two rows — one per team perspective —
-         where sp_era / opp_sp_era reflect the ACTUAL pitchers who started.
-    """
-    name_to_id = {v: k for k, v in all_teams.items()}
-    all_rows: list[dict] = []
-
-    for season in seasons:
-        # ── 1. PREVIOUS season team stats (avoids data leakage) ───────────────
-        # Using season-1 stats prevents the model from seeing future game outcomes
-        # embedded in season totals. Rolling features still use current-season history.
-        prev_season = season - 1
-        _progress(f"\n[{season}] Fetching {prev_season} team stats (prior for {season} games)...")
-        team_stats: dict[int, dict] = {}
-        for i, (tid, tname) in enumerate(all_teams.items()):
-            s = get_team_stats(tid, prev_season)
-            if s:
-                s["team_name"] = tname
-                team_stats[tid] = s
-            if (i + 1) % 10 == 0:
-                _progress(f"    {i+1}/{len(all_teams)} done")
-        _progress(f"  Got prev-season ({prev_season}) stats for {len(team_stats)} teams")
-
-        # ── 2. Per-pitcher ERA lookup ──────────────────────────────────────────
-        _progress(f"[{season}] Fetching pitcher ERA lookup...")
-        era_lookup = get_pitcher_era_lookup(season)
-        time.sleep(0.5)
-
-        # ── 3. Schedule with starter IDs ──────────────────────────────────────
-        _progress(f"[{season}] Fetching schedule with pitchers...")
-        games = get_season_schedule_with_pitchers(season)
-        final_games = [g for g in games if g.get("status") == "Final"]
-        _progress(f"  {len(final_games)} final games")
-
-        # Count how many games have identified starters
-        has_starters = sum(
-            1 for g in final_games
-            if g.get("home_pitcher_id") and g.get("away_pitcher_id")
-        )
-        _progress(f"  {has_starters}/{len(final_games)} games have starter IDs "
-                  f"({100*has_starters//max(len(final_games),1)}%)")
-
-        # ── 4. Build chronological win/loss history (for rest + form) ─────────
-        team_history: dict[int, list[dict]] = {tid: [] for tid in all_teams}
-        for g in final_games:
-            hid = g.get("home_id") or name_to_id.get(g.get("home_name", ""))
-            aid = g.get("away_id") or name_to_id.get(g.get("away_name", ""))
-            if not hid or not aid:
-                continue
-            try:
-                hs  = int(g.get("home_score", 0) or 0)
-                as_ = int(g.get("away_score", 0) or 0)
-            except (ValueError, TypeError):
-                continue
-            gd = g.get("game_date", "")
-            if hid in team_history:
-                team_history[hid].append({"date": gd, "won": hs > as_, "run_diff": hs - as_})
-            if aid in team_history:
-                team_history[aid].append({"date": gd, "won": as_ > hs, "run_diff": as_ - hs})
-
-        # ── 5. Emit training rows ──────────────────────────────────────────────
-        _progress(f"[{season}] Building training rows...")
-        season_rows = 0
-
-        def _ctx(tid: int, gd_obj: date | None) -> tuple[int, float, float]:
-            """Return (rest_days, weighted_win_pct, run_diff_last15)."""
-            hist = team_history.get(tid, [])
-            past = [h for h in hist if h["date"] < str(gd_obj)] if gd_obj else hist
-
-            # Rest days (capped at 7)
-            if past:
-                last_date = date.fromisoformat(past[-1]["date"])
-                rest = min((gd_obj - last_date).days, 7) if gd_obj else 4
-            else:
-                rest = 4
-
-            # Exponentially weighted win% over last 20 games
-            recent = past[-20:]
-            if recent:
-                weights = [0.88 ** i for i in range(len(recent) - 1, -1, -1)]
-                weighted_wins = sum(w * (1.0 if g["won"] else 0.0) for w, g in zip(weights, recent))
-                total_w = sum(weights)
-                pct = weighted_wins / total_w if total_w > 0 else 0.5
-            else:
-                pct = 0.5
-
-            # Average run differential over last 15 games
-            recent15 = past[-15:]
-            rdl15 = sum(h["run_diff"] for h in recent15) / len(recent15) if recent15 else 0.0
-
-            return rest, round(pct, 3), round(rdl15, 2)
-
-        for g in final_games:
-            hid = g.get("home_id") or name_to_id.get(g.get("home_name", ""))
-            aid = g.get("away_id") or name_to_id.get(g.get("away_name", ""))
-            if not hid or not aid:
-                continue
-            if hid not in team_stats or aid not in team_stats:
-                continue
-            try:
-                hs  = int(g.get("home_score", 0) or 0)
-                as_ = int(g.get("away_score", 0) or 0)
-            except (ValueError, TypeError):
-                continue
-
-            gd_str = g.get("game_date", "")
-            try:
-                gd_obj = date.fromisoformat(gd_str) if gd_str else None
-            except ValueError:
-                gd_obj = None
-
-            home_won = hs > as_
-            hs_ = team_stats[hid]
-            as_ = team_stats[aid]
-            hname = hs_["team_name"]
-            aname = as_["team_name"]
-
-            h_rest, h_l10, h_rdl15 = _ctx(hid, gd_obj)
-            a_rest, a_l10, a_rdl15 = _ctx(aid, gd_obj)
-
-            h_fip = float(hs_.get("fip", 4.20))
-            a_fip = float(as_.get("fip", 4.20))
-
-            # ── Actual starter ERA (falls back to rotation avg if unknown) ──
-            h_pitcher_id = g.get("home_pitcher_id")
-            a_pitcher_id = g.get("away_pitcher_id")
-            home_sp = era_lookup.get(h_pitcher_id, hs_.get("sp_era", 4.50)) if h_pitcher_id else hs_.get("sp_era", 4.50)
-            away_sp = era_lookup.get(a_pitcher_id, as_.get("sp_era", 4.50)) if a_pitcher_id else as_.get("sp_era", 4.50)
-
-            for team_s, opp_s, is_home, won, rest, l10, rdl15, opp_rdl15, tname, oname, t_sp, o_sp, t_fip, o_fip in [
-                (hs_,  as_, 1, int(home_won),     h_rest, h_l10, h_rdl15, a_rdl15, hname, aname, home_sp, away_sp, h_fip, a_fip),
-                (as_,  hs_, 0, int(not home_won), a_rest, a_l10, a_rdl15, h_rdl15, aname, hname, away_sp, home_sp, a_fip, h_fip),
-            ]:
-                all_rows.append({
-                    "season":          season,
-                    "game_date":       gd_str,
-                    "team_name":       tname,
-                    "opp_name":        oname,
-                    # Team pitching
-                    "era":             team_s.get("era",         4.50),
-                    "whip":            team_s.get("whip",        1.30),
-                    "k_per9":          team_s.get("k_per9",      8.00),
-                    "bb_per9":         team_s.get("bb_per9",     3.20),
-                    "sp_era":          t_sp,
-                    "bullpen_era":     team_s.get("bullpen_era", 4.00),
-                    # Team hitting
-                    "batting_avg":     team_s.get("batting_avg", 0.250),
-                    "ops":             team_s.get("ops",         0.700),
-                    "obp":             team_s.get("obp",         0.320),
-                    "slg":             team_s.get("slg",         0.420),
-                    "run_diff":        team_s.get("run_diff",    0),
-                    # Opponent stats
-                    "opp_era":         opp_s.get("era",         4.50),
-                    "opp_whip":        opp_s.get("whip",        1.30),
-                    "opp_ops":         opp_s.get("ops",         0.700),
-                    "opp_run_diff":    opp_s.get("run_diff",    0),
-                    "opp_sp_era":      o_sp,
-                    # Differentials
-                    "era_diff":        team_s.get("era",     4.50) - opp_s.get("era",     4.50),
-                    "whip_diff":       team_s.get("whip",    1.30) - opp_s.get("whip",    1.30),
-                    "ops_diff":        team_s.get("ops",     0.700) - opp_s.get("ops",    0.700),
-                    "run_diff_diff":   team_s.get("run_diff", 0)   - opp_s.get("run_diff", 0),
-                    "fip_diff":        round(t_fip - o_fip, 3),
-                    # Context + rolling form
-                    "home":              is_home,
-                    "rest_days":         rest,
-                    "win_pct_last10":    l10,
-                    "run_diff_last15":   rdl15,
-                    "opp_run_diff_last15": opp_rdl15,
-                    "park_factor":       PARK_FACTORS.get(tname, 1.0),
-                    # Target
-                    "win":             won,
-                })
-                season_rows += 1
-
-        _progress(f"  {season_rows} rows built for {season}")
-
-    return pd.DataFrame(all_rows)
-
-
-# ── Current-season rolling form (inference) ───────────────────────────────────
-
-def compute_current_rolling_stats(
-    all_teams: dict[int, str],
-    season: int = CURRENT_SEASON,
-) -> dict[str, dict]:
-    """Fetch last 30 days of completed games and compute per-team rolling stats.
-
-    Returns {team_name: {win_pct_last10, run_diff_last15}}.
-    """
-    import datetime as dt
-    end_date   = dt.date.today()
-    start_date = end_date - dt.timedelta(days=30)
-
-    url = (
-        f"https://statsapi.mlb.com/api/v1/schedule"
-        f"?sportId=1&gameType=R"
-        f"&startDate={start_date}&endDate={end_date}"
-        f"&limit=600"
-    )
-
-    team_history: dict[int, list[dict]] = {tid: [] for tid in all_teams}
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            data = json.loads(resp.read())
-        for date_entry in data.get("dates", []):
-            for g in date_entry.get("games", []):
-                state = g.get("status", {}).get("codedGameState", "")
-                if state not in ("F", "O"):
-                    continue
-                t    = g.get("teams", {})
-                home = t.get("home", {})
-                away = t.get("away", {})
-                hid  = home.get("team", {}).get("id")
-                aid  = away.get("team", {}).get("id")
-                hs   = int(home.get("score", 0) or 0)
-                as_  = int(away.get("score", 0) or 0)
-                gd   = g.get("gameDate", "")[:10]
-                if hid in team_history:
-                    team_history[hid].append({"date": gd, "won": hs > as_, "run_diff": hs - as_})
-                if aid in team_history:
-                    team_history[aid].append({"date": gd, "won": as_ > hs, "run_diff": as_ - hs})
-    except Exception as e:
-        _progress(f"  WARNING: rolling stats fetch failed: {e}")
-        return {}
-
-    result: dict[str, dict] = {}
-    for tid, tname in all_teams.items():
-        hist    = sorted(team_history[tid], key=lambda h: h["date"])
-        r20     = hist[-20:]
-        r15     = hist[-15:]
-
-        if r20:
-            weights = [0.88 ** i for i in range(len(r20) - 1, -1, -1)]
-            ww = sum(w * (1.0 if h["won"] else 0.0) for w, h in zip(weights, r20))
-            win_pct = ww / sum(weights)
-        else:
-            win_pct = 0.5
-
-        rdl15 = sum(h["run_diff"] for h in r15) / len(r15) if r15 else 0.0
-
-        result[tname] = {
-            "win_pct_last10":    round(win_pct, 3),
-            "run_diff_last15":   round(rdl15, 2),
-        }
-
-    _progress(f"  Rolling stats computed for {len(result)} teams")
-    return result
-
-
-# ── Current-season stats (inference) ──────────────────────────────────────────
-
-def build_current_stats(
-    all_teams: dict[int, str],
-    season: int = CURRENT_SEASON,
-) -> pd.DataFrame:
-    """Fetch current-season hitting+pitching stats + W-L for all teams."""
-    _progress(f"\nBuilding current-season stats ({season})...")
+def build_current_stats(all_teams: dict[int, str], state: dict[int, TeamState],
+                        season: int = CURRENT_SEASON) -> pd.DataFrame:
+    """Season stats + W-L (display) merged with the model's current team state."""
+    _progress(f"\nBuilding current-season team table ({season})...")
 
     wl_map: dict[int, tuple[int, int]] = {}
     try:
-        time.sleep(0.5)
         standings = statsapi.standings_data(
             leagueId="103,104", season=season, standingsTypes="regularSeason"
         )
@@ -569,6 +526,9 @@ def build_current_stats(
     except Exception as exc:
         _progress(f"  WARNING: standings fetch failed: {exc}")
 
+    # Bullpen fatigue is measured relative to today's games (US Eastern date)
+    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+
     rows: list[dict] = []
     for tid, tname in all_teams.items():
         s = get_team_stats(tid, season)
@@ -576,6 +536,8 @@ def build_current_stats(
             continue
         w, l = wl_map.get(tid, (0, 0))
         gp = w + l
+        st = state.get(tid, TeamState())
+        l10, rd15 = st.form()
         s.update({
             "team_id":     tid,
             "team_name":   tname,
@@ -583,35 +545,27 @@ def build_current_stats(
             "losses":      l,
             "win_pct":     round(w / gp, 3) if gp else 0.500,
             "park_factor": PARK_FACTORS.get(tname, 1.0),
+            "win_pct_last10":  l10,
+            "run_diff_last15": rd15,
+            # model state
+            "elo":             round(st.elo, 1),
+            "ops_ewm":         round(st.ops(), 4),
+            "run_diff_ewm":    round(st.run_diff(), 3),
+            "bullpen_era_ewm": round(st.bullpen_era(), 3),
+            "bullpen_ip3":     round(st.bullpen_ip_before(today), 2),
+            "state_date":      today,
         })
         rows.append(s)
 
     df = pd.DataFrame(rows)
-
-    # Merge rolling form stats
-    _progress("  Computing rolling form (last 30 days)...")
-    rolling = compute_current_rolling_stats(all_teams, season)
-    if rolling:
-        df["win_pct_last10"]    = df["team_name"].map(lambda n: rolling.get(n, {}).get("win_pct_last10",  0.5))
-        df["run_diff_last15"]   = df["team_name"].map(lambda n: rolling.get(n, {}).get("run_diff_last15", 0.0))
-    else:
-        df["win_pct_last10"]  = 0.5
-        df["run_diff_last15"] = 0.0
-
     out = MLB_DIR / "mlb_stats_current.csv"
     df.to_csv(out, index=False)
-    _progress(f"  Saved: {out}  ({len(df)} teams)\n")
+    _progress(f"  Saved: {out}  ({len(df)} teams)")
 
-    top = df.sort_values("run_diff", ascending=False)[
-        ["team_name", "wins", "losses", "win_pct", "era", "ops", "run_diff"]
-    ]
-    _progress("  Top-5 by run differential:")
-    for _, r in top.head(5).iterrows():
-        _progress(
-            f"    {r['team_name']:28s} "
-            f"W={int(r['wins']):2d} L={int(r['losses']):2d}  "
-            f"ERA={r['era']:.2f}  OPS={r['ops']:.3f}  RunDiff={int(r['run_diff']):+d}"
-        )
+    _progress("  Top-5 by Elo:")
+    for _, r in df.sort_values("elo", ascending=False).head(5).iterrows():
+        _progress(f"    {r['team_name']:24s} W={int(r['wins']):3d} L={int(r['losses']):3d}  Elo={r['elo']:.0f}  "
+                  f"OPS~{r['ops_ewm']:.3f}  BP ERA~{r['bullpen_era_ewm']:.2f}  BP IP(3d)={r['bullpen_ip3']:.1f}")
     return df
 
 
@@ -619,35 +573,33 @@ def build_current_stats(
 
 if __name__ == "__main__":
     _progress("=" * 60)
-    _progress("  MLB Data Pipeline  (v2 — actual starters + 5 seasons)")
-    _progress(f"  Training seasons : {TRAIN_SEASONS}")
-    _progress(f"  Inference season : {CURRENT_SEASON}")
+    _progress("  MLB Data Pipeline  (v3 — game-by-game, leak-free)")
+    _progress(f"  Data seasons     : {DATA_SEASONS[0]}-{DATA_SEASONS[-1]}")
+    _progress(f"  Training seasons : {TRAIN_SEASONS[0]}-{TRAIN_SEASONS[-1]}")
     _progress("=" * 60)
-
     t0 = time.time()
 
     all_teams = get_all_teams()
     _progress(f"\nActive MLB teams : {len(all_teams)}")
 
-    # Step A — current season stats (used by the API at inference time)
-    current_df = build_current_stats(all_teams)
-
-    # Step B — historical training data
-    train_df = build_training_data(TRAIN_SEASONS, all_teams)
-
+    train_df, state, sps = build_features(all_teams)
     out = PROCESSED / "mlb_training_data.csv"
     train_df.to_csv(out, index=False)
 
+    pr = pd.DataFrame([
+        {"pitcher_id": pid, "name": sps.name.get(pid, ""), "sp_fip": round(sps.fip(pid), 3),
+         "ip_weighted": round(sps.ip[pid], 1), "starts": sps.starts[pid]}
+        for pid in sps.ip
+    ]).sort_values("sp_fip")
+    pr.to_csv(MLB_DIR / "mlb_pitcher_ratings.csv", index=False)
+    _progress(f"\n  Saved: {MLB_DIR / 'mlb_pitcher_ratings.csv'}  ({len(pr)} starters)")
+
+    build_current_stats(all_teams, state)
+
     elapsed = round(time.time() - t0)
-    _progress(f"\n{'='*60}")
-    _progress(f"  Done in {elapsed}s  ({elapsed//60}m {elapsed%60}s)")
+    _progress(f"\n{'=' * 60}")
+    _progress(f"  Done in {elapsed // 60}m {elapsed % 60}s")
     _progress(f"  Training rows  : {len(train_df):,}")
     _progress(f"  Win rate       : {train_df['win'].mean():.3f}  (should be ~0.500)")
-    _progress(f"  Seasons        : {sorted(train_df['season'].unique())}")
-    _progress(f"  Starter ERA coverage:")
-    for s in TRAIN_SEASONS:
-        sub = train_df[train_df["season"] == s]
-        # sp_era same as team avg = probable fallback; rough coverage check
-        _progress(f"    {s}: {len(sub):,} rows")
     _progress(f"  Saved          : {out}")
-    _progress(f"{'='*60}")
+    _progress(f"{'=' * 60}")

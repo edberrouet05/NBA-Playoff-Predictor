@@ -105,6 +105,7 @@ app.add_middleware(
 
 
 def _load_model():
+    
     with open(MODEL_PATH, "rb") as f:
         return pickle.load(f)
 
@@ -919,6 +920,8 @@ def _fetch_day(
             "home_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(home_name, [])],
             "away_odds":           game_odds.get("away_odds"),
             "home_odds":           game_odds.get("home_odds"),
+            **_value_bet(round(p_away * 100, 1), round((1 - p_away) * 100, 1),
+                         game_odds.get("away_odds"), game_odds.get("home_odds")),
         })
 
     # Remove scheduled playoff games that belong to an already-completed series
@@ -1271,6 +1274,32 @@ def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
         return {}
 
 
+VALUE_EDGE_MIN = 5.0  # model must beat the no-vig market probability by ≥ 5 points
+
+
+def _value_bet(away_prob_pct: float, home_prob_pct: float,
+               away_odds: float | None, home_odds: float | None) -> dict:
+    """Compare model probabilities with the bookmaker's (decimal odds, vig removed).
+
+    value_side is the side where the model's probability exceeds the market's by
+    at least VALUE_EDGE_MIN points; value_ev is the expected return per unit staked.
+    """
+    empty = {"away_market_prob": None, "home_market_prob": None,
+             "value_side": None, "value_edge": None, "value_ev": None}
+    if not away_odds or not home_odds or away_odds <= 1 or home_odds <= 1:
+        return empty
+    ia, ih = 1 / away_odds, 1 / home_odds
+    mkt_away, mkt_home = ia / (ia + ih) * 100, ih / (ia + ih) * 100
+    edges = {"away": away_prob_pct - mkt_away, "home": home_prob_pct - mkt_home}
+    side = max(edges, key=edges.get)
+    out = {**empty, "away_market_prob": round(mkt_away, 1), "home_market_prob": round(mkt_home, 1)}
+    if edges[side] >= VALUE_EDGE_MIN:
+        prob, odds = (away_prob_pct, away_odds) if side == "away" else (home_prob_pct, home_odds)
+        out.update(value_side=side, value_edge=round(edges[side], 1),
+                   value_ev=round(prob / 100 * odds - 1, 3))
+    return out
+
+
 def _get_game_odds(odds: dict, away: str, home: str) -> dict:
     """Look up odds for a game, trying normalized team names."""
     key = f"{_normalize_team(away)}|{_normalize_team(home)}"
@@ -1283,13 +1312,16 @@ def _get_game_odds(odds: dict, away: str, home: str) -> dict:
 MLB_MODEL_PATH = ROOT / "models" / "mlb_logistic_regression.pkl"
 MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
 
+MLB_PITCHER_RATINGS_PATH = ROOT / "data" / "mlb" / "mlb_pitcher_ratings.csv"
+MLB_SP_UNKNOWN = 4.40  # FIP for a starter with no history (matches mlb/pipeline.py SP_UNKNOWN)
+
+# Order must match mlb/train.py FEATURES exactly
 MLB_FEATURES = [
-    "sp_era", "opp_sp_era",
-    "era_diff", "whip_diff", "fip_diff",
-    "k_per9", "bb_per9",
-    "ops_diff", "run_diff_diff",
-    "home", "rest_days", "win_pct_last10", "park_factor",
-    "run_diff_last15", "opp_run_diff_last15",
+    "home",
+    "elo_diff",
+    "sp_fip_diff",
+    "ops_diff", "run_diff_ewm_diff",
+    "bullpen_era_diff", "bullpen_ip3_diff",
 ]
 
 _mlb_model_cache = None
@@ -1382,53 +1414,53 @@ def _fetch_pitcher_eras_batch(pitcher_ids: list[int], season: int = 2026) -> dic
     return {pid: _pitcher_era_cache[pid] for pid in pitcher_ids if _pitcher_era_cache.get(pid) is not None}
 
 
+_mlb_pitcher_ratings_cache: dict[int, float] | None = None
+
+
+def _load_mlb_pitcher_ratings() -> dict[int, float]:
+    """{pitcher_id: FIP rating to date} written by mlb/pipeline.py."""
+    global _mlb_pitcher_ratings_cache
+    if _mlb_pitcher_ratings_cache is None:
+        _mlb_pitcher_ratings_cache = {}
+        if MLB_PITCHER_RATINGS_PATH.exists():
+            df = pd.read_csv(MLB_PITCHER_RATINGS_PATH)
+            _mlb_pitcher_ratings_cache = dict(zip(df["pitcher_id"].astype(int), df["sp_fip"].astype(float)))
+    return _mlb_pitcher_ratings_cache
+
+
 def _mlb_win_prob(
     model, stats: pd.DataFrame,
     team: str, opp: str, is_home: int,
-    sp_era_override: float | None = None,
-    opp_sp_era_override: float | None = None,
+    sp_id: int | None = None,
+    opp_sp_id: int | None = None,
 ) -> float:
     """Return P(team wins) using the MLB logistic regression.
 
-    sp_era_override / opp_sp_era_override: today's specific starter ERA when
-    available — more accurate than the season rotation average.
+    sp_id / opp_sp_id: today's probable starters, rated by FIP to date; an unknown or
+    unannounced starter gets a slightly below-average rating. Bullpen fatigue in the
+    team table is measured relative to the pipeline's run date, so it's ignored
+    (treated as even) when the table is from an earlier day.
     """
-    def _row(t, o, home, sp_era_ov, opp_sp_era_ov):
-        ts = stats.loc[t]
-        os = stats.loc[o]
+    import datetime, zoneinfo
+    ratings = _load_mlb_pitcher_ratings()
+    today = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+
+    def _row(t, o, home, t_sp, o_sp):
+        ts, os_ = stats.loc[t], stats.loc[o]
+        fresh = str(ts.get("state_date", "")) == today
         return {
-            "era":          float(ts.get("era",         4.50)),
-            "whip":         float(ts.get("whip",        1.30)),
-            "k_per9":       float(ts.get("k_per9",      8.0)),
-            "bb_per9":      float(ts.get("bb_per9",     3.2)),
-            "sp_era":       sp_era_ov if sp_era_ov is not None else float(ts.get("sp_era", 4.50)),
-            "fip_diff":     float(ts.get("fip", 4.20)) - float(os.get("fip", 4.20)),
-            "batting_avg":  float(ts.get("batting_avg", 0.250)),
-            "ops":          float(ts.get("ops",         0.700)),
-            "obp":          float(ts.get("obp",         0.320)),
-            "slg":          float(ts.get("slg",         0.420)),
-            "run_diff":     float(ts.get("run_diff",    0)),
-            "opp_era":      float(os.get("era",         4.50)),
-            "opp_whip":     float(os.get("whip",        1.30)),
-            "opp_ops":      float(os.get("ops",         0.700)),
-            "opp_run_diff": float(os.get("run_diff",    0)),
-            "opp_sp_era":   opp_sp_era_ov if opp_sp_era_ov is not None else float(os.get("sp_era", 4.50)),
-            "era_diff":     float(ts.get("era",     4.50))  - float(os.get("era",     4.50)),
-            "whip_diff":    float(ts.get("whip",    1.30))  - float(os.get("whip",    1.30)),
-            "ops_diff":     float(ts.get("ops",     0.700)) - float(os.get("ops",     0.700)),
-            "run_diff_diff":float(ts.get("run_diff", 0))    - float(os.get("run_diff", 0)),
-            "home":               home,
-            "rest_days":          4,
-            "win_pct_last10":     float(ts.get("win_pct_last10",    0.5)),
-            "park_factor":        float(ts.get("park_factor",       1.0)),
-            "run_diff_last15":    float(ts.get("run_diff_last15",   0.0)),
-            "opp_run_diff_last15": float(os.get("run_diff_last15",  0.0)),
+            "home":              home,
+            "elo_diff":          float(ts.get("elo", 1500)) - float(os_.get("elo", 1500)),
+            "sp_fip_diff":       ratings.get(t_sp, MLB_SP_UNKNOWN) - ratings.get(o_sp, MLB_SP_UNKNOWN),
+            "ops_diff":          float(ts.get("ops_ewm", 0.72)) - float(os_.get("ops_ewm", 0.72)),
+            "run_diff_ewm_diff": float(ts.get("run_diff_ewm", 0.0)) - float(os_.get("run_diff_ewm", 0.0)),
+            "bullpen_era_diff":  float(ts.get("bullpen_era_ewm", 4.1)) - float(os_.get("bullpen_era_ewm", 4.1)),
+            "bullpen_ip3_diff":  (float(ts.get("bullpen_ip3", 0.0)) - float(os_.get("bullpen_ip3", 0.0))) if fresh else 0.0,
         }
 
-    r_team = _row(team, opp, is_home,     sp_era_override,     opp_sp_era_override)
-    r_opp  = _row(opp, team, 1 - is_home, opp_sp_era_override, sp_era_override)
-    p_t = float(model.predict_proba(pd.DataFrame([r_team])[MLB_FEATURES])[0][1])
-    p_o = float(model.predict_proba(pd.DataFrame([r_opp ])[MLB_FEATURES])[0][1])
+    X = pd.DataFrame([_row(team, opp, is_home, sp_id, opp_sp_id),
+                      _row(opp, team, 1 - is_home, opp_sp_id, sp_id)])[MLB_FEATURES]
+    p_t, p_o = (float(p) for p in model.predict_proba(X)[:, 1])
     return p_t / (p_t + p_o)   # normalise so home+away = 100 %
 
 
@@ -1506,8 +1538,8 @@ def _fetch_mlb_today() -> dict:
             try:
                 p_away = _mlb_win_prob(
                     model, stats, away_name, home_name, is_home=0,
-                    sp_era_override=away_sp_era,
-                    opp_sp_era_override=home_sp_era,
+                    sp_id=away_sp_id,
+                    opp_sp_id=home_sp_id,
                 )
             except Exception:
                 p_away = 0.5
@@ -1551,6 +1583,7 @@ def _fetch_mlb_today() -> dict:
                 "home_sp_era":      round(home_sp_era, 2) if home_sp_era is not None else None,
                 "away_odds":        game_odds.get("away_odds"),
                 "home_odds":        game_odds.get("home_odds"),
+                **_value_bet(away_wp, home_wp, game_odds.get("away_odds"), game_odds.get("home_odds")),
             })
 
     return {
@@ -1682,8 +1715,8 @@ def get_mlb_predictions_log(n: int = 500):
                     home_sp_era = starter_eras.get(home_sp_id) if home_sp_id else None
                     try:
                         p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0,
-                                               sp_era_override=away_sp_era,
-                                               opp_sp_era_override=home_sp_era)
+                                               sp_id=away_sp_id,
+                                               opp_sp_id=home_sp_id)
                     except Exception:
                         continue
                     away_win_prob    = round(p_away * 100, 1)
@@ -1814,56 +1847,8 @@ def get_mlb_standings():
 
 @app.get("/api/mlb/stats")
 def get_mlb_model_stats():
-    """Return MLB model accuracy, CV scores, features and coefficients."""
-    model     = _load_mlb_model()
-    estimator = model.named_steps["clf"]
-    coefs     = [round(float(c), 6) for c in estimator.coef_[0]] if hasattr(estimator, "coef_") else []
-
-    cv_acc   = 0.0
-    cv_std   = 0.0
-    cv_folds: list[float] = []
-    n_rows   = 0
-    seasons: list[int] = []
-
-    metrics_path = ROOT / "models" / "mlb_metrics.txt"
-    if metrics_path.exists():
-        for line in metrics_path.read_text().split("\n"):
-            if "Cross-val accuracy" in line:
-                try:
-                    parts = line.split(":")[1].split("+/-")
-                    cv_acc = float(parts[0].strip())
-                    cv_std = float(parts[1].strip()) if len(parts) > 1 else 0.0
-                except Exception:
-                    pass
-            if "Per-fold" in line:
-                try:
-                    raw = line.split(":")[1].strip().strip("[]")
-                    cv_folds = [float(x.replace("np.float64(","").replace(")","").strip())
-                                for x in raw.split(",") if x.strip()]
-                except Exception:
-                    pass
-            if "Training rows" in line:
-                try:
-                    n_rows = int(line.split(":")[1].strip().replace(",", ""))
-                except Exception:
-                    pass
-
-    training_path = ROOT / "data" / "processed" / "mlb_training_data.csv"
-    if training_path.exists():
-        df = pd.read_csv(training_path, usecols=["season"])
-        seasons = sorted(int(s) for s in df["season"].unique())
-        if n_rows == 0:
-            n_rows = len(df)
-
-    return {
-        "accuracy":     round(cv_acc * 100, 2),
-        "cv_std":       round(cv_std * 100, 2),
-        "cv_folds":     [round(f * 100, 1) for f in cv_folds],
-        "n_rows":       n_rows,
-        "seasons":      seasons,
-        "features":     MLB_FEATURES,
-        "coefficients": coefs,
-    }
+    """Return MLB model accuracy, calibration, features and coefficients."""
+    return _model_stats_payload("mlb", MLB_FEATURES)
 
 
 # ── MLB game detail ────────────────────────────────────────────────────────────
@@ -1962,26 +1947,21 @@ def get_mlb_game_detail(game_id: int):
         is_final    = "Final" in status or "Over" in status or "Completed" in status
 
         # ── Pre-game win probability ─────────────────────────────────────────
-        # Use cached value from schedule endpoint (computed with real pitcher ERAs)
+        # Use cached value from schedule endpoint (computed with the probable starters)
         # so the chart's "Pre" point matches what the schedule card showed.
         cached_pred = _mlb_game_pred_cache.get(cache_key)
         if cached_pred:
             p_away = cached_pred["away_win_prob"] / 100.0
         else:
-            # Fetch pitcher ERAs directly so the detail page matches the schedule card
             away_sp_id2 = away_info.get("probablePitcher", {}).get("id")
             home_sp_id2 = home_info.get("probablePitcher", {}).get("id")
-            ids2 = [pid for pid in [away_sp_id2, home_sp_id2] if pid]
-            eras2 = _fetch_pitcher_eras_batch(ids2) if ids2 else {}
-            away_era2 = eras2.get(away_sp_id2) if away_sp_id2 else None
-            home_era2 = eras2.get(home_sp_id2) if home_sp_id2 else None
             try:
                 mlb_model = _load_mlb_model()
                 mlb_stats = _load_mlb_stats()
                 if away_name in mlb_stats.index and home_name in mlb_stats.index:
                     p_away = _mlb_win_prob(mlb_model, mlb_stats, away_name, home_name, is_home=0,
-                                           sp_era_override=away_era2,
-                                           opp_sp_era_override=home_era2)
+                                           sp_id=away_sp_id2,
+                                           opp_sp_id=home_sp_id2)
                 else:
                     p_away = 0.5
             except Exception:
@@ -2145,3 +2125,826 @@ def debug_odds(sport: str = "baseball_mlb"):
         return {"count": len(data), "games": data[:3]}
     except Exception as e:
         return {"error": str(e)}
+
+
+def _model_stats_payload(sport: str, features: list[str]) -> dict:
+    """Model card for /api/{sport}/stats, read from models/{sport}_metrics.json
+    (written by {sport}/train.py). Metrics are for the served logistic regression."""
+    import json
+    path = ROOT / "models" / f"{sport}_metrics.json"
+    if not path.exists():
+        raise HTTPException(status_code=503, detail=f"{sport} metrics not found — run {sport}/train.py")
+    m = json.loads(path.read_text(encoding="utf-8"))
+    lr = m.get("logistic_regression", {})
+    per_season = lr.get("per_season", {})
+    accs = list(per_season.values())
+    return {
+        "accuracy":     round(lr.get("accuracy", 0.0) * 100, 2),
+        "cv_std":       round(float(np.std(accs)) * 100, 2) if accs else 0.0,
+        "cv_folds":     [round(a * 100, 1) for a in accs],
+        "n_rows":       m.get("n_rows", 0),
+        "seasons":      m.get("seasons", []),
+        "features":     features,
+        "coefficients": m.get("coefficients", []),
+        "log_loss":     lr.get("log_loss"),
+        "brier":        lr.get("brier"),
+        "calibration":  lr.get("calibration", []),
+        "vegas":        lr.get("vegas"),
+        "xgboost":      {k: m.get("xgboost", {}).get(k) for k in ("accuracy", "log_loss", "brier")},
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  NFL endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+# Data source: ESPN's public site API (site.api.espn.com). Its edge (Akamai)
+# 403s "browser-ish but incomplete" User-Agents — the bare "Mozilla/5.0" string
+# (same one already used by the NBA injuries fetcher above) passes fine.
+
+NFL_MODEL_PATH   = ROOT / "models" / "nfl_logistic_regression.pkl"
+NFL_STATS_PATH   = ROOT / "data" / "nfl" / "nfl_stats_current.csv"
+NFL_GAME_FEATURES_PATH = ROOT / "data" / "nfl" / "nfl_game_features_current.csv"
+NFL_QB_RATINGS_PATH    = ROOT / "data" / "nfl" / "nfl_qb_ratings.csv"
+NFL_CURRENT_SEASON = 2026
+NFL_BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
+NFL_STANDINGS_BASE = "https://site.api.espn.com/apis/v2/sports/football/nfl/standings"
+NFL_UA = {"User-Agent": "Mozilla/5.0"}
+# nflverse schedule — refreshed for projected starting QBs (injuries / benchings)
+NFL_NFLVERSE_GAMES_URL = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
+NFL_QB_REPLACEMENT = -0.10  # EPA/dropback for a QB with no history (matches nfl/pipeline.py QB_PRIOR)
+
+# Order must match nfl/train.py FEATURES exactly
+NFL_FEATURES = [
+    "home", "rest_diff", "off_bye", "opp_off_bye", "travel_diff_1000km",
+    "elo_diff",
+    "net_epa_diff",
+    "qb_epa_diff", "qb_changed", "opp_qb_changed",
+]
+
+NFL_ABBR: dict[str, str] = {
+    "Arizona Cardinals": "ARI", "Atlanta Falcons": "ATL", "Baltimore Ravens": "BAL",
+    "Buffalo Bills": "BUF", "Carolina Panthers": "CAR", "Chicago Bears": "CHI",
+    "Cincinnati Bengals": "CIN", "Cleveland Browns": "CLE", "Dallas Cowboys": "DAL",
+    "Denver Broncos": "DEN", "Detroit Lions": "DET", "Green Bay Packers": "GB",
+    "Houston Texans": "HOU", "Indianapolis Colts": "IND", "Jacksonville Jaguars": "JAX",
+    "Kansas City Chiefs": "KC", "Las Vegas Raiders": "LV", "Los Angeles Chargers": "LAC",
+    "Los Angeles Rams": "LAR", "Miami Dolphins": "MIA", "Minnesota Vikings": "MIN",
+    "New England Patriots": "NE", "New Orleans Saints": "NO", "New York Giants": "NYG",
+    "New York Jets": "NYJ", "Philadelphia Eagles": "PHI", "Pittsburgh Steelers": "PIT",
+    "San Francisco 49ers": "SF", "Seattle Seahawks": "SEA", "Tampa Bay Buccaneers": "TB",
+    "Tennessee Titans": "TEN", "Washington Commanders": "WSH",
+}
+NFL_COLORS: dict[str, str] = {
+    "ARI": "#a40227", "ATL": "#a71930", "BAL": "#29126f", "BUF": "#00338d",
+    "CAR": "#0085ca", "CHI": "#0b1c3a", "CIN": "#fb4f14", "CLE": "#472a08",
+    "DAL": "#002a5c", "DEN": "#0a2343", "DET": "#0076b6", "GB":  "#204e32",
+    "HOU": "#021018", "IND": "#003b75", "JAX": "#007487", "KC":  "#e31837",
+    "LV":  "#000000", "LAC": "#0080c6", "LAR": "#003594", "MIA": "#008e97",
+    "MIN": "#4f2683", "NE":  "#002a5c", "NO":  "#d3bc8d", "NYG": "#003c7f",
+    "NYJ": "#115740", "PHI": "#06424d", "PIT": "#000000", "SF":  "#aa0000",
+    "SEA": "#002a5c", "TB":  "#bd1c36", "TEN": "#4495d2", "WSH": "#5a1414",
+}
+
+_nfl_model_cache = None
+_nfl_stats_cache: pd.DataFrame | None = None
+
+_nfl_week_cache: dict | None = None
+_nfl_week_cache_time: float = 0.0
+_NFL_WEEK_TTL = 120.0  # 2 minutes
+
+_nfl_standings_cache: dict | None = None
+_nfl_standings_cache_time: float = 0.0
+_NFL_STANDINGS_TTL = 300.0  # 5 minutes
+
+_nfl_game_pred_cache: dict[str, dict] = {}  # str(event_id) → {away_win_prob, home_win_prob, predicted_winner}
+
+
+def _load_nfl_model():
+    global _nfl_model_cache
+    if _nfl_model_cache is None:
+        with open(NFL_MODEL_PATH, "rb") as f:
+            _nfl_model_cache = pickle.load(f)
+    return _nfl_model_cache
+
+
+def _load_nfl_stats() -> pd.DataFrame:
+    global _nfl_stats_cache
+    if _nfl_stats_cache is None:
+        _nfl_stats_cache = pd.read_csv(NFL_STATS_PATH).set_index("team_name")
+    return _nfl_stats_cache
+
+
+_nfl_game_features_cache: dict[str, dict[str, dict]] | None = None
+_nfl_qb_ratings_cache: dict[str, float] | None = None
+_nfl_live_qbs_cache: dict[str, dict[str, str]] | None = None
+_nfl_live_qbs_cache_time: float = 0.0
+_NFL_LIVE_QBS_TTL = 3600.0  # 1 hour
+
+
+def _load_nfl_game_features() -> dict[str, dict[str, dict]]:
+    """{espn_event_id: {team_name: feature row}} for every current-season game,
+    precomputed by nfl/pipeline.py (pre-game values for played games)."""
+    global _nfl_game_features_cache
+    if _nfl_game_features_cache is None:
+        out: dict[str, dict[str, dict]] = {}
+        if NFL_GAME_FEATURES_PATH.exists():
+            df = pd.read_csv(NFL_GAME_FEATURES_PATH, dtype={"espn_id": str})
+            for r in df.to_dict("records"):
+                out.setdefault(r["espn_id"], {})[r["team_name"]] = r
+        _nfl_game_features_cache = out
+    return _nfl_game_features_cache
+
+
+def _load_nfl_qb_ratings() -> dict[str, float]:
+    global _nfl_qb_ratings_cache
+    if _nfl_qb_ratings_cache is None:
+        _nfl_qb_ratings_cache = {}
+        if NFL_QB_RATINGS_PATH.exists():
+            df = pd.read_csv(NFL_QB_RATINGS_PATH)
+            _nfl_qb_ratings_cache = dict(zip(df["qb_id"], df["qb_epa"].astype(float)))
+    return _nfl_qb_ratings_cache
+
+
+def _fetch_nfl_live_qbs() -> dict[str, dict[str, str]]:
+    """{espn_event_id: {nflverse_abbr: starting/projected QB id}} from nflverse.
+    Returns the last good copy (or {}) if the download fails."""
+    import io, urllib.request
+    global _nfl_live_qbs_cache, _nfl_live_qbs_cache_time
+    now = _time_mod.time()
+    if _nfl_live_qbs_cache is not None and (now - _nfl_live_qbs_cache_time) < _NFL_LIVE_QBS_TTL:
+        return _nfl_live_qbs_cache
+    try:
+        req = urllib.request.Request(NFL_NFLVERSE_GAMES_URL, headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            g = pd.read_csv(io.BytesIO(resp.read()), low_memory=False)
+        g = g[(g["season"] == NFL_CURRENT_SEASON) & g["espn"].notna()]
+        out: dict[str, dict[str, str]] = {}
+        for r in g.itertuples(index=False):
+            qbs = {}
+            if isinstance(r.home_qb_id, str):
+                qbs[r.home_team] = r.home_qb_id
+            if isinstance(r.away_qb_id, str):
+                qbs[r.away_team] = r.away_qb_id
+            out[str(r.espn).split(".")[0]] = qbs
+        _nfl_live_qbs_cache = out
+    except Exception:
+        if _nfl_live_qbs_cache is None:
+            _nfl_live_qbs_cache = {}
+    _nfl_live_qbs_cache_time = now
+    return _nfl_live_qbs_cache
+
+
+def _nfl_rows_for_game(game_id: str | None, team: str, opp: str) -> tuple[dict, dict] | None:
+    """Precomputed feature rows for (team, opp) in this game, with the starting QBs
+    refreshed from nflverse's latest projections."""
+    if not game_id:
+        return None
+    game = _load_nfl_game_features().get(str(game_id))
+    if not game or team not in game or opp not in game:
+        return None
+    r_t, r_o = dict(game[team]), dict(game[opp])
+
+    live = _fetch_nfl_live_qbs().get(str(game_id), {})
+    ratings = _load_nfl_qb_ratings()
+    qb_epa, qb_changed = {}, {}
+    for r in (r_t, r_o):
+        qb_id = live.get(r["team"]) or r.get("qb_id")
+        last = r.get("last_qb_id")
+        qb_epa[r["team"]] = ratings.get(qb_id, NFL_QB_REPLACEMENT) if isinstance(qb_id, str) else NFL_QB_REPLACEMENT
+        qb_changed[r["team"]] = int(isinstance(last, str) and isinstance(qb_id, str) and qb_id != last)
+    for r, o in ((r_t, r_o), (r_o, r_t)):
+        r["qb_epa_diff"]    = qb_epa[r["team"]] - qb_epa[o["team"]]
+        r["qb_changed"]     = qb_changed[r["team"]]
+        r["opp_qb_changed"] = qb_changed[o["team"]]
+    return r_t, r_o
+
+
+def _nfl_rows_from_team_state(stats: pd.DataFrame, team: str, opp: str, is_home: int) -> tuple[dict, dict]:
+    """Fallback for games missing from the precomputed file (e.g. playoffs):
+    team strength from the current team table, neutral context."""
+    def _row(t, o, home):
+        ts, os_ = stats.loc[t], stats.loc[o]
+        return {
+            "home": home, "rest_diff": 0, "off_bye": 0, "opp_off_bye": 0,
+            "travel_diff_1000km": 0.0,
+            "elo_diff":    float(ts.get("elo", 1505)) - float(os_.get("elo", 1505)),
+            "net_epa_diff": (float(ts.get("off_epa", 0.0)) - float(ts.get("def_epa", 0.0)))
+                            - (float(os_.get("off_epa", 0.0)) - float(os_.get("def_epa", 0.0))),
+            "qb_epa_diff": float(ts.get("qb_epa", NFL_QB_REPLACEMENT)) - float(os_.get("qb_epa", NFL_QB_REPLACEMENT)),
+            "qb_changed": 0, "opp_qb_changed": 0,
+        }
+    return _row(team, opp, is_home), _row(opp, team, 1 - is_home)
+
+
+def _nfl_win_prob(model, stats: pd.DataFrame, team: str, opp: str, is_home: int,
+                   game_id: str | None = None) -> float:
+    """Return P(team wins) using the NFL logistic regression.
+
+    Uses the game's precomputed features (rest, travel, division, QBs) when the
+    ESPN event id is known, otherwise falls back to team-level strength only.
+    """
+    rows = _nfl_rows_for_game(game_id, team, opp) or _nfl_rows_from_team_state(stats, team, opp, is_home)
+    X = pd.DataFrame(list(rows))[NFL_FEATURES]
+    p_t, p_o = (float(p) for p in model.predict_proba(X)[:, 1])
+    return p_t / (p_t + p_o)   # normalise so home+away = 100 %
+
+
+def _nfl_explain(model, stats: pd.DataFrame, away: str, home: str, game_id: str | None) -> list[dict]:
+    """Per-feature contribution to the away-vs-home log-odds gap.
+
+    For the logistic regression, logit(away) − logit(home) = Σ coef·(z_away − z_home),
+    so each term is that feature's exact share of the tilt (positive favours away).
+    """
+    if away not in stats.index or home not in stats.index:
+        return []
+    rows = _nfl_rows_for_game(game_id, away, home) or _nfl_rows_from_team_state(stats, away, home, 0)
+    scaler, clf = model.named_steps["scaler"], model.named_steps["clf"]
+    impacts = {f: float(clf.coef_[0][i]) * (float(rows[0][f]) - float(rows[1][f])) / float(scaler.scale_[i])
+               for i, f in enumerate(NFL_FEATURES)}
+    out = []
+    for f, impact in impacts.items():
+        if f.startswith("opp_") and f[4:] in impacts:
+            continue  # mirror of f[4:] (e.g. opp_off_bye) — folded into that feature below
+        impact += impacts.get(f"opp_{f}", 0.0)
+        out.append({"feature": f, "away_value": round(float(rows[0][f]), 4),
+                    "home_value": round(float(rows[1][f]), 4), "impact": round(impact, 4)})
+    return sorted(out, key=lambda r: abs(r["impact"]), reverse=True)
+
+
+def _fetch_nfl_scoreboard(season: int | None = None, week: int | None = None, seasontype: int = 2) -> dict:
+    """Fetch a week's scoreboard. No args = ESPN's current week."""
+    import json, urllib.request
+    url = f"{NFL_BASE}/scoreboard"
+    if season is not None and week is not None:
+        url += f"?seasontype={seasontype}&week={week}&dates={season}"
+    req = urllib.request.Request(url, headers=NFL_UA)
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read())
+
+
+def _predict_nfl_game(model, stats: pd.DataFrame, away_name: str, home_name: str,
+                      game_id: str | None = None) -> tuple[float, float, str] | None:
+    """Return (away_win_prob_pct, home_win_prob_pct, predicted_winner) or None if a team is unknown."""
+    if away_name not in stats.index or home_name not in stats.index:
+        return None
+    try:
+        p_away = _nfl_win_prob(model, stats, away_name, home_name, is_home=0, game_id=game_id)
+    except Exception:
+        return None
+    away_wp = round(p_away * 100, 1)
+    home_wp = round((1 - p_away) * 100, 1)
+    winner  = away_name if p_away >= 0.5 else home_name
+    return away_wp, home_wp, winner
+
+
+def _fetch_nfl_week() -> dict:
+    """Fetch the current NFL week's games with win probabilities and odds."""
+    data  = _fetch_nfl_scoreboard()
+    model = _load_nfl_model()
+    stats = _load_nfl_stats()
+    nfl_odds = _fetch_odds_today("americanfootball_nfl")
+
+    season = data.get("season", {}).get("year", NFL_CURRENT_SEASON)
+    week   = data.get("week", {}).get("number", 1)
+
+    results = []
+    for ev in data.get("events", []):
+        comp   = ev.get("competitions", [{}])[0]
+        status = comp.get("status", {}).get("type", {})
+        competitors = comp.get("competitors", [])
+        home = next((c for c in competitors if c.get("homeAway") == "home"), {})
+        away = next((c for c in competitors if c.get("homeAway") == "away"), {})
+        if not home or not away:
+            continue
+
+        away_name = away.get("team", {}).get("displayName", "")
+        home_name = home.get("team", {}).get("displayName", "")
+        game_id   = ev.get("id")
+
+        def _score(side: dict) -> int | None:
+            v = side.get("score")
+            try:
+                return int(v) if v not in (None, "") else None
+            except (TypeError, ValueError):
+                return None
+
+        pred = _predict_nfl_game(model, stats, away_name, home_name, game_id)
+        if pred is None:
+            continue
+        away_wp, home_wp, pred_winner = pred
+
+        game_odds = _get_game_odds(nfl_odds, away_name, home_name)
+        status_desc = status.get("description", "Scheduled")
+        is_done = bool(status.get("completed", False))
+        game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
+        has_pregame = game_key in _pregame_odds
+        if is_done and not has_pregame:
+            game_odds = {}
+
+        gid_str = str(game_id)
+        if gid_str not in _nfl_game_pred_cache:
+            _nfl_game_pred_cache[gid_str] = {
+                "away_win_prob": away_wp, "home_win_prob": home_wp, "predicted_winner": pred_winner,
+            }
+
+        results.append({
+            "game_id":          game_id,
+            "status":           status_desc,
+            "status_state":     status.get("state", "pre"),
+            "game_time_utc":    ev.get("date", ""),
+            "venue":            comp.get("venue", {}).get("fullName", ""),
+            "away_team":        away_name,
+            "home_team":        home_name,
+            "away_score":       _score(away),
+            "home_score":       _score(home),
+            "away_win_prob":    away_wp,
+            "home_win_prob":    home_wp,
+            "predicted_winner": pred_winner,
+            "away_odds":        game_odds.get("away_odds"),
+            "home_odds":        game_odds.get("home_odds"),
+            **_value_bet(away_wp, home_wp, game_odds.get("away_odds"), game_odds.get("home_odds")),
+        })
+
+    return {"season": season, "week": week, "games": results}
+
+
+@app.get("/api/nfl/week")
+def get_nfl_week():
+    """Return the current NFL week's games with win probabilities and odds."""
+    import time as _t
+    global _nfl_week_cache, _nfl_week_cache_time
+    now = _t.time()
+    if _nfl_week_cache is not None and (now - _nfl_week_cache_time) < _NFL_WEEK_TTL:
+        return _nfl_week_cache
+    try:
+        result = _fetch_nfl_week()
+        _nfl_week_cache      = result
+        _nfl_week_cache_time = now
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NFL week fetch failed: {e}")
+
+
+@app.get("/api/nfl/teams")
+def get_nfl_teams() -> list[str]:
+    return sorted(_load_nfl_stats().index.tolist())
+
+
+_nfl_pred_log_cache: dict | None = None
+_nfl_pred_log_cache_time: float = 0.0
+_NFL_PRED_LOG_TTL = 300.0  # 5 minutes
+
+
+@app.get("/api/nfl/predictions_log")
+def get_nfl_predictions_log(n: int = 500):
+    """Return completed NFL games this season with model prediction vs actual result."""
+    import time as _t
+    global _nfl_pred_log_cache, _nfl_pred_log_cache_time
+    now = _t.time()
+    if _nfl_pred_log_cache is not None and (now - _nfl_pred_log_cache_time) < _NFL_PRED_LOG_TTL:
+        cached_log = _nfl_pred_log_cache["log"]
+        return {"log": cached_log[:n]}
+
+    try:
+        model = _load_nfl_model()
+        stats = _load_nfl_stats()
+        nfl_odds = _fetch_odds_today("americanfootball_nfl")  # noqa: F841 (kept for parity/debug)
+
+        log: list[dict] = []
+        for week in range(1, 19):
+            try:
+                data = _fetch_nfl_scoreboard(season=NFL_CURRENT_SEASON, week=week)
+            except Exception:
+                continue
+            for ev in data.get("events", []):
+                comp   = ev.get("competitions", [{}])[0]
+                status = comp.get("status", {}).get("type", {})
+                if not status.get("completed", False):
+                    continue
+                competitors = comp.get("competitors", [])
+                home = next((c for c in competitors if c.get("homeAway") == "home"), {})
+                away = next((c for c in competitors if c.get("homeAway") == "away"), {})
+                if not home or not away:
+                    continue
+                away_name = away.get("team", {}).get("displayName", "")
+                home_name = home.get("team", {}).get("displayName", "")
+                try:
+                    away_score = int(away.get("score", 0) or 0)
+                    home_score = int(home.get("score", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+                if away_score == home_score:
+                    continue  # ties aren't modeled
+
+                game_id = ev.get("id")
+                gid_str = str(game_id)
+                cached  = _nfl_game_pred_cache.get(gid_str)
+                if cached:
+                    away_win_prob    = cached["away_win_prob"]
+                    home_win_prob    = cached["home_win_prob"]
+                    predicted_winner = cached["predicted_winner"]
+                else:
+                    pred = _predict_nfl_game(model, stats, away_name, home_name, gid_str)
+                    if pred is None:
+                        continue
+                    away_win_prob, home_win_prob, predicted_winner = pred
+
+                predicted_prob = away_win_prob if predicted_winner == away_name else home_win_prob
+                actual_winner  = away_name if away_score > home_score else home_name
+
+                log.append({
+                    "game_id":          game_id,
+                    "date":             (ev.get("date") or "")[:10],
+                    "week":             week,
+                    "away_team":        away_name,
+                    "home_team":        home_name,
+                    "predicted_winner": predicted_winner,
+                    "predicted_prob":   predicted_prob,
+                    "actual_winner":    actual_winner,
+                    "correct":          predicted_winner == actual_winner,
+                    "away_score":       away_score,
+                    "home_score":       home_score,
+                    "away_win_prob":    away_win_prob,
+                    "home_win_prob":    home_win_prob,
+                })
+
+        log.reverse()  # most recent first
+        result = {"log": log}
+        _nfl_pred_log_cache = result
+        _nfl_pred_log_cache_time = now
+        return {"log": log[:n]}
+    except Exception:
+        return {"log": []}
+
+
+_nfl_proj_cache: dict | None = None
+_nfl_proj_cache_time: float = 0.0
+_NFL_PROJ_TTL = 600.0  # 10 minutes
+NFL_SIMS = 10_000
+
+
+@app.get("/api/nfl/projections")
+def get_nfl_projections():
+    """Monte Carlo of the rest of the regular season → playoff / division / #1-seed odds.
+
+    Current records come from ESPN standings; every remaining game is simulated with
+    the model's pre-game probability (held fixed — ratings don't update mid-simulation).
+    Seeding follows the NFL format (4 division winners + 3 wild cards per conference);
+    ties in the win column are broken at random rather than by the official tiebreakers.
+    """
+    import json, urllib.request
+    global _nfl_proj_cache, _nfl_proj_cache_time
+    now = _time_mod.time()
+    if _nfl_proj_cache is not None and (now - _nfl_proj_cache_time) < _NFL_PROJ_TTL:
+        return _nfl_proj_cache
+
+    try:
+        req = urllib.request.Request(f"{NFL_STANDINGS_BASE}?season={NFL_CURRENT_SEASON}&level=3", headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            standings = json.loads(resp.read())
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NFL standings fetch failed: {e}")
+
+    teams: list[str] = []
+    conf_of: dict[str, str] = {}
+    div_of: dict[str, str] = {}
+    base_wins: dict[str, float] = {}
+    for conf in standings.get("children", []):
+        conf_abbr = conf.get("abbreviation") or conf.get("name", "")
+        for div in conf.get("children", []):
+            for entry in div.get("standings", {}).get("entries", []):
+                name = entry.get("team", {}).get("displayName", "")
+                st = {x["name"]: float(x.get("value") or 0) for x in entry.get("stats", [])}
+                teams.append(name)
+                conf_of[name], div_of[name] = conf_abbr, div.get("name", "")
+                base_wins[name] = st.get("wins", 0.0) + 0.5 * st.get("ties", 0.0)
+    idx = {t: i for i, t in enumerate(teams)}
+
+    # Remaining games: later weeks from the precomputed schedule + this week's unfinished games
+    week_data = get_nfl_week()
+    cur_week = int(week_data.get("week", 1))
+    done_this_week = {str(g["game_id"]) for g in week_data.get("games", []) if g.get("status_state") == "post"}
+    model, stats = _load_nfl_model(), _load_nfl_stats()
+    pairs: list[tuple[int, int]] = []   # (home idx, away idx)
+    feat_rows: list[dict] = []          # home row, away row per game — scored in one batch
+    for gid, rows in _load_nfl_game_features().items():
+        home_row = next((r for r in rows.values() if r.get("home") == 1), None) or next(iter(rows.values()))
+        away_name = home_row["opp_name"]
+        home_name = home_row["team_name"]
+        week = int(home_row.get("week", 0))
+        if week < cur_week or (week == cur_week and gid in done_this_week):
+            continue
+        if home_name not in idx or away_name not in idx:
+            continue
+        r_home, r_away = _nfl_rows_for_game(gid, home_name, away_name) or             _nfl_rows_from_team_state(stats, home_name, away_name, 1)
+        pairs.append((idx[home_name], idx[away_name]))
+        feat_rows += [r_home, r_away]
+
+    remaining: list[tuple[int, int, float]] = []   # (home idx, away idx, P(home wins))
+    if pairs:
+        raw = model.predict_proba(pd.DataFrame(feat_rows)[NFL_FEATURES])[:, 1].reshape(-1, 2)
+        p_home = raw[:, 0] / raw.sum(axis=1)   # same head-to-head normalisation as _nfl_win_prob
+        remaining = [(h, a, float(p)) for (h, a), p in zip(pairs, p_home)]
+
+    rng = np.random.default_rng()
+    n_t = len(teams)
+    wins = np.tile(np.array([base_wins[t] for t in teams]), (NFL_SIMS, 1))
+    if remaining:
+        h_idx = np.array([g[0] for g in remaining])
+        a_idx = np.array([g[1] for g in remaining])
+        p = np.array([g[2] for g in remaining])
+        home_won = rng.random((NFL_SIMS, len(remaining))) < p
+        np.add.at(wins, (slice(None), h_idx), home_won.astype(float))
+        np.add.at(wins, (slice(None), a_idx), (~home_won).astype(float))
+    noisy = wins + rng.random(wins.shape) * 1e-3   # random tiebreak
+
+    made = np.zeros((NFL_SIMS, n_t), bool)
+    div_win = np.zeros((NFL_SIMS, n_t), bool)
+    top_seed = np.zeros((NFL_SIMS, n_t), bool)
+    rows_ix = np.arange(NFL_SIMS)
+    for conf in set(conf_of.values()):
+        c_teams = [idx[t] for t in teams if conf_of[t] == conf]
+        leaders = []
+        for div in {div_of[teams[i]] for i in c_teams}:
+            d_teams = np.array([i for i in c_teams if div_of[teams[i]] == div])
+            leader = d_teams[noisy[:, d_teams].argmax(axis=1)]
+            div_win[rows_ix, leader] = True
+            leaders.append(leader)
+        leaders = np.stack(leaders, axis=1)                       # (sims, 4)
+        best = leaders[rows_ix, noisy[rows_ix[:, None], leaders].argmax(axis=1)]
+        top_seed[rows_ix, best] = True
+        c_arr = np.array(c_teams)
+        wc_score = np.where(div_win[:, c_arr], -np.inf, noisy[:, c_arr])
+        wc = c_arr[np.argsort(-wc_score, axis=1)[:, :3]]
+        made[rows_ix[:, None], wc] = True
+    made |= div_win
+
+    out = [{
+        "team":           t,
+        "conference":     conf_of[t],
+        "division":       div_of[t],
+        "projected_wins": round(float(wins[:, i].mean()), 1),
+        "playoff_pct":    round(float(made[:, i].mean()) * 100, 1),
+        "division_pct":   round(float(div_win[:, i].mean()) * 100, 1),
+        "top_seed_pct":   round(float(top_seed[:, i].mean()) * 100, 1),
+    } for t, i in idx.items()]
+    out.sort(key=lambda r: (-r["playoff_pct"], -r["projected_wins"]))
+
+    result = {"season": NFL_CURRENT_SEASON, "week": cur_week, "simulations": NFL_SIMS,
+              "games_remaining": len(remaining), "teams": out}
+    _nfl_proj_cache, _nfl_proj_cache_time = result, now
+    return result
+
+
+@app.get("/api/nfl/standings")
+def get_nfl_standings():
+    """Return AFC and NFC standings by division, enriched with rolling form."""
+    import time as _t, json, urllib.request
+    global _nfl_standings_cache, _nfl_standings_cache_time
+    now = _t.time()
+    if _nfl_standings_cache is not None and (now - _nfl_standings_cache_time) < _NFL_STANDINGS_TTL:
+        return _nfl_standings_cache
+
+    try:
+        url  = f"{NFL_STANDINGS_BASE}?season={NFL_CURRENT_SEASON}&level=3"
+        req  = urllib.request.Request(url, headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+
+        stats = _load_nfl_stats()
+
+        def _build_conf(conf: dict) -> list[dict]:
+            divs = []
+            for div in conf.get("children", []):
+                teams = []
+                for entry in div.get("standings", {}).get("entries", []):
+                    name  = entry.get("team", {}).get("displayName", "")
+                    s     = {st["name"]: st for st in entry.get("stats", [])}
+                    l5 = pd5 = None
+                    if name in stats.index:
+                        row = stats.loc[name]
+                        l5  = round(float(row.get("win_pct_last5", 0.5)), 3)
+                        pd5 = round(float(row.get("point_diff_last5", 0.0)), 1)
+                    teams.append({
+                        "name":     name,
+                        "w":        int(s.get("wins", {}).get("value", 0) or 0),
+                        "l":        int(s.get("losses", {}).get("value", 0) or 0),
+                        "t":        int(s.get("ties", {}).get("value", 0) or 0),
+                        "pct":      s.get("winPercent", {}).get("displayValue", ".000"),
+                        "pf":       int(s.get("pointsFor", {}).get("value", 0) or 0),
+                        "pa":       int(s.get("pointsAgainst", {}).get("value", 0) or 0),
+                        "point_diff": int(s.get("pointDifferential", {}).get("value", 0) or 0),
+                        "streak":   s.get("streak", {}).get("displayValue", "-"),
+                        "win_pct_last5":    l5,
+                        "point_diff_last5": pd5,
+                    })
+                teams.sort(key=lambda t: (-t["w"], t["l"]))
+                divs.append({"name": div.get("name", ""), "teams": teams})
+            return divs
+
+        afc = nfc = []
+        for conf in data.get("children", []):
+            conf_name = conf.get("name", "")
+            if "American" in conf_name:
+                afc = _build_conf(conf)
+            elif "National" in conf_name:
+                nfc = _build_conf(conf)
+
+        result = {"afc": afc, "nfc": nfc}
+        _nfl_standings_cache      = result
+        _nfl_standings_cache_time = now
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NFL standings fetch failed: {e}")
+
+
+@app.get("/api/nfl/stats")
+def get_nfl_model_stats():
+    """Return NFL model accuracy, calibration, Vegas comparison, features and coefficients."""
+    return _model_stats_payload("nfl", NFL_FEATURES)
+
+
+_NFL_GAME_STAT_KEYS = ["totalYards", "netPassingYards", "rushingYards", "turnovers", "thirdDownEff", "totalPenaltiesYards", "possessionTime"]
+
+
+def _nfl_quarter_win_prob(
+    pre_game_home_prob: float,
+    home_score: int,
+    away_score: int,
+    quarter: float,
+    total_quarters: float = 4.0,
+) -> float:
+    """Blended home-team win probability after `quarter` completed quarters.
+
+    Blends the pre-game ML probability (prior) with a current-state estimate
+    derived from a Normal approximation of the remaining scoring differential.
+    `full_game_std` (~13.5 pts) approximates the typical NFL final-score-diff spread.
+    """
+    import math
+    score_diff        = home_score - away_score        # positive = home leading
+    quarters_remaining = max(0.15, total_quarters - quarter)
+    full_game_std = 13.5
+    std_net  = full_game_std * math.sqrt(quarters_remaining / 4.0)
+    z        = score_diff / std_net
+    cur_prob = 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+    progress = min(0.95, quarter / total_quarters)
+    p = (1.0 - progress) * pre_game_home_prob + progress * cur_prob
+    return max(0.02, min(0.98, p))
+
+
+@app.get("/api/nfl/game/{game_id}")
+def get_nfl_game_detail(game_id: str):
+    """Return box score, quarter-by-quarter score, and team stat comparison for one game."""
+    import json, urllib.request
+    try:
+        url = f"{NFL_BASE}/summary?event={game_id}"
+        req = urllib.request.Request(url, headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+
+        header = data.get("header", {})
+        comp   = header.get("competitions", [{}])[0]
+        status = comp.get("status", {}).get("type", {})
+        competitors = comp.get("competitors", [])
+        home = next((c for c in competitors if c.get("homeAway") == "home"), {})
+        away = next((c for c in competitors if c.get("homeAway") == "away"), {})
+
+        away_name = away.get("team", {}).get("displayName", "")
+        home_name = home.get("team", {}).get("displayName", "")
+
+        def _score(side: dict) -> int | None:
+            v = side.get("score")
+            try:
+                return int(v) if v not in (None, "") else None
+            except (TypeError, ValueError):
+                return None
+
+        def _quarters(side: dict) -> list[int | None]:
+            out = []
+            for q in side.get("linescores", []):
+                v = q.get("displayValue")
+                try:
+                    out.append(int(v))
+                except (TypeError, ValueError):
+                    out.append(None)
+            return out
+
+        # Pre-game win probability — prefer the cached value from /api/nfl/week
+        # so the detail page matches what the schedule card showed.
+        cached_pred = _nfl_game_pred_cache.get(str(game_id))
+        if cached_pred:
+            away_wp = cached_pred["away_win_prob"]
+            home_wp = cached_pred["home_win_prob"]
+        else:
+            model = _load_nfl_model()
+            stats = _load_nfl_stats()
+            pred  = _predict_nfl_game(model, stats, away_name, home_name, game_id)
+            away_wp, home_wp = pred[0:2] if pred else (50.0, 50.0)
+
+        # ── Play-by-play win probability (ESPN's own per-play model) ──────────
+        away_q = _quarters(away)
+        home_q = _quarters(home)
+        p_home_pre = home_wp / 100.0
+        is_final = "final" in status.get("description", "").lower()
+
+        history: list[dict] = [{
+            "idx":       0,
+            "label":     "Pre",
+            "away_prob": round(away_wp, 1),
+            "home_prob": round(home_wp, 1),
+        }]
+
+        win_prob_plays = data.get("winprobability", [])
+        play_map: dict[str, dict] = {
+            play.get("id"): play
+            for drive in data.get("drives", {}).get("previous", [])
+            for play in drive.get("plays", [])
+        }
+
+        if win_prob_plays:
+            last_period = None
+            for i, wp in enumerate(win_prob_plays):
+                play       = play_map.get(wp.get("playId"), {})
+                period_num = (play.get("period") or {}).get("number")
+                home_pct   = float(wp.get("homeWinPercentage", 0.5)) * 100
+                tie_pct    = float(wp.get("tiePercentage", 0.0)) * 100
+                away_pct   = max(0.0, 100.0 - home_pct - tie_pct)
+
+                label = ""
+                if period_num is not None and period_num != last_period:
+                    label = f"Q{period_num}" if period_num <= 4 else f"OT{period_num - 4}"
+                    last_period = period_num
+
+                history.append({
+                    "idx":          i + 1,
+                    "label":        label,
+                    "away_prob":    round(away_pct, 1),
+                    "home_prob":    round(home_pct, 1),
+                    "scoring_play": bool(play.get("scoringPlay", False)),
+                    "away_score":   play.get("awayScore"),
+                    "home_score":   play.get("homeScore"),
+                })
+        else:
+            # Fallback: coarse quarter-by-quarter estimate when ESPN has no
+            # play-by-play win probability for this game (e.g. very old games).
+            home_total = away_total = 0
+            for i in range(min(len(away_q), len(home_q))):
+                a_val, h_val = away_q[i], home_q[i]
+                if a_val is None or h_val is None:
+                    break
+                away_total += a_val
+                home_total += h_val
+                quarter_num = i + 1
+                total_q     = float(max(4, quarter_num))
+                p_h = _nfl_quarter_win_prob(p_home_pre, home_total, away_total, float(quarter_num), total_q)
+                label = f"Q{quarter_num}" if quarter_num <= 4 else f"OT{quarter_num - 4}"
+                history.append({
+                    "idx":       i + 1,
+                    "label":     label,
+                    "away_prob": round((1.0 - p_h) * 100, 1),
+                    "home_prob": round(p_h * 100, 1),
+                })
+
+            if is_final and len(history) > 1:
+                away_final, home_final = _score(away), _score(home)
+                if home_final is not None and away_final is not None:
+                    if home_final > away_final:
+                        history[-1]["home_prob"] = 100.0
+                        history[-1]["away_prob"] = 0.0
+                    elif away_final > home_final:
+                        history[-1]["home_prob"] = 0.0
+                        history[-1]["away_prob"] = 100.0
+
+        # Team stat comparison
+        box_teams = data.get("boxscore", {}).get("teams", [])
+        away_stats_out: dict[str, str] = {}
+        home_stats_out: dict[str, str] = {}
+        for bt in box_teams:
+            is_home = bt.get("homeAway") == "home"
+            target  = home_stats_out if is_home else away_stats_out
+            for s in bt.get("statistics", []):
+                if s.get("name") in _NFL_GAME_STAT_KEYS:
+                    target[s["name"]] = s.get("displayValue", "")
+
+        result = {
+            "game_id":       game_id,
+            "status":        status.get("description", "Scheduled"),
+            "game_time_utc": comp.get("date", ""),
+            "venue":         data.get("gameInfo", {}).get("venue", {}).get("fullName", ""),
+            "away_team":     away_name,
+            "home_team":     home_name,
+            "away_score":    _score(away),
+            "home_score":    _score(home),
+            "away_quarters": _quarters(away),
+            "home_quarters": _quarters(home),
+            "away_win_prob": away_wp,
+            "home_win_prob": home_wp,
+            "win_prob_history": history,
+            "away_stats":    away_stats_out,
+            "home_stats":    home_stats_out,
+            "explanation":   _nfl_explain(_load_nfl_model(), _load_nfl_stats(), away_name, home_name, game_id),
+        }
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NFL game detail fetch failed: {e}")

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-MLB Model Training
-Trains Logistic Regression + XGBoost on the MLB training dataset and saves:
-  models/mlb_logistic_regression.pkl
-  models/mlb_xgboost.pkl
-  models/mlb_metrics.json   (accuracy, log loss, Brier, calibration)
+NFL Model Training
+Trains Logistic Regression + XGBoost on the NFL training dataset and saves:
+  models/nfl_logistic_regression.pkl
+  models/nfl_xgboost.pkl
+  models/nfl_metrics.json   (accuracy, log loss, Brier, calibration, vs Vegas)
 
 Validation is leave-one-season-out: each fold holds out a whole season, so the
 two mirrored rows of a game (one per team) never straddle train and test.
 
 Run:
-    python mlb/train.py
+    python nfl/train.py
 """
 
 import pickle
@@ -28,29 +28,28 @@ ROOT       = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 from evaluation import evaluate, oof_game_probs, write_metrics  # noqa: E402
 
-SPORT      = "mlb"
-DATA_PATH  = ROOT / "data" / "processed" / "mlb_training_data.csv"
+SPORT      = "nfl"
+DATA_PATH  = ROOT / "data" / "processed" / "nfl_training_data.csv"
 MODELS_DIR = ROOT / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-MODEL_PATH     = MODELS_DIR / "mlb_logistic_regression.pkl"
-XGB_MODEL_PATH = MODELS_DIR / "mlb_xgboost.pkl"
-METRICS_PATH   = MODELS_DIR / "mlb_metrics.json"
+MODEL_PATH     = MODELS_DIR / "nfl_logistic_regression.pkl"
+XGB_MODEL_PATH = MODELS_DIR / "nfl_xgboost.pkl"
+METRICS_PATH   = MODELS_DIR / "nfl_metrics.json"
 
 # ── Feature list — must match api/main.py ─────────────────────────────────────
 FEATURES = [
-    "home",
-    # Team strength (carries across seasons)
+    # Context
+    "home", "rest_diff", "off_bye", "opp_off_bye", "travel_diff_1000km",
+    # Team strength (Elo carries across seasons → no week-1 cold start)
     "elo_diff",
-    # Starting pitchers: FIP to date, decayed over previous starts
-    "sp_fip_diff",
-    # Recent offense / overall form (decayed)
-    "ops_diff", "run_diff_ewm_diff",
-    # Bullpen quality and fatigue (innings thrown in the previous 3 days)
-    "bullpen_era_diff", "bullpen_ip3_diff",
+    # Efficiency: (off EPA/play − def EPA/play allowed) gap, recency-weighted
+    "net_epa_diff",
+    # Starting quarterback
+    "qb_epa_diff", "qb_changed", "opp_qb_changed",
 ]
 TARGET   = "win"
-GAME_KEY = "game_pk"
+GAME_KEY = "game_id"
 
 
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
@@ -81,7 +80,7 @@ def make_lr() -> Pipeline:
 
 def make_xgb() -> XGBClassifier:
     return XGBClassifier(
-        n_estimators=400, max_depth=3, learning_rate=0.03,
+        n_estimators=300, max_depth=3, learning_rate=0.05,
         subsample=0.8, colsample_bytree=0.8, min_child_weight=10,
         eval_metric="logloss", random_state=42, n_jobs=-1, verbosity=0,
     )
@@ -96,7 +95,7 @@ def report(name: str, m: dict) -> None:
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("  MLB Model Training")
+    print("  NFL Model Training")
     print("=" * 55)
 
     df, X, y = load_data()

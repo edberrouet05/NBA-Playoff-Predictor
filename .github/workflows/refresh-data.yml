@@ -1,0 +1,100 @@
+name: Refresh model data
+
+# MLB: pipeline every morning during the season, retrain on Mondays.
+# NFL: pipeline + retrain every Tuesday during the season (after Monday Night Football).
+# Updated CSVs / models are committed back to the repo, which redeploys the API.
+on:
+  schedule:
+    - cron: "0 10 * 3-11 *"        # MLB — 10:00 UTC daily, March–November
+    - cron: "0 11 * 1,2,9-12 2"    # NFL — 11:00 UTC Tuesdays, September–February
+  workflow_dispatch:
+    inputs:
+      sport:
+        description: "Sport to refresh"
+        type: choice
+        options: [mlb, nfl, both]
+        default: both
+      retrain:
+        description: "Retrain the models after the pipeline"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  mlb:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 10 * 3-11 *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.sport != 'nfl')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Cache MLB raw downloads (past seasons never change)
+        uses: actions/cache@v4
+        with:
+          path: data/mlb/raw
+          key: mlb-raw-${{ github.run_id }}
+          restore-keys: mlb-raw-
+      - name: Pipeline
+        run: python mlb/pipeline.py
+      - name: Train (manual run)
+        if: github.event_name == 'workflow_dispatch' && inputs.retrain
+        run: python mlb/train.py
+      - name: Train (scheduled — Mondays only)
+        if: github.event_name == 'schedule'
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then python mlb/train.py; else echo "Not Monday — skipping retrain"; fi
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/mlb data/processed/mlb_training_data.csv models/mlb_*
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "Refresh MLB data ($(date -u +%F))"
+          git pull --rebase
+          git push
+
+  nfl:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 11 * 1,2,9-12 2') ||
+      (github.event_name == 'workflow_dispatch' && inputs.sport != 'mlb')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Cache nflverse play-by-play (past seasons never change)
+        uses: actions/cache@v4
+        with:
+          path: data/nfl/raw
+          key: nfl-raw-${{ github.run_id }}
+          restore-keys: nfl-raw-
+      - name: Pipeline
+        run: python nfl/pipeline.py
+      - name: Train
+        if: github.event_name == 'schedule' || inputs.retrain
+        run: python nfl/train.py
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/nfl data/processed/nfl_training_data.csv models/nfl_*
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "Refresh NFL data ($(date -u +%F))"
+          git pull --rebase
+          git push

@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-interface MLBGame {
+interface MLBGame extends ValueFields {
   game_id: number;
   status: string;
   game_time_utc: string;
@@ -158,13 +159,13 @@ function GameCard({ game }: { game: MLBGame }) {
               <span className={`text-3xl font-bold leading-none ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>
                 {game.away_score ?? "—"}
               </span>
-              <span className={`text-xs font-medium ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-500"}`}>
+              <span className={`text-xs font-medium ${probClass(game.predicted_winner === game.away_team, homeWins)}`}>
                 {game.away_win_prob}%
               </span>
             </>
           ) : (
             <>
-              <span className={`text-sm font-bold ${game.predicted_winner === game.away_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+              <span className={`text-sm font-bold ${probClass(game.predicted_winner === game.away_team, false)}`}>
                 {game.away_win_prob}%
               </span>
               {game.away_odds && <span className="text-[11px] text-gray-400">x{game.away_odds}</span>}
@@ -189,13 +190,13 @@ function GameCard({ game }: { game: MLBGame }) {
               <span className={`text-3xl font-bold leading-none ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>
                 {game.home_score ?? "—"}
               </span>
-              <span className={`text-xs font-medium ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-500"}`}>
+              <span className={`text-xs font-medium ${probClass(game.predicted_winner === game.home_team, awayWins)}`}>
                 {game.home_win_prob}%
               </span>
             </>
           ) : (
             <>
-              <span className={`text-sm font-bold ${game.predicted_winner === game.home_team ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+              <span className={`text-sm font-bold ${probClass(game.predicted_winner === game.home_team, false)}`}>
                 {game.home_win_prob}%
               </span>
               {game.home_odds && <span className="text-[11px] text-gray-400">x{game.home_odds}</span>}
@@ -224,19 +225,7 @@ function GameCard({ game }: { game: MLBGame }) {
       {!isFinal && (
         <div className="px-5 py-3 flex items-center justify-between">
           <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
-          {(() => {
-            const winnerOdds = game.predicted_winner === game.away_team ? game.away_odds : game.home_odds;
-            if (!winnerOdds) return null;
-            const impliedProb = (1 / winnerOdds) * 100;
-            const modelProb   = game.predicted_winner === game.away_team ? game.away_win_prob : game.home_win_prob;
-            const edge = modelProb - impliedProb;
-            if (edge < 10) return null;
-            return (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
-                Value +{Math.round(edge)}%
-              </span>
-            );
-          })()}
+          <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} />
         </div>
       )}
     </div>

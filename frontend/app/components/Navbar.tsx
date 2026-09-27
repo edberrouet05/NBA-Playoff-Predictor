@@ -67,10 +67,11 @@ function IconLog() {
 
 // ── Sport detection ────────────────────────────────────────────────────────────
 
-type Sport = "nba" | "mlb" | "nhl";
+type Sport = "nba" | "mlb" | "nfl" | "nhl";
 
 function getSport(path: string): Sport {
   if (path.startsWith("/mlb")) return "mlb";
+  if (path.startsWith("/nfl")) return "nfl";
   if (path.startsWith("/nhl")) return "nhl";
   return "nba";
 }
@@ -135,6 +136,32 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       Icon: IconStats,
       label: "Stats",
       isActive: (p) => p === "/mlb/stats",
+    },
+  ],
+  nfl: [
+    {
+      href: "/nfl",
+      Icon: IconGames,
+      label: "Games",
+      isActive: (p) => p === "/nfl" || p.startsWith("/nfl/game"),
+    },
+    {
+      href: "/nfl/standings",
+      Icon: IconStandings,
+      label: "Standings",
+      isActive: (p) => p === "/nfl/standings",
+    },
+    {
+      href: "/nfl/predictions",
+      Icon: IconLog,
+      label: "Predictions",
+      isActive: (p) => p === "/nfl/predictions",
+    },
+    {
+      href: "/nfl/stats",
+      Icon: IconStats,
+      label: "Stats",
+      isActive: (p) => p === "/nfl/stats",
     },
   ],
   nhl: [

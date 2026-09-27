@@ -1,0 +1,171 @@
+{
+  "sport": "mlb",
+  "served_model": "logistic_regression",
+  "features": [
+    "home",
+    "elo_diff",
+    "sp_fip_diff",
+    "ops_diff",
+    "run_diff_ewm_diff",
+    "bullpen_era_diff",
+    "bullpen_ip3_diff"
+  ],
+  "coefficients": [
+    0.127047,
+    0.175642,
+    -0.130973,
+    0.022681,
+    0.080351,
+    -0.05025,
+    0.029656
+  ],
+  "n_rows": 24296,
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "validation": "leave-one-season-out, game-level normalised probabilities",
+  "logistic_regression": {
+    "accuracy": 0.5754,
+    "log_loss": 0.6758,
+    "brier": 0.2415,
+    "per_season": {
+      "2021": 0.5825,
+      "2022": 0.5897,
+      "2023": 0.5741,
+      "2024": 0.5648,
+      "2025": 0.5658
+    },
+    "calibration": [
+      {
+        "lo": 0.1,
+        "hi": 0.2,
+        "predicted": 0.1974,
+        "actual": 0.0,
+        "n": 1
+      },
+      {
+        "lo": 0.2,
+        "hi": 0.3,
+        "predicted": 0.2777,
+        "actual": 0.2704,
+        "n": 355
+      },
+      {
+        "lo": 0.3,
+        "hi": 0.4,
+        "predicted": 0.3621,
+        "actual": 0.3638,
+        "n": 3202
+      },
+      {
+        "lo": 0.4,
+        "hi": 0.5,
+        "predicted": 0.4539,
+        "actual": 0.4537,
+        "n": 8590
+      },
+      {
+        "lo": 0.5,
+        "hi": 0.6,
+        "predicted": 0.5461,
+        "actual": 0.5463,
+        "n": 8590
+      },
+      {
+        "lo": 0.6,
+        "hi": 0.7,
+        "predicted": 0.6379,
+        "actual": 0.6362,
+        "n": 3202
+      },
+      {
+        "lo": 0.7,
+        "hi": 0.8,
+        "predicted": 0.7223,
+        "actual": 0.7296,
+        "n": 355
+      },
+      {
+        "lo": 0.8,
+        "hi": 0.9,
+        "predicted": 0.8026,
+        "actual": 1.0,
+        "n": 1
+      }
+    ]
+  },
+  "xgboost": {
+    "accuracy": 0.573,
+    "log_loss": 0.6768,
+    "brier": 0.2419,
+    "per_season": {
+      "2021": 0.583,
+      "2022": 0.5885,
+      "2023": 0.5667,
+      "2024": 0.5681,
+      "2025": 0.5588
+    },
+    "calibration": [
+      {
+        "lo": 0.1,
+        "hi": 0.2,
+        "predicted": 0.1849,
+        "actual": 0.3333,
+        "n": 12
+      },
+      {
+        "lo": 0.2,
+        "hi": 0.3,
+        "predicted": 0.2713,
+        "actual": 0.3087,
+        "n": 528
+      },
+      {
+        "lo": 0.3,
+        "hi": 0.4,
+        "predicted": 0.3613,
+        "actual": 0.357,
+        "n": 2964
+      },
+      {
+        "lo": 0.4,
+        "hi": 0.5,
+        "predicted": 0.4538,
+        "actual": 0.4584,
+        "n": 8644
+      },
+      {
+        "lo": 0.5,
+        "hi": 0.6,
+        "predicted": 0.5462,
+        "actual": 0.5416,
+        "n": 8644
+      },
+      {
+        "lo": 0.6,
+        "hi": 0.7,
+        "predicted": 0.6387,
+        "actual": 0.643,
+        "n": 2964
+      },
+      {
+        "lo": 0.7,
+        "hi": 0.8,
+        "predicted": 0.7287,
+        "actual": 0.6913,
+        "n": 528
+      },
+      {
+        "lo": 0.8,
+        "hi": 0.9,
+        "predicted": 0.8151,
+        "actual": 0.6667,
+        "n": 12
+      }
+    ]
+  }
+}

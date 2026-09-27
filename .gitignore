@@ -18,3 +18,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# nflverse raw downloads (re-fetched by nfl/pipeline.py)
+data/nfl/raw/
+data/mlb/raw/
