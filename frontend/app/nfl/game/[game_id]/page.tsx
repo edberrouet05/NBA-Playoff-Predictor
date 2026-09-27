@@ -1,6 +1,7 @@
 "use client";
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { probClass } from "../../../components/PredictionBits";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, ReferenceLine, LabelList,
@@ -318,7 +319,7 @@ function WhyPanel({ factors, awayTeam, homeTeam }: { factors: Factor[]; awayTeam
   if (!shown.length) return null;
   const maxAbs = Math.max(...shown.map(f => Math.abs(f.impact)));
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Why the model leans this way</p>
       <p className="text-xs text-gray-400 mb-4">Each bar is that factor&apos;s share of the pre-game edge. Values are from each team&apos;s side.</p>
       <div className="flex justify-between text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-2">
@@ -398,7 +399,7 @@ function InjuryList({ team, players }: { team: string; players: Injury[] }) {
             const ret = fmtReturn(p.return_date);
             return (
               <li key={p.name} className="flex items-start gap-2">
-                <span title={p.status} className={`flex-shrink-0 mt-px text-[10px] font-bold px-1.5 py-0.5 rounded ${st.cls}`}>{st.short}</span>
+                <span title={p.status} className={`flex-shrink-0 mt-px w-14 text-center text-[10px] font-bold px-1 py-0.5 rounded ${st.cls}`}>{st.short}</span>
                 <div className="min-w-0">
                   <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
                     <span className={p.position === "QB" ? "font-bold" : "font-medium"}>{p.name}</span>
@@ -423,13 +424,13 @@ function InjuryPanel({ awayTeam, homeTeam, away, home }: {
   awayTeam: string; homeTeam: string; away: Injury[]; home: Injury[];
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Injury Report</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
         <InjuryList team={awayTeam} players={away} />
         <InjuryList team={homeTeam} players={home} />
       </div>
-      <p className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-400">
+      <p className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-400">
         Source: ESPN. The model accounts for an injured quarterback through the projected starter; other injuries aren&apos;t in the model.
       </p>
     </div>
@@ -590,13 +591,13 @@ export default function NFLGamePage({
               <TeamLogo team={away} size="w-10 h-10" />
               <div>
                 <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(away)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{awayProb}%</p>
+                {showScore && awayScore !== null && <p className="text-xs text-gray-400 mt-0.5">{awayProb}%</p>}
               </div>
             </div>
             {showScore && awayScore !== null ? (
               <p className={`text-3xl font-black ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{awayScore}</p>
             ) : (
-              <p className={`text-xl font-black ${awayProb > homeProb ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{awayProb}%</p>
+              <p className={`text-xl font-black ${probClass(awayProb > homeProb, homeWins)}`}>{awayProb}%</p>
             )}
           </div>
           <div className="flex items-center justify-between">
@@ -604,13 +605,13 @@ export default function NFLGamePage({
               <TeamLogo team={home} size="w-10 h-10" />
               <div>
                 <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(home)}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{homeProb}%</p>
+                {showScore && homeScore !== null && <p className="text-xs text-gray-400 mt-0.5">{homeProb}%</p>}
               </div>
             </div>
             {showScore && homeScore !== null ? (
               <p className={`text-3xl font-black ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{homeScore}</p>
             ) : (
-              <p className={`text-xl font-black ${homeProb > awayProb ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{homeProb}%</p>
+              <p className={`text-xl font-black ${probClass(homeProb > awayProb, awayWins)}`}>{homeProb}%</p>
             )}
           </div>
         </div>
@@ -621,29 +622,25 @@ export default function NFLGamePage({
             <TeamLogo team={away} size="w-14 h-14" />
             <div>
               <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(away)}</p>
-              {showScore && awayScore !== null ? (
+              {showScore && awayScore !== null && (
                 <p className={`text-3xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{awayScore}</p>
-              ) : (
-                <p className={`text-base font-bold mt-1 ${awayProb > homeProb ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{awayProb}%</p>
               )}
             </div>
           </div>
           <div className="flex flex-col items-center gap-1 px-6">
             <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win Prob</p>
             <p className="text-2xl font-black tracking-tight whitespace-nowrap">
-              <span style={{ color: awayWins ? "#16a34a" : "#6b7280" }}>{awayProb}%</span>
+              <span className={probClass(awayProb > homeProb, homeWins)}>{awayProb}%</span>
               <span className="text-gray-300 dark:text-gray-700 mx-2">·</span>
-              <span style={{ color: homeWins ? "#16a34a" : "#6b7280" }}>{homeProb}%</span>
+              <span className={probClass(homeProb > awayProb, awayWins)}>{homeProb}%</span>
             </p>
           </div>
           <div className="flex items-center gap-4 flex-row-reverse">
             <TeamLogo team={home} size="w-14 h-14" />
             <div className="text-right">
               <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(home)}</p>
-              {showScore && homeScore !== null ? (
+              {showScore && homeScore !== null && (
                 <p className={`text-3xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{homeScore}</p>
-              ) : (
-                <p className={`text-base font-bold mt-1 ${homeProb > awayProb ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{homeProb}%</p>
               )}
             </div>
           </div>
@@ -712,15 +709,15 @@ export default function NFLGamePage({
             </div>
           )}
 
-          {g.explanation && g.explanation.length > 0 && (
-            <div className="mt-3">
-              <WhyPanel factors={g.explanation} awayTeam={away} homeTeam={home} />
-            </div>
-          )}
-
-          {(g.away_injuries || g.home_injuries) && (
-            <div className="mt-3">
-              <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />
+          {/* Why + injuries side by side, equal widths (stacked on small screens) */}
+          {((g.explanation && g.explanation.length > 0) || g.away_injuries || g.home_injuries) && (
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+              {g.explanation && g.explanation.length > 0 && (
+                <WhyPanel factors={g.explanation} awayTeam={away} homeTeam={home} />
+              )}
+              {(g.away_injuries || g.home_injuries) && (
+                <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />
+              )}
             </div>
           )}
         </>
