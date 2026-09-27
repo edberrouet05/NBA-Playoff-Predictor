@@ -2763,8 +2763,8 @@ def get_nfl_model_stats():
     return _model_stats_payload("nfl", NFL_FEATURES)
 
 
-_NFL_INJURY_ORDER = {"Out": 0, "Injured Reserve": 1, "Physically Unable to Perform": 1, "Suspension": 2,
-                     "Doubtful": 3, "Questionable": 4, "Day-To-Day": 5}
+_NFL_INJURY_ORDER = {"out": 0, "injured reserve": 1, "physically unable to perform": 1, "suspension": 2,
+                     "doubtful": 3, "questionable": 4, "day-to-day": 5}
 
 
 def _nfl_parse_injuries(summary: dict) -> dict[str, list[dict]]:
@@ -2776,15 +2776,17 @@ def _nfl_parse_injuries(summary: dict) -> dict[str, list[dict]]:
         for inj in team.get("injuries", []):
             ath = inj.get("athlete", {})
             det = inj.get("details", {})
-            status = inj.get("type", {}).get("description") or inj.get("status") or "Unknown"
+            # ESPN mixes "Out" / "out" — normalise to title case
+            status = (inj.get("type", {}).get("description") or inj.get("status") or "Unknown").title()
+            detail = det.get("detail") or det.get("type") or ""
             players.append({
                 "name":        ath.get("displayName", ""),
                 "position":    ath.get("position", {}).get("abbreviation", ""),
                 "status":      status,
-                "injury":      det.get("detail") or det.get("type") or "",
+                "injury":      "" if detail.lower() == "not specified" else detail,
                 "return_date": (det.get("returnDate") or "")[:10] or None,
             })
-        players.sort(key=lambda p: (_NFL_INJURY_ORDER.get(p["status"], 9), p["position"] != "QB", p["name"]))
+        players.sort(key=lambda p: (_NFL_INJURY_ORDER.get(p["status"].lower(), 9), p["position"] != "QB", p["name"]))
         out[name] = players
     return out
 
@@ -2951,6 +2953,7 @@ def get_nfl_game_detail(game_id: str):
                 if s.get("name") in _NFL_GAME_STAT_KEYS:
                     target[s["name"]] = s.get("displayValue", "")
 
+        injuries = _nfl_parse_injuries(data)
         result = {
             "game_id":       game_id,
             "status":        status.get("description", "Scheduled"),
@@ -2968,8 +2971,8 @@ def get_nfl_game_detail(game_id: str):
             "away_stats":    away_stats_out,
             "home_stats":    home_stats_out,
             "explanation":   _nfl_explain(_load_nfl_model(), _load_nfl_stats(), away_name, home_name, game_id),
-            "away_injuries": _nfl_parse_injuries(data).get(away_name, []),
-            "home_injuries": _nfl_parse_injuries(data).get(home_name, []),
+            "away_injuries": injuries.get(away_name, []),
+            "home_injuries": injuries.get(home_name, []),
         }
         return result
 

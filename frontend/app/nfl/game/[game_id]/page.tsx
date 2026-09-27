@@ -32,6 +32,12 @@ interface NFLGameDetail {
   away_stats:    Record<string, string>;
   home_stats:    Record<string, string>;
   explanation?:  Factor[];
+  away_injuries?: Injury[];
+  home_injuries?: Injury[];
+}
+
+interface Injury {
+  name: string; position: string; status: string; injury: string; return_date: string | null;
 }
 
 interface Factor {
@@ -356,6 +362,80 @@ function WhyPanel({ factors, awayTeam, homeTeam }: { factors: Factor[]; awayTeam
   );
 }
 
+// ── Injuries ───────────────────────────────────────────────────────────────────
+
+function statusStyle(status: string): { short: string; cls: string } {
+  const s = status.toLowerCase();
+  if (s === "out")                  return { short: "Out", cls: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" };
+  if (s.includes("reserve"))        return { short: "IR",  cls: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" };
+  if (s.includes("unable"))         return { short: "PUP", cls: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" };
+  if (s.includes("suspension"))     return { short: "Susp", cls: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300" };
+  if (s === "doubtful")             return { short: "Doubtful", cls: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" };
+  if (s === "questionable")         return { short: "Quest.", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400" };
+  return { short: status, cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" };
+}
+
+function fmtReturn(d: string | null): string | null {
+  if (!d) return null;
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function InjuryList({ team, players }: { team: string; players: Injury[] }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-2 mb-2.5">
+        <TeamLogo team={team} size="w-5 h-5" />
+        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{getAbbr(team)}</span>
+        <span className="text-[11px] text-gray-400">{players.length} listed</span>
+      </div>
+      {players.length === 0 ? (
+        <p className="text-xs text-gray-400">No injuries reported.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {players.map(p => {
+            const st = statusStyle(p.status);
+            const ret = fmtReturn(p.return_date);
+            return (
+              <li key={p.name} className="flex items-start gap-2">
+                <span title={p.status} className={`flex-shrink-0 mt-px text-[10px] font-bold px-1.5 py-0.5 rounded ${st.cls}`}>{st.short}</span>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
+                    <span className={p.position === "QB" ? "font-bold" : "font-medium"}>{p.name}</span>
+                    <span className="text-gray-400"> · {p.position}</span>
+                  </p>
+                  {(p.injury || ret) && (
+                    <p className="text-[11px] text-gray-400 truncate">
+                      {p.injury}{p.injury && ret ? " · " : ""}{ret ? `est. return ${ret}` : ""}
+                    </p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function InjuryPanel({ awayTeam, homeTeam, away, home }: {
+  awayTeam: string; homeTeam: string; away: Injury[]; home: Injury[];
+}) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Injury Report</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <InjuryList team={awayTeam} players={away} />
+        <InjuryList team={homeTeam} players={home} />
+      </div>
+      <p className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-400">
+        Source: ESPN. The model accounts for an injured quarterback through the projected starter; other injuries aren&apos;t in the model.
+      </p>
+    </div>
+  );
+}
+
 function Quarterscore({
   awayTeam, homeTeam, awayQuarters, homeQuarters, awayScore, homeScore,
 }: {
@@ -635,6 +715,12 @@ export default function NFLGamePage({
           {g.explanation && g.explanation.length > 0 && (
             <div className="mt-3">
               <WhyPanel factors={g.explanation} awayTeam={away} homeTeam={home} />
+            </div>
+          )}
+
+          {(g.away_injuries || g.home_injuries) && (
+            <div className="mt-3">
+              <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />
             </div>
           )}
         </>
