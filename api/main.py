@@ -2942,12 +2942,13 @@ def get_nfl_model_stats():
     return _model_stats_payload("nfl", NFL_FEATURES)
 
 
-_NFL_INJURY_ORDER = {"out": 0, "injured reserve": 1, "physically unable to perform": 1, "suspension": 2,
-                     "doubtful": 3, "questionable": 4, "day-to-day": 5}
+# Healthiest first: players most likely to play are listed at the top
+_NFL_INJURY_ORDER = {"day-to-day": 0, "questionable": 1, "doubtful": 2, "suspension": 3,
+                     "out": 4, "physically unable to perform": 5, "injured reserve": 5}
 
 
 def _nfl_parse_injuries(summary: dict) -> dict[str, list[dict]]:
-    """{team displayName: [injured players]} from an ESPN game summary, most serious first."""
+    """{team displayName: [injured players]} from an ESPN game summary, healthiest first."""
     out: dict[str, list[dict]] = {}
     for team in summary.get("injuries", []):
         name = team.get("team", {}).get("displayName", "")
