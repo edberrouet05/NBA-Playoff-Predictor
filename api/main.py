@@ -2763,6 +2763,32 @@ def get_nfl_model_stats():
     return _model_stats_payload("nfl", NFL_FEATURES)
 
 
+_NFL_INJURY_ORDER = {"Out": 0, "Injured Reserve": 1, "Physically Unable to Perform": 1, "Suspension": 2,
+                     "Doubtful": 3, "Questionable": 4, "Day-To-Day": 5}
+
+
+def _nfl_parse_injuries(summary: dict) -> dict[str, list[dict]]:
+    """{team displayName: [injured players]} from an ESPN game summary, most serious first."""
+    out: dict[str, list[dict]] = {}
+    for team in summary.get("injuries", []):
+        name = team.get("team", {}).get("displayName", "")
+        players = []
+        for inj in team.get("injuries", []):
+            ath = inj.get("athlete", {})
+            det = inj.get("details", {})
+            status = inj.get("type", {}).get("description") or inj.get("status") or "Unknown"
+            players.append({
+                "name":        ath.get("displayName", ""),
+                "position":    ath.get("position", {}).get("abbreviation", ""),
+                "status":      status,
+                "injury":      det.get("detail") or det.get("type") or "",
+                "return_date": (det.get("returnDate") or "")[:10] or None,
+            })
+        players.sort(key=lambda p: (_NFL_INJURY_ORDER.get(p["status"], 9), p["position"] != "QB", p["name"]))
+        out[name] = players
+    return out
+
+
 _NFL_GAME_STAT_KEYS = ["totalYards", "netPassingYards", "rushingYards", "turnovers", "thirdDownEff", "totalPenaltiesYards", "possessionTime"]
 
 
@@ -2942,6 +2968,8 @@ def get_nfl_game_detail(game_id: str):
             "away_stats":    away_stats_out,
             "home_stats":    home_stats_out,
             "explanation":   _nfl_explain(_load_nfl_model(), _load_nfl_stats(), away_name, home_name, game_id),
+            "away_injuries": _nfl_parse_injuries(data).get(away_name, []),
+            "home_injuries": _nfl_parse_injuries(data).get(home_name, []),
         }
         return result
 
