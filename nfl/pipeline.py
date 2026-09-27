@@ -18,7 +18,8 @@ Features (one row per team per game, mirrored for the opponent):
     seasons), run continuously since 1999 so there's no week-1 cold start
   - Recency-weighted offensive / defensive EPA per play, carried across seasons
   - Starting-QB EPA/dropback (shrunk toward replacement level) + QB-change flag
-  - Rest / bye week, travel distance to the venue, division game, home field
+  - Rest / bye week, home field (travel distance and division game are also
+    exported but not used by the model — they showed no predictive value)
   - Legacy points-and-record features (last-5 form, prior-season record)
 
 Run:

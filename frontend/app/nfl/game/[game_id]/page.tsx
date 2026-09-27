@@ -269,17 +269,42 @@ function WinProbChart({ data, awayTeam, homeTeam }: {
 
 // ── Why the model leans ────────────────────────────────────────────────────────
 
-const FACTOR_LABELS: Record<string, { label: string; fmt: (v: number) => string }> = {
-  elo_diff:           { label: "Elo rating",        fmt: v => (v > 0 ? "+" : "") + v.toFixed(0) },
-  qb_epa_diff:        { label: "Starting QB",       fmt: v => (v > 0 ? "+" : "") + v.toFixed(2) + " EPA" },
-  net_epa_diff:       { label: "Efficiency (EPA)",  fmt: v => (v > 0 ? "+" : "") + v.toFixed(2) },
-  home:               { label: "Home field",        fmt: v => (v ? "Home" : "Away") },
-  off_bye:            { label: "Off a bye",         fmt: v => (v ? "Yes" : "No") },
-  opp_off_bye:        { label: "Opponent off a bye", fmt: v => (v ? "Yes" : "No") },
-  qb_changed:         { label: "QB change",         fmt: v => (v ? "Yes" : "No") },
-  opp_qb_changed:     { label: "Opponent QB change", fmt: v => (v ? "Yes" : "No") },
-  rest_diff:          { label: "Extra rest",        fmt: v => (v > 0 ? "+" : "") + v.toFixed(0) + "d" },
-  travel_diff_1000km: { label: "Extra travel",      fmt: v => (v > 0 ? "+" : "") + (v * 1000).toFixed(0) + " km" },
+const FACTOR_LABELS: Record<string, { label: string; desc: string; fmt: (v: number) => string }> = {
+  elo_diff: {
+    label: "Elo rating",
+    desc: "Overall team strength. Goes up after wins (more for big wins), down after losses. Shown as the gap vs the opponent.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(0),
+  },
+  qb_epa_diff: {
+    label: "Starting QB",
+    desc: "How many points per dropback each starting quarterback adds (EPA), based on his recent games. Shown as the gap vs the other QB.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(2) + " EPA",
+  },
+  net_epa_diff: {
+    label: "Efficiency (EPA)",
+    desc: "Expected points added per play on offense minus what the defense allows, weighted toward recent games. Measures play-by-play quality, not just the final score.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(2),
+  },
+  home: {
+    label: "Home field",
+    desc: "Home teams win about 55% of NFL games. Neutral-site games (London, Brazil…) give no home edge.",
+    fmt: v => (v ? "Home" : "Away"),
+  },
+  off_bye: {
+    label: "Off a bye",
+    desc: "Whether the team had its bye week before this game — two weeks to rest and prepare.",
+    fmt: v => (v ? "Yes" : "No"),
+  },
+  qb_changed: {
+    label: "QB change",
+    desc: "Whether the team is starting a different quarterback than last game, usually because of an injury or a benching.",
+    fmt: v => (v ? "Yes" : "No"),
+  },
+  rest_diff: {
+    label: "Extra rest",
+    desc: "Days of rest compared with the opponent, e.g. coming off a Thursday game vs a Monday game.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(0) + "d",
+  },
 };
 
 function WhyPanel({ factors, awayTeam, homeTeam }: { factors: Factor[]; awayTeam: string; homeTeam: string }) {
@@ -295,14 +320,23 @@ function WhyPanel({ factors, awayTeam, homeTeam }: { factors: Factor[]; awayTeam
       </div>
       <div className="flex flex-col gap-2.5">
         {shown.map(f => {
-          const meta = FACTOR_LABELS[f.feature] ?? { label: f.feature, fmt: (v: number) => v.toFixed(2) };
+          const meta = FACTOR_LABELS[f.feature] ?? { label: f.feature, desc: "", fmt: (v: number) => v.toFixed(2) };
           const w = (Math.abs(f.impact) / maxAbs) * 50;
           const favAway = f.impact > 0;
           return (
             <div key={f.feature}>
               <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1 tabular-nums">
                 <span className="w-20">{meta.fmt(f.away_value)}</span>
-                <span className="font-medium text-gray-700 dark:text-gray-300">{meta.label}</span>
+                <span className="relative group/def">
+                  <span tabIndex={0} className="font-medium text-gray-700 dark:text-gray-300 cursor-help underline decoration-dotted decoration-gray-400 underline-offset-2">
+                    {meta.label}
+                  </span>
+                  {meta.desc && (
+                    <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 w-60 px-3 py-2 rounded-lg shadow-lg bg-gray-900 dark:bg-gray-800 text-white text-[11px] leading-relaxed font-normal text-left opacity-0 group-hover/def:opacity-100 group-focus-within/def:opacity-100 transition-opacity duration-150">
+                      {meta.desc}
+                    </span>
+                  )}
+                </span>
                 <span className="w-20 text-right">{meta.fmt(f.home_value)}</span>
               </div>
               <div className="relative h-2 bg-gray-100 dark:bg-gray-800 rounded-full">

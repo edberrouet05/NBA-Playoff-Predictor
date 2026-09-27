@@ -2175,7 +2175,7 @@ NFL_QB_REPLACEMENT = -0.10  # EPA/dropback for a QB with no history (matches nfl
 
 # Order must match nfl/train.py FEATURES exactly
 NFL_FEATURES = [
-    "home", "rest_diff", "off_bye", "opp_off_bye", "travel_diff_1000km",
+    "home", "rest_diff", "off_bye", "opp_off_bye",
     "elo_diff",
     "net_epa_diff",
     "qb_epa_diff", "qb_changed", "opp_qb_changed",
@@ -2325,8 +2325,7 @@ def _nfl_rows_from_team_state(stats: pd.DataFrame, team: str, opp: str, is_home:
     def _row(t, o, home):
         ts, os_ = stats.loc[t], stats.loc[o]
         return {
-            "home": home, "rest_diff": 0, "off_bye": 0, "opp_off_bye": 0,
-            "travel_diff_1000km": 0.0,
+            "home": home, "rest_diff": 0, "off_bye": 0, "opp_off_bye": 0,
             "elo_diff":    float(ts.get("elo", 1505)) - float(os_.get("elo", 1505)),
             "net_epa_diff": (float(ts.get("off_epa", 0.0)) - float(ts.get("def_epa", 0.0)))
                             - (float(os_.get("off_epa", 0.0)) - float(os_.get("def_epa", 0.0))),
@@ -2340,7 +2339,7 @@ def _nfl_win_prob(model, stats: pd.DataFrame, team: str, opp: str, is_home: int,
                    game_id: str | None = None) -> float:
     """Return P(team wins) using the NFL logistic regression.
 
-    Uses the game's precomputed features (rest, travel, division, QBs) when the
+    Uses the game's precomputed features (rest, bye, starting QBs) when the
     ESPN event id is known, otherwise falls back to team-level strength only.
     """
     rows = _nfl_rows_for_game(game_id, team, opp) or _nfl_rows_from_team_state(stats, team, opp, is_home)

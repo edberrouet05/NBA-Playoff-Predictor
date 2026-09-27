@@ -32,7 +32,6 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
   rest_diff: { label: "Rest Gap", group: "Context", desc: "Difference in days of rest between the two teams, e.g. a team coming off a Thursday game vs one that played Monday." },
   off_bye: { label: "Coming Off Bye", group: "Context", desc: "Whether this team had its bye week before this game (13+ days of rest)." },
   opp_off_bye: { label: "Opp Coming Off Bye", group: "Context", desc: "Whether the opponent had its bye week before this game." },
-  travel_diff_1000km: { label: "Travel Gap", group: "Context", desc: "Difference between the two teams' travel distance from their home stadium to the venue, in thousands of km." },
 };
 
 const GROUP_COLORS: Record<string, string> = {
@@ -251,7 +250,7 @@ export default function NFLStatsPage() {
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic Regression with L2 regularization + StandardScaler</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on {data.seasons[0]}–{data.seasons[data.seasons.length - 1]} regular-season and playoff games (2 rows per game)</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Leave-one-season-out cross-validation, balanced class weights</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, EPA efficiency, starting QB, home field, rest / bye, travel</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, EPA efficiency, starting QB, home field, rest / bye</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Play-by-play data from nflverse; projected starting QBs refreshed hourly</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Probability normalized head-to-head: away prob / (away + home prob)</li>
         </ul>

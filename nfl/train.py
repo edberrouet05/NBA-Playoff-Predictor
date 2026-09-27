@@ -40,7 +40,7 @@ METRICS_PATH   = MODELS_DIR / "nfl_metrics.json"
 # ── Feature list — must match api/main.py ─────────────────────────────────────
 FEATURES = [
     # Context
-    "home", "rest_diff", "off_bye", "opp_off_bye", "travel_diff_1000km",
+    "home", "rest_diff", "off_bye", "opp_off_bye",
     # Team strength (Elo carries across seasons → no week-1 cold start)
     "elo_diff",
     # Efficiency: (off EPA/play − def EPA/play allowed) gap, recency-weighted
