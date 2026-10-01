@@ -1314,6 +1314,8 @@ MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
 
 MLB_PITCHER_RATINGS_PATH = ROOT / "data" / "mlb" / "mlb_pitcher_ratings.csv"
 MLB_SP_UNKNOWN = 4.40  # FIP for a starter with no history (matches mlb/pipeline.py SP_UNKNOWN)
+# Regular season + postseason (F wild card, D division series, L LCS, W World Series)
+MLB_GAME_TYPES = "R,F,D,L,W"
 
 # Order must match mlb/train.py FEATURES exactly
 MLB_FEATURES = [
@@ -1475,7 +1477,7 @@ def _fetch_mlb_today() -> dict:
         "https://statsapi.mlb.com/api/v1/schedule"
         f"?sportId=1&date={today_iso}"
         "&hydrate=probablePitcher,linescore,decisions"
-        "&gameType=R"
+        f"&gameType={MLB_GAME_TYPES}"
     )
     req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
     with urllib.request.urlopen(req, timeout=10) as resp:
@@ -1489,7 +1491,7 @@ def _fetch_mlb_today() -> dict:
         g
         for date_block in data.get("dates", [])
         for g in date_block.get("games", [])
-        if g.get("gameType", "R") == "R"
+        if g.get("gameType", "R") in MLB_GAME_TYPES.split(",")
     ]
     pitcher_ids: list[int] = []
     for g in all_games:
@@ -1648,14 +1650,14 @@ def get_mlb_predictions_log(n: int = 500):
         return {"log": cached_log[:n]}
 
     try:
-        # Full 2026 regular season from Opening Day
+        # Full 2026 season (regular season + postseason) from Opening Day
         start_date = datetime.date(2026, 3, 25)
         end_date   = datetime.date.today()
 
         url = (
             "https://statsapi.mlb.com/api/v1/schedule"
             f"?sportId=1&startDate={start_date.isoformat()}&endDate={end_date.isoformat()}"
-            "&gameType=R&limit=2500"
+            f"&gameType={MLB_GAME_TYPES}&limit=2500"
         )
         req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
         with urllib.request.urlopen(req, timeout=15) as resp:

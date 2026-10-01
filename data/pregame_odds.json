@@ -758,5 +758,21 @@
   "denver nuggets|golden state warriors": {
     "away_odds": 1.77,
     "home_odds": 2.1
+  },
+  "philadelphia phillies|atlanta braves": {
+    "away_odds": 1.93,
+    "home_odds": 1.99
+  },
+  "chicago white sox|cleveland guardians": {
+    "away_odds": 2.36,
+    "home_odds": 1.66
+  },
+  "new york yankees|tampa bay rays": {
+    "away_odds": 2.18,
+    "home_odds": 1.77
+  },
+  "san diego padres|milwaukee brewers": {
+    "away_odds": 2.96,
+    "home_odds": 1.45
   }
 }
