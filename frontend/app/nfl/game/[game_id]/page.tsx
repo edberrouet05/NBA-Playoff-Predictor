@@ -461,7 +461,7 @@ function Quarterscore({
             {cols.map(n => (
               <th key={n} className="text-center text-gray-400 font-semibold pb-2 w-9 min-w-[32px]">{colLabel(n)}</th>
             ))}
-            <th className="text-center text-gray-400 font-semibold pb-2 pl-3 border-l border-gray-200 dark:border-gray-700 min-w-[32px]">F</th>
+            <th className="text-center text-gray-400 font-semibold pb-2 pl-3 border-l border-gray-200 dark:border-gray-700 min-w-[32px]">Final</th>
           </tr>
         </thead>
         <tbody>

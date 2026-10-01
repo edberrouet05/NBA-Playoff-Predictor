@@ -2325,7 +2325,7 @@ def _nfl_rows_from_team_state(stats: pd.DataFrame, team: str, opp: str, is_home:
     def _row(t, o, home):
         ts, os_ = stats.loc[t], stats.loc[o]
         return {
-            "home": home, "rest_diff": 0, "off_bye": 0, "opp_off_bye": 0,
+            "home": home, "rest_diff": 0, "off_bye": 0, "opp_off_bye": 0,
             "elo_diff":    float(ts.get("elo", 1505)) - float(os_.get("elo", 1505)),
             "net_epa_diff": (float(ts.get("off_epa", 0.0)) - float(ts.get("def_epa", 0.0)))
                             - (float(os_.get("off_epa", 0.0)) - float(os_.get("def_epa", 0.0))),
@@ -2999,6 +2999,178 @@ def _nfl_quarter_win_prob(
     return max(0.02, min(0.98, p))
 
 
+# ── Play-by-play in-game win probability (our model) ─────────────────────────
+# Starts from our pre-game prediction and updates on every play using score,
+# clock, possession, field position, down and distance. Two regimes:
+#   • Normal approximation of the final margin (most of the game)
+#   • discrete drive-outcome model (TD / FG / no score) in the final minutes,
+#     blended in over the last 4 minutes of regulation/OT.
+
+_NFL_FINAL_MARGIN_SD = 13.5   # std of an NFL final margin
+_NFL_POSS_SD         = 3.5    # extra uncertainty from how the current possession ends
+# Expected points for 1st & 10 by yards to the end zone (net of the opponent's next drive)
+_NFL_EP_TABLE = [(1, 6.0), (5, 5.3), (10, 4.8), (20, 4.0), (30, 3.3), (40, 2.7), (50, 2.0),
+                 (60, 1.4), (70, 0.9), (80, 0.4), (90, -0.2), (99, -0.6)]
+# FG make rate by kick distance
+_NFL_FG_TABLE = [(20, 0.99), (30, 0.96), (40, 0.88), (50, 0.72), (55, 0.58), (60, 0.35), (65, 0.1)]
+# Drive outcomes with ample time, 1st & 10 at `yte`: P(TD), P(reach FG range)
+_NFL_TD_TABLE    = [(2, 0.80), (5, 0.70), (10, 0.60), (20, 0.50), (35, 0.40), (50, 0.33),
+                    (65, 0.26), (75, 0.22), (90, 0.17)]
+_NFL_REACH_TABLE = [(35, 0.92), (50, 0.75), (65, 0.60), (75, 0.52), (90, 0.42)]
+
+
+def _interp(table: list[tuple[float, float]], x: float) -> float:
+    if x <= table[0][0]:
+        return table[0][1]
+    for (x0, y0), (x1, y1) in zip(table, table[1:]):
+        if x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return table[-1][1]
+
+
+def _nfl_expected_points(yte: float, down: int, dist: float) -> float:
+    v = _interp(_NFL_EP_TABLE, max(1, min(99, yte)))
+    if down == 2:
+        v -= 0.35 + 0.03 * max(0, dist - 7)
+    elif down == 3:
+        v -= 0.9 + 0.06 * max(0, dist - 4)
+    elif down == 4:
+        v -= 1.6 + 0.08 * max(0, dist - 2)
+    return v
+
+
+def _nfl_late_win_prob(m: float, yte: float, down: int, dist: float, secs: float,
+                       ot_p: float, depth: int = 0) -> float:
+    """Win prob for the team WITH the ball, leading by `m`, in the final minutes."""
+    from statistics import NormalDist
+    norm = NormalDist()
+    if secs <= 0 or depth > 3:
+        return 1.0 if m > 0 else 0.0 if m < 0 else ot_p
+
+    if m >= 1:  # leader tries to run out the clock
+        p_conv = {1: 0.62, 2: 0.48, 3: max(0.15, 0.5 - 0.04 * dist), 4: 0.0}.get(down, 0.6)
+        burn = 28 * (4 - down) + 6
+        if secs <= burn:
+            return 0.99
+        keep = (_nfl_late_win_prob(m, max(1, yte - 12), 1, 10, secs - burn, ot_p, depth + 1)
+                if depth < 3 else 0.99)
+        punt_to = max(20, min(85, 100 - yte + 40)) if yte > 40 else 75
+        give = 1 - _nfl_late_win_prob(-m, punt_to, 1, 10, secs - burn, 1 - ot_p, depth + 1)
+        return p_conv * keep + (1 - p_conv) * give
+
+    down_f = {1: 1.0, 2: 0.93 - 0.015 * max(0, dist - 10),
+              3: max(0.4, 0.85 - 0.03 * dist), 4: max(0.15, 0.55 - 0.05 * dist)}.get(down, 1.0)
+
+    def in_time(need: float) -> float:
+        return norm.cdf((secs - need) / (0.35 * need + 6))
+
+    plays_cap = min(1.0, 0.25 + 0.75 * (1 + secs / 7.0) / (3 + yte / 7.0))
+    p_td = _interp(_NFL_TD_TABLE, yte) * down_f * in_time(2 + max(0, yte - 15) * 0.9) * plays_cap
+    if yte <= 35:
+        p_fg = (0.92 - p_td) * _interp(_NFL_FG_TABLE, yte + 17) * in_time(3)
+    else:
+        p_fg = max(0.0, _interp(_NFL_REACH_TABLE, yte) * down_f * in_time(4 + (yte - 35)) - p_td) * 0.85
+    if m > 3 or m < -3:
+        p_fg *= 0.6 if m < -3 else 0.4   # a FG alone doesn't change the outcome much
+    p_none = max(0.0, 1 - p_td - p_fg)
+
+    def opp_turn(new_m: float, opp_yte: float, used: float) -> float:
+        after = max(0.0, secs - used)
+        return 1 - _nfl_late_win_prob(-new_m, opp_yte, 1, 10, after, 1 - ot_p, depth + 1)
+
+    t_drive = min(secs, 6 + yte * 0.8)
+    return (p_td * opp_turn(m + 7, 75, t_drive + 5)
+            + p_fg * opp_turn(m + 3, 75, min(secs, t_drive) + 5)
+            + p_none * opp_turn(m, max(30, min(80, 100 - yte + 10)), min(secs, 25)))
+
+
+def _nfl_live_win_prob(pre_home: float, margin: float, secs_left: float,
+                       home_poss: bool | None, yte: float, down: int, dist: float) -> float:
+    """Home win probability given the game state, anchored on our pre-game prob."""
+    import math
+    from statistics import NormalDist
+    norm = NormalDist()
+    ot_home = 0.5 + (pre_home - 0.5) * 0.5
+    if secs_left <= 0:
+        if margin:
+            return 1.0 if margin > 0 else 0.0
+        return ot_home
+
+    f   = secs_left / 3600.0
+    mu0 = _NFL_FINAL_MARGIN_SD * norm.inv_cdf(min(0.99, max(0.01, pre_home)))
+    e   = 0.0
+    if home_poss is not None:
+        e = _nfl_expected_points(yte, down, dist)
+        if yte > 35:   # out of FG range: the drive needs time
+            e *= min(1.0, (secs_left + 20) / 150)
+        if not home_poss:
+            e = -e
+    sd = math.sqrt(_NFL_FINAL_MARGIN_SD ** 2 * f
+                   + (_NFL_POSS_SD ** 2 if home_poss is not None else 0) + 0.25)
+    p = norm.cdf((margin + mu0 * f + e) / sd)
+
+    if home_poss is not None and secs_left <= 240:
+        if home_poss:
+            q = _nfl_late_win_prob(margin, yte, down, dist, secs_left, ot_home)
+        else:
+            q = 1 - _nfl_late_win_prob(-margin, yte, down, dist, secs_left, 1 - ot_home)
+        w = 1.0 if secs_left <= 120 else (240 - secs_left) / 120
+        p = w * q + (1 - w) * p
+    return min(0.999, max(0.001, p))
+
+
+def _nfl_play_win_probs(data: dict, home_id: str, away_id: str, pre_home: float) -> list[dict]:
+    """Run our live model over every play in an ESPN summary payload."""
+    drives = data.get("drives", {})
+    drive_list = list(drives.get("previous", []))
+    cur = drives.get("current")
+    if cur and cur.get("id") not in {d.get("id") for d in drive_list}:
+        drive_list.append(cur)
+
+    def clock_secs(s: str) -> int:
+        try:
+            mm, ss = s.split(":")
+            return int(mm) * 60 + int(ss)
+        except (ValueError, AttributeError):
+            return 0
+
+    state: tuple | None = None   # (possession team id, yards to end zone, down, distance)
+    hs = as_ = 0
+    out: list[dict] = []
+    for drive in drive_list:
+        for play in drive.get("plays", []):
+            period = (play.get("period") or {}).get("number") or 1
+            clock  = clock_secs((play.get("clock") or {}).get("displayValue", "0:00"))
+            left   = (4 - period) * 900 + clock if period <= 4 else clock
+            end    = play.get("end") or {}
+            tid    = (end.get("team") or {}).get("id")
+            dn, yte = end.get("down"), end.get("yardsToEndzone")
+            typ    = (play.get("type") or {}).get("text", "")
+
+            pat = 0.0
+            if play.get("scoringPlay"):
+                scorer = ((play.get("start") or {}).get("team") or {}).get("id") or tid
+                if "Touchdown" in typ:   # extra point not yet on the board
+                    pat = 0.95 if scorer == home_id else -0.95
+                state = (away_id if scorer == home_id else home_id, 75, 1, 10)
+            elif dn in (1, 2, 3, 4) and yte and 1 <= yte <= 99 and tid:
+                state = (tid, yte, dn, end.get("distance") or 10)
+
+            # ESPN occasionally reports 0-0 on administrative plays; scores never go down
+            hs  = max(hs, play.get("homeScore") or 0)
+            as_ = max(as_, play.get("awayScore") or 0)
+            if typ == "End of Game" or (period >= 4 and clock == 0 and typ.startswith("End")):
+                left = 0
+            elif left <= 0:
+                left = 1
+
+            home_poss = None if state is None else state[0] == home_id
+            p = _nfl_live_win_prob(pre_home, hs - as_ + pat, left, home_poss,
+                                   *(state[1:] if state else (75, 1, 10)))
+            out.append({"play": play, "period": period, "home_prob": p * 100})
+    return out
+
+
 @app.get("/api/nfl/game/{game_id}")
 def get_nfl_game_detail(game_id: str):
     """Return box score, quarter-by-quarter score, and team stat comparison for one game."""
@@ -3048,7 +3220,7 @@ def get_nfl_game_detail(game_id: str):
             pred  = _predict_nfl_game(model, stats, away_name, home_name, game_id)
             away_wp, home_wp = pred[0:2] if pred else (50.0, 50.0)
 
-        # ── Play-by-play win probability (ESPN's own per-play model) ──────────
+        # ── Play-by-play win probability (our live model, from our pre-game prob) ──
         away_q = _quarters(away)
         home_q = _quarters(home)
         p_home_pre = home_wp / 100.0
@@ -3061,31 +3233,27 @@ def get_nfl_game_detail(game_id: str):
             "home_prob": round(home_wp, 1),
         }]
 
-        win_prob_plays = data.get("winprobability", [])
-        play_map: dict[str, dict] = {
-            play.get("id"): play
-            for drive in data.get("drives", {}).get("previous", [])
-            for play in drive.get("plays", [])
-        }
+        play_probs = _nfl_play_win_probs(
+            data, str(home.get("team", {}).get("id", "")), str(away.get("team", {}).get("id", "")),
+            p_home_pre,
+        )
 
-        if win_prob_plays:
+        if play_probs:
             last_period = None
-            for i, wp in enumerate(win_prob_plays):
-                play       = play_map.get(wp.get("playId"), {})
-                period_num = (play.get("period") or {}).get("number")
-                home_pct   = float(wp.get("homeWinPercentage", 0.5)) * 100
-                tie_pct    = float(wp.get("tiePercentage", 0.0)) * 100
-                away_pct   = max(0.0, 100.0 - home_pct - tie_pct)
+            for i, pp in enumerate(play_probs):
+                play       = pp["play"]
+                period_num = pp["period"]
+                home_pct   = pp["home_prob"]
 
                 label = ""
-                if period_num is not None and period_num != last_period:
+                if period_num != last_period:
                     label = f"Q{period_num}" if period_num <= 4 else f"OT{period_num - 4}"
                     last_period = period_num
 
                 history.append({
                     "idx":          i + 1,
                     "label":        label,
-                    "away_prob":    round(away_pct, 1),
+                    "away_prob":    round(100.0 - home_pct, 1),
                     "home_prob":    round(home_pct, 1),
                     "scoring_play": bool(play.get("scoringPlay", False)),
                     "away_score":   play.get("awayScore"),
@@ -3093,7 +3261,7 @@ def get_nfl_game_detail(game_id: str):
                 })
         else:
             # Fallback: coarse quarter-by-quarter estimate when ESPN has no
-            # play-by-play win probability for this game (e.g. very old games).
+            # play-by-play data for this game (e.g. very old games).
             home_total = away_total = 0
             for i in range(min(len(away_q), len(home_q))):
                 a_val, h_val = away_q[i], home_q[i]

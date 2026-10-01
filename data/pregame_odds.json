@@ -462,5 +462,301 @@
   "philadelphia eagles|chicago bears": {
     "away_odds": 1.98,
     "home_odds": 1.85
+  },
+  "pittsburgh steelers|cleveland browns": {
+    "away_odds": 1.68,
+    "home_odds": 2.32
+  },
+  "indianapolis colts|washington commanders": {
+    "away_odds": 1.49,
+    "home_odds": 2.72
+  },
+  "arizona cardinals|new york giants": {
+    "away_odds": 1.71,
+    "home_odds": 2.22
+  },
+  "tennessee titans|baltimore ravens": {
+    "away_odds": 5.89,
+    "home_odds": 1.14
+  },
+  "new england patriots|buffalo bills": {
+    "away_odds": 3.53,
+    "home_odds": 1.32
+  },
+  "new york jets|chicago bears": {
+    "away_odds": 2.57,
+    "home_odds": 1.56
+  },
+  "jacksonville jaguars|cincinnati bengals": {
+    "away_odds": 2.3,
+    "home_odds": 1.67
+  },
+  "dallas cowboys|houston texans": {
+    "away_odds": 2.39,
+    "home_odds": 1.62
+  },
+  "green bay packers|tampa bay buccaneers": {
+    "away_odds": 1.53,
+    "home_odds": 2.61
+  },
+  "los angeles rams|philadelphia eagles": {
+    "away_odds": 1.57,
+    "home_odds": 2.49
+  },
+  "miami dolphins|minnesota vikings": {
+    "away_odds": 5.33,
+    "home_odds": 1.17
+  },
+  "denver broncos|san francisco 49ers": {
+    "away_odds": 2.23,
+    "home_odds": 1.71
+  },
+  "kansas city chiefs|las vegas raiders": {
+    "away_odds": 1.48,
+    "home_odds": 2.76
+  },
+  "los angeles chargers|seattle seahawks": {
+    "away_odds": 3.72,
+    "home_odds": 1.29
+  },
+  "detroit lions|carolina panthers": {
+    "away_odds": 1.52,
+    "home_odds": 2.65
+  },
+  "atlanta falcons|new orleans saints": {
+    "away_odds": 2.24,
+    "home_odds": 1.71
+  },
+  "tampa bay buccaneers|dallas cowboys": {
+    "away_odds": 4.9,
+    "home_odds": 1.19
+  },
+  "philadelphia eagles|jacksonville jaguars": {
+    "away_odds": 2.24,
+    "home_odds": 1.68
+  },
+  "chicago bears|green bay packers": {
+    "away_odds": 2.14,
+    "home_odds": 1.74
+  },
+  "cincinnati bengals|miami dolphins": {
+    "away_odds": 1.22,
+    "home_odds": 4.5
+  },
+  "cleveland browns|new york jets": {
+    "away_odds": 2.2,
+    "home_odds": 1.7
+  },
+  "houston texans|tennessee titans": {
+    "away_odds": 1.34,
+    "home_odds": 3.4
+  },
+  "indianapolis colts|pittsburgh steelers": {
+    "away_odds": 2.14,
+    "home_odds": 1.74
+  },
+  "las vegas raiders|new england patriots": {
+    "away_odds": 2.6,
+    "home_odds": 1.52
+  },
+  "minnesota vikings|new orleans saints": {
+    "away_odds": 1.7,
+    "home_odds": 2.2
+  },
+  "new york giants|washington commanders": {
+    "away_odds": 2.2,
+    "home_odds": 1.7
+  },
+  "denver broncos|los angeles chargers": {
+    "away_odds": 1.74,
+    "home_odds": 2.14
+  },
+  "detroit lions|arizona cardinals": {
+    "away_odds": 1.41,
+    "home_odds": 3.0
+  },
+  "san francisco 49ers|seattle seahawks": {
+    "away_odds": 2.5,
+    "home_odds": 1.56
+  },
+  "baltimore ravens|atlanta falcons": {
+    "away_odds": 1.36,
+    "home_odds": 3.25
+  },
+  "buffalo bills|los angeles rams": {
+    "away_odds": 2.1,
+    "home_odds": 1.77
+  },
+  "boston celtics|detroit pistons": {
+    "away_odds": 2.12,
+    "home_odds": 1.79
+  },
+  "philadelphia 76ers|new york knicks": {
+    "away_odds": 2.77,
+    "home_odds": 1.49
+  },
+  "oklahoma city thunder|san antonio spurs": {
+    "away_odds": 2.19,
+    "home_odds": 1.75
+  },
+  "atlanta hawks|orlando magic": {
+    "away_odds": 2.21,
+    "home_odds": 1.73
+  },
+  "milwaukee bucks|washington wizards": {
+    "away_odds": 2.87,
+    "home_odds": 1.46
+  },
+  "charlotte hornets|brooklyn nets": {
+    "away_odds": 1.57,
+    "home_odds": 2.54
+  },
+  "minnesota timberwolves|miami heat": {
+    "away_odds": 2.03,
+    "home_odds": 1.86
+  },
+  "indiana pacers|new orleans pelicans": {
+    "away_odds": 1.6,
+    "home_odds": 2.48
+  },
+  "utah jazz|memphis grizzlies": {
+    "away_odds": 1.69,
+    "home_odds": 2.28
+  },
+  "dallas mavericks|houston rockets": {
+    "away_odds": 3.73,
+    "home_odds": 1.3
+  },
+  "golden state warriors|los angeles lakers": {
+    "away_odds": 2.75,
+    "home_odds": 1.5
+  },
+  "phoenix suns|portland trail blazers": {
+    "away_odds": 2.42,
+    "home_odds": 1.62
+  },
+  "cleveland cavaliers|philadelphia 76ers": {
+    "away_odds": 2.4,
+    "home_odds": 1.6
+  },
+  "denver nuggets|oklahoma city thunder": {
+    "away_odds": 3.25,
+    "home_odds": 1.36
+  },
+  "new york knicks|boston celtics": {
+    "away_odds": 2.1,
+    "home_odds": 1.77
+  },
+  "houston rockets|san antonio spurs": {
+    "away_odds": 2.8,
+    "home_odds": 1.46
+  },
+  "charlotte hornets|washington wizards": {
+    "away_odds": 1.87,
+    "home_odds": 1.95
+  },
+  "chicago bulls|boston celtics": {
+    "away_odds": 5.25,
+    "home_odds": 1.17
+  },
+  "detroit pistons|brooklyn nets": {
+    "away_odds": 1.32,
+    "home_odds": 3.5
+  },
+  "new york knicks|philadelphia 76ers": {
+    "away_odds": 2.05,
+    "home_odds": 1.8
+  },
+  "orlando magic|toronto raptors": {
+    "away_odds": 2.3,
+    "home_odds": 1.65
+  },
+  "houston rockets|dallas mavericks": {
+    "away_odds": 1.57,
+    "home_odds": 2.45
+  },
+  "indiana pacers|miami heat": {
+    "away_odds": 2.24,
+    "home_odds": 1.68
+  },
+  "los angeles clippers|minnesota timberwolves": {
+    "away_odds": 3.5,
+    "home_odds": 1.32
+  },
+  "denver nuggets|phoenix suns": {
+    "away_odds": 1.74,
+    "home_odds": 2.14
+  },
+  "los angeles lakers|golden state warriors": {
+    "away_odds": 1.91,
+    "home_odds": 1.91
+  },
+  "philadelphia 76ers|cleveland cavaliers": {
+    "away_odds": 2.0,
+    "home_odds": 1.83
+  },
+  "portland trail blazers|los angeles lakers": {
+    "away_odds": 2.3,
+    "home_odds": 1.65
+  },
+  "new york knicks|indiana pacers": {
+    "away_odds": 1.8,
+    "home_odds": 2.05
+  },
+  "golden state warriors|san antonio spurs": {
+    "away_odds": 4.9,
+    "home_odds": 1.19
+  },
+  "toronto raptors|detroit pistons": {
+    "away_odds": 1.95,
+    "home_odds": 1.87
+  },
+  "houston rockets|denver nuggets": {
+    "away_odds": 2.24,
+    "home_odds": 1.68
+  },
+  "boston celtics|washington wizards": {
+    "away_odds": 1.56,
+    "home_odds": 2.5
+  },
+  "dallas mavericks|denver nuggets": {
+    "away_odds": 3.75,
+    "home_odds": 1.29
+  },
+  "miami heat|philadelphia 76ers": {
+    "away_odds": 2.3,
+    "home_odds": 1.65
+  },
+  "minnesota timberwolves|oklahoma city thunder": {
+    "away_odds": 3.95,
+    "home_odds": 1.27
+  },
+  "san antonio spurs|portland trail blazers": {
+    "away_odds": 1.59,
+    "home_odds": 2.42
+  },
+  "miami heat|new york knicks": {
+    "away_odds": 2.54,
+    "home_odds": 1.54
+  },
+  "los angeles lakers|san antonio spurs": {
+    "away_odds": 3.05,
+    "home_odds": 1.4
+  },
+  "miami heat|boston celtics": {
+    "away_odds": 2.54,
+    "home_odds": 1.54
+  },
+  "philadelphia 76ers|los angeles lakers": {
+    "away_odds": 1.95,
+    "home_odds": 1.87
+  },
+  "oklahoma city thunder|minnesota timberwolves": {
+    "away_odds": 1.65,
+    "home_odds": 2.3
+  },
+  "denver nuggets|golden state warriors": {
+    "away_odds": 1.77,
+    "home_odds": 2.1
   }
 }
