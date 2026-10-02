@@ -314,17 +314,44 @@ _injuries_cache_time: float = 0.0
 _INJURIES_TTL = 3600.0  # re-fetch after 1 hour
 
 
+# ESPN team abbreviations that differ from ours (TEAM_TO_ABBR)
+_ESPN_NBA_ABBR = {"GS": "GSW", "NY": "NYK", "NO": "NOP", "SA": "SAS", "UTAH": "UTA", "WSH": "WAS"}
+
+
 def _get_player_minutes() -> pd.DataFrame:
-    from nba_api.stats.endpoints import leaguedashplayerstats
-    import time as _time
-    _time.sleep(0.6)
-    df = leaguedashplayerstats.LeagueDashPlayerStats(
-        season="2025-26",
-        season_type_all_star="Regular Season",
-        per_mode_detailed="PerGame",
-    ).get_data_frames()[0]
-    cols = ["PLAYER_NAME", "TEAM_ABBREVIATION", "MIN", "PTS", "AST", "REB", "STL", "BLK"]
-    df = df[[c for c in cols if c in df.columns]].copy()
+    """Per-game averages for every 2025-26 player, from ESPN (stats.nba.com blocks cloud hosts)."""
+    import json, urllib.request
+    url = ("https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete"
+           "?isqualified=false&limit=1000&season=2026&seasontype=2&sort=general.avgMinutes:desc")
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        data = json.loads(resp.read())
+    names = {c["name"]: c.get("names", []) for c in data.get("categories", [])}
+
+    def stat(a: dict, cat: str, name: str) -> float:
+        for c in a.get("categories", []):
+            if c.get("name") == cat and name in names.get(cat, []):
+                try:
+                    return float(str(c["totals"][names[cat].index(name)]).replace(",", ""))
+                except (ValueError, IndexError):
+                    return 0.0
+        return 0.0
+
+    rows = []
+    for a in data.get("athletes", []):
+        ath = a.get("athlete", {})
+        abbr = ath.get("teamShortName", "")
+        rows.append({
+            "PLAYER_NAME": ath.get("displayName", ""),
+            "TEAM_ABBREVIATION": _ESPN_NBA_ABBR.get(abbr, abbr),
+            "MIN": stat(a, "general", "avgMinutes"),
+            "PTS": stat(a, "offensive", "avgPoints"),
+            "AST": stat(a, "offensive", "avgAssists"),
+            "REB": stat(a, "general", "avgRebounds"),
+            "STL": stat(a, "defensive", "avgSteals"),
+            "BLK": stat(a, "defensive", "avgBlocks"),
+        })
+    df = pd.DataFrame(rows)
     df["IMPACT"] = (
         df.get("PTS", 0) * 1.0
         + df.get("AST", 0) * 1.5
@@ -614,39 +641,130 @@ _completed_series_cache_time: float = 0.0
 _COMPLETED_SERIES_TTL = 900.0
 
 
+# ── NBA games from ESPN ───────────────────────────────────────────────────────
+# stats.nba.com (nba_api) blocks cloud hosts such as Render, so live NBA data comes from ESPN.
+NBA_ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+NBA_SEASON_MONTHS = [(2025, m) for m in (10, 11, 12)] + [(2026, m) for m in range(1, 7)]  # 2025-26
+_nba_month_cache: dict[tuple[int, int], tuple[float, list[dict]]] = {}
+_NBA_MONTH_TTL = 600.0
+
+
+def _nba_round_from_note(note: str) -> int:
+    """'East 1st Round - Game 6' → 1, 'West Semifinals' → 2, 'East Finals' → 3, 'NBA Finals' → 4."""
+    n = note.lower()
+    if "nba finals" in n:
+        return 4
+    if "1st round" in n or "first round" in n:
+        return 1
+    if "semifinal" in n:
+        return 2
+    if "finals" in n:
+        return 3
+    return 0
+
+
+def _parse_espn_nba_event(ev: dict) -> dict | None:
+    import datetime, zoneinfo
+    comp = (ev.get("competitions") or [{}])[0]
+    cs = comp.get("competitors", [])
+    home = next((c for c in cs if c.get("homeAway") == "home"), None)
+    away = next((c for c in cs if c.get("homeAway") == "away"), None)
+    if not home or not away:
+        return None
+    st = comp.get("status", {}).get("type", {})
+    note = ((comp.get("notes") or [{}])[0]).get("headline", "")
+    try:
+        start = datetime.datetime.fromisoformat(ev.get("date", "").replace("Z", "+00:00"))
+        et = start.astimezone(zoneinfo.ZoneInfo("America/New_York"))
+    except ValueError:
+        et = None
+
+    def score(c):
+        try:
+            return int(c.get("score")) if c.get("score") not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
+
+    return {
+        "game_id":     str(ev.get("id")),
+        "date":        et.date().isoformat() if et else ev.get("date", "")[:10],
+        "time_et":     (et.strftime("%I:%M %p").lstrip("0") + " ET") if et else "",
+        "season_type": int((ev.get("season") or {}).get("type") or 2),   # 2 regular, 3 playoffs, 5 play-in
+        "round":       _nba_round_from_note(note),
+        "home_team":   home.get("team", {}).get("displayName", ""),
+        "away_team":   away.get("team", {}).get("displayName", ""),
+        "home_score":  score(home),
+        "away_score":  score(away),
+        "state":       st.get("state", "pre"),                              # pre / in / post
+        "completed":   bool(st.get("completed")),
+        "detail":      st.get("shortDetail", ""),
+    }
+
+
+def _espn_nba_scoreboard(dates: str) -> list[dict]:
+    import json, urllib.request
+    req = urllib.request.Request(f"{NBA_ESPN_SCOREBOARD}?dates={dates}&limit=500",
+                                 headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        data = json.loads(resp.read())
+    return [g for g in (_parse_espn_nba_event(e) for e in data.get("events", [])) if g]
+
+
+def _espn_nba_month(year: int, month: int) -> list[dict]:
+    """All games in a month (ESPN rejects date ranges but accepts YYYYMM). Past months cached for good."""
+    import datetime
+    key = (year, month)
+    today = datetime.date.today()
+    past = (year, month) < (today.year, today.month)
+    hit = _nba_month_cache.get(key)
+    if hit and (past or _time_mod.time() - hit[0] < _NBA_MONTH_TTL):
+        return hit[1]
+    games = _espn_nba_scoreboard(f"{year}{month:02d}")
+    _nba_month_cache[key] = (_time_mod.time(), games)
+    return games
+
+
+def _espn_nba_season_games() -> list[dict]:
+    """Every 2025-26 game ESPN lists so far (regular season, play-in, playoffs), oldest first."""
+    import datetime
+    today = datetime.date.today()
+    out: list[dict] = []
+    for y, m in NBA_SEASON_MONTHS:
+        if (y, m) > (today.year, today.month):
+            break
+        try:
+            out.extend(_espn_nba_month(y, m))
+        except Exception:
+            continue
+    return sorted(out, key=lambda g: (g["date"], g["game_id"]))
+
+
+def _nba_playoff_series() -> dict[tuple[int, tuple[str, str]], dict]:
+    """(round, sorted team pair) → series state, from completed playoff games."""
+    series: dict[tuple[int, tuple[str, str]], dict] = {}
+    for g in _espn_nba_season_games():
+        if g["season_type"] != 3 or not g["completed"] or not g["round"]:
+            continue
+        if g["home_score"] is None or g["away_score"] is None:
+            continue
+        pair = tuple(sorted([g["home_team"], g["away_team"]]))
+        s = series.setdefault((g["round"], pair), {"round": g["round"], "team_a": pair[0], "team_b": pair[1],
+                                                   "team_a_wins": 0, "team_b_wins": 0})
+        winner = g["home_team"] if g["home_score"] > g["away_score"] else g["away_team"]
+        s["team_a_wins" if winner == pair[0] else "team_b_wins"] += 1
+    return series
+
+
 def _get_completed_series() -> set:
     """Return set of frozenset(abbr_a, abbr_b) for playoff series where one team has 4 wins."""
-    import time as _time
     global _completed_series_cache, _completed_series_cache_time
-
-    now = _time.time()
+    now = _time_mod.time()
     if _completed_series_cache is not None and (now - _completed_series_cache_time) < _COMPLETED_SERIES_TTL:
         return _completed_series_cache
-
     try:
-        from nba_api.stats.endpoints import leaguegamelog
-        _time.sleep(0.6)
-        df = leaguegamelog.LeagueGameLog(
-            season="2025-26", season_type_all_star="Playoffs"
-        ).get_data_frames()[0]
-
-        home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)]
-        series_wins: dict = {}
-        for _, row in home_rows.iterrows():
-            parts = row["MATCHUP"].split(" vs. ")
-            if len(parts) != 2:
-                continue
-            home_abbr = parts[0].strip()
-            away_abbr = parts[1].strip()
-            key = frozenset([home_abbr, away_abbr])
-            if key not in series_wins:
-                series_wins[key] = {}
-            winner = home_abbr if row["WL"] == "W" else away_abbr
-            series_wins[key][winner] = series_wins[key].get(winner, 0) + 1
-
-        completed = {k for k, wins in series_wins.items() if any(w >= 4 for w in wins.values())}
-        _completed_series_cache = completed
-        _completed_series_cache_time = now
+        completed = {frozenset([TEAM_TO_ABBR.get(s["team_a"], ""), TEAM_TO_ABBR.get(s["team_b"], "")])
+                     for s in _nba_playoff_series().values() if max(s["team_a_wins"], s["team_b_wins"]) >= 4}
+        _completed_series_cache, _completed_series_cache_time = completed, now
         return completed
     except Exception:
         return _completed_series_cache if _completed_series_cache is not None else set()
@@ -655,55 +773,20 @@ def _get_completed_series() -> set:
 @app.get("/api/bracket")
 def get_bracket():
     """Return all playoff series grouped by round with current score and win probability."""
-    import time as _time
     global _bracket_cache, _bracket_cache_time
 
-    now = _time.time()
+    now = _time_mod.time()
     if _bracket_cache is not None and (now - _bracket_cache_time) < _BRACKET_CACHE_TTL:
         return _bracket_cache
 
     try:
-        from nba_api.stats.endpoints import leaguegamelog
-        import time as _t
-        _t.sleep(0.6)
-        df = leaguegamelog.LeagueGameLog(
-            season="2025-26", season_type_all_star="Playoffs"
-        ).get_data_frames()[0]
-
         model = _load_model()
         stats = _load_stats_by_name()
 
-        home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)].copy()
-        away_index = df[df["MATCHUP"].str.contains(" @ ", na=False)].set_index("GAME_ID")
-
-        # Build series dict keyed by (round, sorted team pair)
-        series_map: dict[tuple, dict] = {}
-        for _, row in home_rows.iterrows():
-            game_id   = str(row["GAME_ID"])
-            round_num = _playoff_round(game_id)
-            if round_num == 0:
-                continue
-            home_team = str(row["TEAM_NAME"])
-            if game_id not in away_index.index:
-                continue
-            away_team = str(away_index.loc[game_id, "TEAM_NAME"])
-            if home_team not in stats.index or away_team not in stats.index:
-                continue
-
-            pair = tuple(sorted([home_team, away_team]))
-            key  = (round_num, pair)
-            if key not in series_map:
-                series_map[key] = {"round": round_num, "team_a": pair[0], "team_b": pair[1],
-                                    "team_a_wins": 0, "team_b_wins": 0}
-            winner = home_team if row["WL"] == "W" else away_team
-            if winner == pair[0]:
-                series_map[key]["team_a_wins"] += 1
-            else:
-                series_map[key]["team_b_wins"] += 1
-
-        # Build result rounds
         rounds_data: dict[int, list] = {}
-        for (round_num, pair), s in series_map.items():
+        for (round_num, _pair), s in _nba_playoff_series().items():
+            if s["team_a"] not in stats.index or s["team_b"] not in stats.index:
+                continue
             wa, wb = s["team_a_wins"], s["team_b_wins"]
             status = "complete" if wa == 4 or wb == 4 else "active"
             winner = s["team_a"] if wa == 4 else (s["team_b"] if wb == 4 else None)
@@ -729,8 +812,9 @@ def get_bracket():
             for r in sorted(rounds_data)
         ]
         result = {"rounds": rounds}
-        _bracket_cache = result
-        _bracket_cache_time = now
+        if rounds:
+            _bracket_cache = result
+            _bracket_cache_time = now
         return result
     except Exception:
         return {"rounds": []}
@@ -827,17 +911,16 @@ def _fetch_day(
     played_yesterday: set | None = None,
     fetch_injuries: bool = False,
 ) -> dict:
-    """Fetch one day's games and attach predictions."""
-    import time
-    from nba_api.stats.endpoints import scoreboardv3
+    """Fetch one day's games (ESPN) and attach predictions. `date_str` is MM/DD/YYYY."""
+    import datetime
+    day = datetime.datetime.strptime(date_str, "%m/%d/%Y").date()
+    # Only regular-season / play-in / playoff games our model knows both teams of
+    games = [g for g in _espn_nba_scoreboard(day.strftime("%Y%m%d"))
+             if g["season_type"] in (2, 3, 5)
+             and g["home_team"] in stats_by_name.index and g["away_team"] in stats_by_name.index]
+    date = day.isoformat()
 
-    time.sleep(0.6)
-    board = scoreboardv3.ScoreboardV3(game_date=date_str)
-    data  = board.get_dict()
-    games = data["scoreboard"]["games"]
-    date  = data["scoreboard"]["gameDate"]
-
-    STATUS = {1: "Scheduled", 2: "Live", 3: "Final"}
+    STATUS = {"pre": "Scheduled", "in": "Live", "post": "Final"}
 
     # Fetch all injuries in one ESPN request, then look up each playing team
     injury_factors: dict[str, float] = {}
@@ -846,11 +929,7 @@ def _fetch_day(
         all_injuries   = _fetch_all_espn_injuries()
         player_minutes = _get_player_minutes_cached()
         for g in games:
-            for side in (g["homeTeam"], g["awayTeam"]):
-                tid = side["teamId"]
-                if tid not in stats_by_id.index:
-                    continue
-                name = str(stats_by_id.loc[tid, "team_name"])
+            for name in (g["home_team"], g["away_team"]):
                 if name not in injury_factors:
                     inj = all_injuries.get(name, [])
                     factor, players = _compute_injury_factor(inj, name, player_minutes)
@@ -860,16 +939,8 @@ def _fetch_day(
     nba_odds = _fetch_odds_today("basketball_nba")
     results = []
     for g in games:
-        home    = g["homeTeam"]
-        away    = g["awayTeam"]
-        home_id = home["teamId"]
-        away_id = away["teamId"]
-
-        if home_id not in stats_by_id.index or away_id not in stats_by_id.index:
-            continue
-
-        home_name = str(stats_by_id.loc[home_id, "team_name"])
-        away_name = str(stats_by_id.loc[away_id, "team_name"])
+        home_name = g["home_team"]
+        away_name = g["away_team"]
 
         prev = played_yesterday or set()
         ctx_away = {
@@ -897,7 +968,7 @@ def _fetch_day(
         home_impact = round((p_raw - _adjust_for_injuries(p_raw, 1.0, inj_home)) * 100, 1) if inj_home != 1.0 else 0.0
 
         game_odds    = _get_game_odds(nba_odds, away_name, home_name)
-        nba_status   = STATUS.get(g["gameStatus"], "Scheduled")
+        nba_status   = STATUS.get(g["state"], "Scheduled")
 
         # For finished games, only show confirmed pre-game odds
         nba_game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
@@ -905,13 +976,13 @@ def _fetch_day(
             game_odds = {}
 
         results.append({
-            "game_id":             g["gameId"],
+            "game_id":             g["game_id"],
             "status":              nba_status,
-            "status_text":         g.get("gameStatusText", "TBD"),
+            "status_text":         g["time_et"] if g["state"] == "pre" else (g["detail"] or nba_status),
             "away_team":           away_name,
             "home_team":           home_name,
-            "away_score":          away.get("score"),
-            "home_score":          home.get("score"),
+            "away_score":          g["away_score"] if g["state"] != "pre" else None,
+            "home_score":          g["home_score"] if g["state"] != "pre" else None,
             "away_win_prob":       round(p_away * 100, 1),
             "home_win_prob":       round((1 - p_away) * 100, 1),
             "predicted_winner":    away_name if p_away >= 0.5 else home_name,
@@ -926,18 +997,16 @@ def _fetch_day(
         })
 
     # Remove scheduled playoff games that belong to an already-completed series
-    if results:
-        is_playoff = any(str(g["gameId"]).lstrip("0").startswith("4") for g in games)
-        if is_playoff:
-            completed = _get_completed_series()
-            if completed:
-                results = [
-                    r for r in results
-                    if frozenset([
-                        TEAM_TO_ABBR.get(r["away_team"], ""),
-                        TEAM_TO_ABBR.get(r["home_team"], ""),
-                    ]) not in completed
-                ]
+    if results and any(g["season_type"] == 3 for g in games):
+        completed = _get_completed_series()
+        if completed:
+            results = [
+                r for r in results
+                if frozenset([
+                    TEAM_TO_ABBR.get(r["away_team"], ""),
+                    TEAM_TO_ABBR.get(r["home_team"], ""),
+                ]) not in completed
+            ]
 
     return {"date": date, "games": results}
 
@@ -1069,81 +1138,53 @@ _PREDICTIONS_LOG_TTL = 300.0
 
 @app.get("/api/predictions_log")
 def get_predictions_log(n: int = 5):
-    """Return the last n completed playoff games with model prediction vs actual result."""
-    import time as _time
+    """Completed 2025-26 games (playoffs first, then regular season, newest first) with the
+    model's pre-game pick vs the actual result."""
     global _predictions_log_cache, _predictions_log_cache_time
 
-    now = _time.time()
+    now = _time_mod.time()
     if _predictions_log_cache is not None and (now - _predictions_log_cache_time) < _PREDICTIONS_LOG_TTL:
-        return _predictions_log_cache
+        return {"log": _predictions_log_cache["log"][:n]}
 
     try:
-        from nba_api.stats.endpoints import leaguegamelog
-        abbr_to_team = {v: k for k, v in TEAM_TO_ABBR.items()}
         model = _load_model()
         stats = _load_stats_by_name()
+        games = [g for g in _espn_nba_season_games()
+                 if g["completed"] and g["season_type"] in (2, 3)
+                 and g["home_score"] is not None and g["away_score"] is not None
+                 and g["home_team"] in stats.index and g["away_team"] in stats.index]
+        # Playoffs first, then regular season; newest first within each
+        games.sort(key=lambda g: (g["season_type"] == 3, g["date"], g["game_id"]), reverse=True)
 
         log: list[dict] = []
+        for g in games:
+            away_team, home_team = g["away_team"], g["home_team"]
+            try:
+                p_away = _game_prob(model, stats, away_team, home_team, team_a_is_home=False)
+            except Exception:
+                continue
+            predicted_winner = away_team if p_away >= 0.5 else home_team
+            predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
+            actual_winner    = home_team if g["home_score"] > g["away_score"] else away_team
+            log.append({
+                "game_id":          g["game_id"],
+                "date":             g["date"],
+                "away_team":        away_team,
+                "home_team":        home_team,
+                "predicted_winner": predicted_winner,
+                "predicted_prob":   predicted_prob,
+                "actual_winner":    actual_winner,
+                "correct":          predicted_winner == actual_winner,
+                "away_score":       g["away_score"],
+                "home_score":       g["home_score"],
+                "away_win_prob":    round(p_away * 100, 1),
+                "home_win_prob":    round((1 - p_away) * 100, 1),
+                "round":            ROUND_NAMES.get(g["round"], "Playoffs") if g["season_type"] == 3 else "Regular Season",
+            })
 
-        for season_type in ("Playoffs", "Regular Season"):
-            _time.sleep(0.6)
-            df = leaguegamelog.LeagueGameLog(
-                season="2025-26", season_type_all_star=season_type
-            ).get_data_frames()[0]
-
-            home_rows = df[df["MATCHUP"].str.contains(" vs. ", na=False)].copy()
-            home_rows = home_rows.sort_values("GAME_DATE", ascending=False)
-            away_rows = df[df["MATCHUP"].str.contains(" @ ", na=False)].set_index("GAME_ID")
-
-            for _, row in home_rows.iterrows():
-                parts = row["MATCHUP"].split(" vs. ")
-                if len(parts) != 2:
-                    continue
-                home_abbr, away_abbr = parts[0].strip(), parts[1].strip()
-                home_team = abbr_to_team.get(home_abbr)
-                away_team = abbr_to_team.get(away_abbr)
-                if not home_team or not away_team:
-                    continue
-                if home_team not in stats.index or away_team not in stats.index:
-                    continue
-                try:
-                    p_away = _game_prob(model, stats, away_team, home_team, team_a_is_home=False)
-                except Exception:
-                    continue
-                predicted_winner = away_team if p_away >= 0.5 else home_team
-                predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
-                actual_winner    = home_team if row["WL"] == "W" else away_team
-                home_score = int(row["PTS"]) if "PTS" in row.index and pd.notna(row["PTS"]) else None
-                away_score = None
-                game_id    = str(row["GAME_ID"]) if "GAME_ID" in row.index else ""
-                if game_id and game_id in away_rows.index:
-                    away_row   = away_rows.loc[game_id]
-                    away_score = int(away_row["PTS"]) if "PTS" in away_row.index and pd.notna(away_row["PTS"]) else None
-
-                if season_type == "Playoffs":
-                    round_label = ROUND_NAMES.get(_playoff_round(game_id), "Playoffs")
-                else:
-                    round_label = "Regular Season"
-
-                log.append({
-                    "game_id":          game_id,
-                    "date":             row["GAME_DATE"],
-                    "away_team":        away_team,
-                    "home_team":        home_team,
-                    "predicted_winner": predicted_winner,
-                    "predicted_prob":   predicted_prob,
-                    "actual_winner":    actual_winner,
-                    "correct":          predicted_winner == actual_winner,
-                    "away_score":       away_score,
-                    "home_score":       home_score,
-                    "away_win_prob":    round(p_away * 100, 1),
-                    "home_win_prob":    round((1 - p_away) * 100, 1),
-                    "round":            round_label,
-                })
-
-        result = {"log": log}
-        _predictions_log_cache = result
-        _predictions_log_cache_time = now
+        if log:
+            _predictions_log_cache = {"log": log}
+            _predictions_log_cache_time = now
         return {"log": log[:n]}
     except Exception:
         return {"log": []}
