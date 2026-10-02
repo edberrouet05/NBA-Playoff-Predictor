@@ -78,16 +78,17 @@ function toLocalDateStr(d: string): string {
 }
 
 function TeamLogo({ team }: { team: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
-  if (!url || err) {
+  if (!url || (failedSrc !== null && failedSrc === url)) {
     return (
       <span className="w-5 h-5 flex-shrink-0 text-[9px] font-bold text-gray-400 flex items-center justify-center">
         {getAbbr(team).slice(0, 2)}
       </span>
     );
   }
-  return <img src={url} alt={team} className="w-5 h-5 object-contain flex-shrink-0" onError={() => setErr(true)} />;
+  return <img src={url} alt={team} className="w-5 h-5 object-contain flex-shrink-0" onError={() => setFailedSrc(url)} />;
 }
 
 type Filter = "today" | "yesterday" | "week" | "all";

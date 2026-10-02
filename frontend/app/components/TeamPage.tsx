@@ -99,9 +99,10 @@ const card = "bg-white dark:bg-gray-900 border border-gray-100 dark:border-trans
 const cardTitle = "text-[10px] font-semibold text-gray-500 uppercase tracking-widest";
 
 function Img({ src, alt, className, fallback }: { src: string | null; alt: string; className: string; fallback: string }) {
-  const [err, setErr] = useState(false);
-  if (!src || err) return <div className={`${className} rounded-full`} style={{ background: fallback }} />;
-  return <img src={src} alt={alt} className={className} onError={() => setErr(true)} />;
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || (failedSrc !== null && failedSrc === src)) return <div className={`${className} rounded-full`} style={{ background: fallback }} />;
+  return <img src={src} alt={alt} className={className} onError={() => setFailedSrc(src)} />;
 }
 
 // ── Sections ───────────────────────────────────────────────────────────────────
@@ -193,7 +194,7 @@ function ModelCard({ d }: { d: TeamPageData }) {
   if (m.sb_win_pct != null) tiles.push(["Win Super Bowl", `${m.sb_win_pct}%`]);
   const ranks: [string, number | undefined][] = [
     ["Offense (EPA)", m.off_rank], ["Defense (EPA)", m.def_rank],
-    [`QB${m.qb_name ? ` · ${m.qb_name}` : ""}`, m.qb_rank], ["Schedule left", m.rem_sos_rank],
+    [`QB${m.qb_name ? ` · ${m.qb_name}` : ""}`, m.qb_rank], ["Schedule left (1st = hardest)", m.rem_sos_rank],
   ];
   return (
     <div className={`${card} h-full`}>
@@ -218,12 +219,12 @@ function ModelCard({ d }: { d: TeamPageData }) {
         {ranks.filter(([, r]) => r != null).map(([k, r]) => (
           <div key={k} className="flex justify-between text-xs">
             <span className="text-gray-500 truncate">{k}</span>
-            <span className={`font-bold tabular-nums ${rankClass(r!, 32)}`}>{ordinal(r!)}</span>
+            <span className={`font-bold tabular-nums ${rankClass(k.startsWith("Schedule") ? 33 - r! : r!, 32)}`}>{ordinal(r!)}</span>
           </div>
         ))}
       </div>
       {m.rem_sos_rank != null && (
-        <p className="mt-2 text-[10px] text-gray-400">Schedule rank: 1st = hardest remaining schedule.</p>
+        <p className="mt-2 text-[10px] text-gray-400">Green = good for the team (an easy schedule left is good).</p>
       )}
     </div>
   );

@@ -139,9 +139,10 @@ function formatGameTime(iso: string): string {
 // ── Team logo ──────────────────────────────────────────────────────────────────
 
 function TeamLogo({ team, size }: { team: string; size: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
-  if (!url || err) {
+  if (!url || (failedSrc !== null && failedSrc === url)) {
     return (
       <div className={`${size} rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-bold`}
         style={{ background: getColor(team) }}>
@@ -149,7 +150,7 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
       </div>
     );
   }
-  return <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setErr(true)} />;
+  return <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setFailedSrc(url)} />;
 }
 
 // ── Box score stat labels ───────────────────────────────────────────────────────
@@ -358,6 +359,11 @@ const FACTOR_LABELS: Record<string, { label: string; desc: string; fmt: (v: numb
     label: "Extra rest",
     desc: "Days of rest compared with the opponent, e.g. coming off a Thursday game vs a Monday game.",
     fmt: v => (v > 0 ? "+" : "") + v.toFixed(0) + "d",
+  },
+  inj_total_diff: {
+    label: "Injuries (non-QB)",
+    desc: "Starters missing compared with the opponent: players listed Out, Doubtful or Questionable (QBs excluded), each weighted by his share of snaps over the last 4 games. + = more banged up than the opponent.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(1) + " starters",
   },
 };
 
@@ -618,12 +624,13 @@ function H2HPanel({ h2h, awayTeam, homeTeam, isFinal }: {
 // ── Top performers ─────────────────────────────────────────────────────────────
 
 function Headshot({ src, team }: { src: string | null; team: string }) {
-  const [err, setErr] = useState(false);
-  if (!src || err) {
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || (failedSrc !== null && failedSrc === src)) {
     return <div className="w-9 h-9 rounded-full flex-shrink-0 bg-gray-100 dark:bg-gray-800" style={{ border: `2px solid ${getColor(team)}` }} />;
   }
   return (
-    <img src={src} alt="" onError={() => setErr(true)}
+    <img src={src} alt="" onError={() => setFailedSrc(src)}
       className="w-9 h-9 rounded-full flex-shrink-0 object-cover bg-gray-100 dark:bg-gray-800" />
   );
 }

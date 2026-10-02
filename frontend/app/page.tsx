@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFitRows } from "./components/useFitRows";
 import Link from "next/link";
 import { probClass, ValueBadge, type ValueFields } from "./components/PredictionBits";
 
@@ -211,8 +212,8 @@ export default function GamesPage() {
           ))}
         </div>
 
-        {/* ── Right: insight panels ── */}
-        <div className="flex flex-col gap-4">
+        {/* ── Right: insight panels — stay in view while the games list scrolls (wide screens) ── */}
+        <div data-sidebar className="flex flex-col gap-4 xl:sticky xl:top-16 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:pb-1">
           <PredictionsLog log={predLog} logLoading={logLoading} />
           <ConfidencePicks games={allGames} />
           <InjuryImpactPanel games={allGames} />
@@ -300,13 +301,14 @@ function GameCard({ game }: { game: TodayGame }) {
 // ── Team logo with color-circle fallback ──────────────────────────────────────
 
 function TeamLogo({ team, size }: { team: string; size: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
-  if (!url || err) {
+  if (!url || (failedSrc !== null && failedSrc === url)) {
     return <div className={`${size} rounded-full flex-shrink-0`} style={{ background: getColor(team) }} />;
   }
   return (
-    <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setErr(true)} />
+    <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setFailedSrc(url)} />
   );
 }
 
@@ -314,7 +316,9 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
 
 function PredictionsLog({ log, logLoading }: { log: PredictionEntry[]; logLoading: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? log : log.slice(0, 3);
+  const listRef = useRef<HTMLDivElement>(null);
+  const fit = useFitRows(listRef, log.length, expanded);
+  const visible = log.slice(0, expanded ? fit : 3);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
@@ -340,7 +344,7 @@ function PredictionsLog({ log, logLoading }: { log: PredictionEntry[]; logLoadin
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet this season.</p>
       ) : (
         <>
-        <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+        <div ref={listRef} className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
           {visible.map((e, i) => {
             const params = new URLSearchParams({
               away:       e.away_team,

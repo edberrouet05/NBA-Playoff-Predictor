@@ -31,11 +31,13 @@ Estimated runtime: ~3-5 minutes on first run (play-by-play download), <1 min aft
 
 import json
 import math
+import re
 import time
 import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT      = Path(__file__).parent.parent
@@ -51,6 +53,8 @@ PBP_START      = 2013                                # 2 seasons of EPA/QB burn-
 
 GAMES_URL = "https://github.com/nflverse/nfldata/raw/master/data/games.csv"
 PBP_URL   = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.csv.gz"
+INJ_URL   = "https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_{season}.csv"
+SNAPS_URL = "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_{season}.csv"
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
 
 # ── Model constants ─────────────────────────────────────────────────────────────
@@ -68,6 +72,11 @@ QB_PRIOR_N  = 150        # pseudo-dropbacks of replacement-level play
 QB_PRIOR    = -0.10      # replacement-level EPA/dropback
 
 BYE_REST = 13            # rest days ≥ this ⇒ coming off a bye
+
+# Non-QB injuries: a player's weight is his snap share over the team's last ROLE_WINDOW
+# games (so long-term absences the team already adapted to count ~0), times his status.
+ROLE_WINDOW   = 4
+INJURY_WEIGHT = {"Out": 1.0, "Doubtful": 0.8, "Questionable": 0.25}
 
 # Relocated franchises → current abbreviation (keeps Elo / EPA history continuous)
 TEAM_ALIASES = {"OAK": "LV", "SD": "LAC", "STL": "LA"}
@@ -214,6 +223,94 @@ def load_pbp(seasons: list[int]) -> pd.DataFrame:
     pbp["posteam"] = pbp["posteam"].map(_norm, na_action="ignore")
     pbp["defteam"] = pbp["defteam"].map(_norm, na_action="ignore")
     return pbp
+
+
+# ── Non-QB injuries ─────────────────────────────────────────────────────────────
+
+def player_key(name: str) -> str:
+    """Name key shared by injury reports and snap counts ('A.J. Brown Jr.' → 'aj brown')."""
+    s = re.sub(r"[^a-z ]", "", str(name).lower())
+    return " ".join(w for w in s.split() if w not in ("jr", "sr", "ii", "iii", "iv", "v"))
+
+
+def _load_yearly(url: str, sub: str, seasons: list[int]) -> pd.DataFrame:
+    """nflverse yearly CSVs (past seasons cached; current season refreshed)."""
+    folder = RAW_DIR / sub
+    folder.mkdir(exist_ok=True)
+    frames = []
+    for season in seasons:
+        path = folder / f"{sub}_{season}.csv"
+        if season >= CURRENT_SEASON or not path.exists():
+            try:
+                _download(url.format(season=season), path)
+            except Exception as e:
+                if not path.exists():
+                    _progress(f"    WARNING: no {sub} for {season} ({e})")
+                    continue
+        frames.append(pd.read_csv(path, low_memory=False))
+    out = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if not out.empty:
+        out["team"] = out["team"].map(_norm)
+    return out
+
+
+class PlayerRoles:
+    """Each player's snap share over his team's last ROLE_WINDOW games before a given week."""
+
+    def __init__(self, snaps: pd.DataFrame):
+        snaps = snaps.assign(key=snaps["player"].map(player_key))
+        self.games: dict[str, list[tuple[int, int]]] = {}
+        self.shares: dict[tuple[str, int, int], pd.DataFrame] = {}
+        for (team, season, week), g in snaps.groupby(["team", "season", "week"]):
+            self.games.setdefault(team, []).append((int(season), int(week)))
+            self.shares[(team, int(season), int(week))] = g.set_index("key")[["player", "offense_pct", "defense_pct"]]
+        for team in self.games:
+            self.games[team].sort()
+
+    def before(self, team: str, season: int, week: int) -> pd.DataFrame:
+        """key → (player, off share, def share) averaged over the last games before (season, week);
+        a player who missed one of those games counts 0 for it."""
+        prev = [g for g in self.games.get(team, []) if g < (season, week)][-ROLE_WINDOW:]
+        if not prev:
+            return pd.DataFrame(columns=["player", "offense_pct", "defense_pct"])
+        hist = pd.concat(self.shares[(team, s, w)] for s, w in prev)
+        shares = hist.groupby(level=0)[["offense_pct", "defense_pct"]].sum() / len(prev)
+        return shares.join(hist.groupby(level=0)["player"].first())
+
+
+def injury_loss(injuries: pd.DataFrame, roles: PlayerRoles) -> dict[tuple[int, int, str], float]:
+    """(season, week, team) → status-weighted snap share of non-QB players on the injury report
+    (≈ number of every-down starters missing)."""
+    rep = injuries[injuries["report_status"].isin(INJURY_WEIGHT) & (injuries["position"] != "QB")]
+    rep = rep.assign(key=rep["full_name"].map(player_key))
+    out = {}
+    for (season, week, team), g in rep.groupby(["season", "week", "team"]):
+        r = roles.before(team, int(season), int(week))
+        if r.empty:
+            continue
+        share = (r["offense_pct"] + r["defense_pct"]).reindex(g["key"]).fillna(0.0).to_numpy()
+        out[(int(season), int(week), team)] = float((share * g["report_status"].map(INJURY_WEIGHT).to_numpy()).sum())
+    return out
+
+
+def add_injury_feature(rows: pd.DataFrame, loss: dict[tuple[int, int, str], float]) -> pd.DataFrame:
+    def get(season, week, team):
+        return loss.get((int(season), int(week), team), 0.0)
+    team_loss = [get(s, w, t) for s, w, t in zip(rows["season"], rows["week"], rows["team"])]
+    opp_loss  = [get(s, w, t) for s, w, t in zip(rows["season"], rows["week"], rows["opp"])]
+    return rows.assign(inj_total_diff=np.array(team_loss) - np.array(opp_loss))
+
+
+def save_current_roles(roles: PlayerRoles, season: int) -> None:
+    """Snap shares going into each team's next game — the API weighs ESPN's live injury report with these."""
+    out = []
+    for team, games in roles.games.items():
+        r = roles.before(team, season + 1, 0)   # i.e. after the team's latest game
+        r = r[(r["offense_pct"] + r["defense_pct"]) > 0]
+        out.append(r.reset_index().rename(columns={"index": "key"}).assign(team=TEAM_NAMES.get(team, team)))
+    df = pd.concat(out, ignore_index=True)[["team", "key", "player", "offense_pct", "defense_pct"]]
+    df.round(3).to_csv(NFL_DIR / "nfl_player_roles.csv", index=False)
+    _progress(f"  Saved: {NFL_DIR / 'nfl_player_roles.csv'}  ({len(df):,} players)")
 
 
 def summarise_pbp(pbp: pd.DataFrame) -> tuple[dict, dict]:
@@ -591,6 +688,13 @@ if __name__ == "__main__":
 
     _progress("\nBuilding features...")
     rows, state, qbs, snaps = build_features(games, team_game, qb_game, first_row_season=TRAIN_SEASONS[0])
+
+    _progress("\nNon-QB injuries (injury reports × snap shares)...")
+    inj_seasons = list(range(TRAIN_SEASONS[0] - 1, CURRENT_SEASON + 1))
+    roles = PlayerRoles(_load_yearly(SNAPS_URL, "snap_counts", inj_seasons))
+    rows = add_injury_feature(rows, injury_loss(_load_yearly(INJ_URL, "injuries", inj_seasons), roles))
+    _progress(f"  inj_total_diff: mean |gap| {rows['inj_total_diff'].abs().mean():.2f} starters")
+    save_current_roles(roles, CURRENT_SEASON)
     snaps.to_csv(NFL_DIR / "nfl_power_history.csv", index=False)
     _progress(f"  Saved: {NFL_DIR / 'nfl_power_history.csv'}  (weeks {sorted(snaps['week'].unique().tolist()) if not snaps.empty else []})")
 

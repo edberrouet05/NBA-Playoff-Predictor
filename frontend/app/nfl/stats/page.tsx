@@ -28,6 +28,7 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
   qb_epa_diff: { label: "Starting QB Gap", group: "Quarterback", desc: "Gap in EPA per dropback between the two starting quarterbacks, based on each QB's own history (weighted toward recent games, shrunk toward backup level for QBs with little history). Uses the projected starter, so injuries and benchings are reflected." },
   qb_changed: { label: "QB Change", group: "Quarterback", desc: "Whether this team is starting a different quarterback than in its previous game — usually an injury or a benching." },
   opp_qb_changed: { label: "Opp QB Change", group: "Quarterback", desc: "Whether the opponent is starting a different quarterback than in its previous game." },
+  inj_total_diff: { label: "Injuries (non-QB)", group: "Injuries", desc: "Gap in starters missing: non-QB players listed Out, Doubtful or Questionable on the injury report, each weighted by his share of snaps over the team's last 4 games (a starter who just got hurt counts ~1, a long-term absence the team already adjusted to counts ~0). Positive = this team is more banged up." },
   home: { label: "Home Advantage", group: "Context", desc: "Whether the team is playing at home (neutral-site games like London count as neither). NFL home teams win roughly 55% of games." },
   rest_diff: { label: "Rest Gap", group: "Context", desc: "Difference in days of rest between the two teams, e.g. a team coming off a Thursday game vs one that played Monday." },
   off_bye: { label: "Coming Off Bye", group: "Context", desc: "Whether this team had its bye week before this game (13+ days of rest)." },
@@ -38,12 +39,14 @@ const GROUP_COLORS: Record<string, string> = {
   "Team strength": "bg-blue-500",
   Quarterback:     "bg-orange-500",
   Context:         "bg-green-500",
+  Injuries:        "bg-red-500",
 };
 
 const GROUP_TEXT: Record<string, string> = {
   "Team strength": "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10",
   Quarterback:     "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10",
   Context:         "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10",
+  Injuries:        "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10",
 };
 
 // ── Tooltip ────────────────────────────────────────────────────────────────────

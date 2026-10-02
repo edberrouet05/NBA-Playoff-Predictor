@@ -78,16 +78,17 @@ function getLogoUrl(t: string): string {
 // ── Team logo ──────────────────────────────────────────────────────────────────
 
 function TeamLogo({ team }: { team: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
-  if (!url || err) {
+  if (!url || (failedSrc !== null && failedSrc === url)) {
     return (
       <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-gray-500">
         {getAbbr(team).slice(0, 2)}
       </span>
     );
   }
-  return <img src={url} alt={team} className="w-6 h-6 object-contain flex-shrink-0" onError={() => setErr(true)} />;
+  return <img src={url} alt={team} className="w-6 h-6 object-contain flex-shrink-0" onError={() => setFailedSrc(url)} />;
 }
 
 // ── Streak badge ───────────────────────────────────────────────────────────────

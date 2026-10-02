@@ -58,10 +58,11 @@ function getLogoUrl(t: string) {
 }
 
 function TeamLogo({ team, size }: { team: string; size: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
-  if (!url || err) return <div className={`${size} rounded-full flex-shrink-0`} style={{ background: getColor(team) }} />;
-  return <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setErr(true)} />;
+  if (!url || (failedSrc !== null && failedSrc === url)) return <div className={`${size} rounded-full flex-shrink-0`} style={{ background: getColor(team) }} />;
+  return <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setFailedSrc(url)} />;
 }
 
 function SeriesCard({ s }: { s: SeriesEntry }) {

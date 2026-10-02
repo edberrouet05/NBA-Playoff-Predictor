@@ -22,9 +22,10 @@ interface RosterData {
 const card = "bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5";
 
 function Headshot({ src, color }: { src: string | null; color: string }) {
-  const [err, setErr] = useState(false);
-  if (!src || err) return <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: color }} />;
-  return <img src={src} alt="" onError={() => setErr(true)} className="w-9 h-9 rounded-full object-cover bg-gray-100 dark:bg-gray-800 flex-shrink-0" />;
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || (failedSrc !== null && failedSrc === src)) return <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background: color }} />;
+  return <img src={src} alt="" onError={() => setFailedSrc(src)} className="w-9 h-9 rounded-full object-cover bg-gray-100 dark:bg-gray-800 flex-shrink-0" />;
 }
 
 function InjuryBadge({ status }: { status: string }) {

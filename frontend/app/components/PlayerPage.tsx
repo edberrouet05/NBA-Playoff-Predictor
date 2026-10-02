@@ -51,9 +51,10 @@ function fmtDate(iso: string, withYear = false) {
 }
 
 function Img({ src, className, fallback }: { src: string | null; className: string; fallback: string }) {
-  const [err, setErr] = useState(false);
-  if (!src || err) return <div className={`${className} rounded-full`} style={{ background: fallback }} />;
-  return <img src={src} alt="" className={className} onError={() => setErr(true)} />;
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || (failedSrc !== null && failedSrc === src)) return <div className={`${className} rounded-full`} style={{ background: fallback }} />;
+  return <img src={src} alt="" className={className} onError={() => setFailedSrc(src)} />;
 }
 
 function StatTable({ labels, rows, first }: {

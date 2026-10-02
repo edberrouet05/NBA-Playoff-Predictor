@@ -2182,6 +2182,7 @@ NFL_FEATURES = [
     "elo_diff",
     "net_epa_diff",
     "qb_epa_diff", "qb_changed", "opp_qb_changed",
+    "inj_total_diff",
 ]
 
 NFL_ABBR: dict[str, str] = {
@@ -2258,6 +2259,78 @@ def _load_nfl_game_features() -> dict[str, dict[str, dict]]:
     return _nfl_game_features_cache
 
 
+# ── Non-QB injuries (same definition as nfl/pipeline.py) ──────────────────────
+NFL_PLAYER_ROLES_PATH = ROOT / "data" / "nfl" / "nfl_player_roles.csv"
+NFL_INJURY_WEIGHT = {"Out": 1.0, "Doubtful": 0.8, "Questionable": 0.25}  # matches pipeline INJURY_WEIGHT
+_nfl_roles_cache: tuple[float, dict[str, dict[str, float]]] | None = None
+_nfl_injury_report_cache: dict[str, list[tuple[str, str]]] | None = None
+_nfl_injury_report_time: float = 0.0
+_NFL_INJURY_TTL = 900.0  # 15 minutes
+
+
+def _nfl_player_key(name: str) -> str:
+    """Same name key as nfl/pipeline.py player_key."""
+    import re
+    s = re.sub(r"[^a-z ]", "", str(name).lower())
+    return " ".join(w for w in s.split() if w not in ("jr", "sr", "ii", "iii", "iv", "v"))
+
+
+def _load_nfl_roles() -> dict[str, dict[str, float]]:
+    """{team: {player key: snap share (off + def) over the team's last 4 games}}."""
+    global _nfl_roles_cache
+    if not NFL_PLAYER_ROLES_PATH.exists():
+        return {}
+    mtime = NFL_PLAYER_ROLES_PATH.stat().st_mtime
+    if _nfl_roles_cache is None or _nfl_roles_cache[0] != mtime:
+        df = pd.read_csv(NFL_PLAYER_ROLES_PATH)
+        roles: dict[str, dict[str, float]] = {}
+        for r in df.itertuples(index=False):
+            roles.setdefault(r.team, {})[r.key] = float(r.offense_pct) + float(r.defense_pct)
+        _nfl_roles_cache = (mtime, roles)
+    return _nfl_roles_cache[1]
+
+
+def _fetch_nfl_injury_report() -> dict[str, list[tuple[str, str]]] | None:
+    """{team: [(player key, status)]} for non-QBs listed Out / Doubtful / Questionable on ESPN.
+    None when ESPN is unreachable (callers then keep the pipeline's value)."""
+    import json, urllib.request
+    global _nfl_injury_report_cache, _nfl_injury_report_time
+    now = _time_mod.time()
+    if _nfl_injury_report_cache is not None and now - _nfl_injury_report_time < _NFL_INJURY_TTL:
+        return _nfl_injury_report_cache
+    try:
+        req = urllib.request.Request(f"{NFL_BASE}/injuries", headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+    except Exception:
+        return _nfl_injury_report_cache
+    out: dict[str, list[tuple[str, str]]] = {}
+    for team in data.get("injuries", []):
+        rows = []
+        for inj in team.get("injuries", []):
+            ath = inj.get("athlete", {})
+            status = str(inj.get("status", "")).title()
+            if status in NFL_INJURY_WEIGHT and (ath.get("position") or {}).get("abbreviation") != "QB":
+                rows.append((_nfl_player_key(ath.get("displayName", "")), status))
+        out[team.get("displayName", "")] = rows
+    _nfl_injury_report_cache, _nfl_injury_report_time = out, now
+    return out
+
+
+def _nfl_live_injury_loss(team: str) -> float | None:
+    """Status-weighted snap share of the team's injured non-QBs (≈ starters missing)."""
+    report = _fetch_nfl_injury_report()
+    if report is None:
+        return None
+    roles = _load_nfl_roles().get(team, {})
+    return sum(NFL_INJURY_WEIGHT[status] * roles.get(key, 0.0) for key, status in report.get(team, []))
+
+
+def _nfl_live_injury_diff(team: str, opp: str) -> float | None:
+    lt, lo = _nfl_live_injury_loss(team), _nfl_live_injury_loss(opp)
+    return None if lt is None or lo is None else lt - lo
+
+
 def _load_nfl_qb_ratings() -> dict[str, float]:
     global _nfl_qb_ratings_cache
     if _nfl_qb_ratings_cache is None:
@@ -2319,6 +2392,14 @@ def _nfl_rows_for_game(game_id: str | None, team: str, opp: str) -> tuple[dict, 
         r["qb_epa_diff"]    = qb_epa[r["team"]] - qb_epa[o["team"]]
         r["qb_changed"]     = qb_changed[r["team"]]
         r["opp_qb_changed"] = qb_changed[o["team"]]
+
+    # Upcoming games: today's ESPN injury report; played games keep the pipeline's pre-game value
+    import datetime
+    upcoming = str(r_t.get("game_date", ""))[:10] >= datetime.date.today().isoformat()
+    live = _nfl_live_injury_diff(team, opp) if upcoming else None
+    base = r_t.get("inj_total_diff")
+    inj = live if live is not None else (float(base) if base == base and base is not None else 0.0)
+    r_t["inj_total_diff"], r_o["inj_total_diff"] = inj, -inj
     return r_t, r_o
 
 
@@ -2334,7 +2415,9 @@ def _nfl_rows_from_team_state(stats: pd.DataFrame, team: str, opp: str, is_home:
                             - (float(os_.get("off_epa", 0.0)) - float(os_.get("def_epa", 0.0))),
             "qb_epa_diff": float(ts.get("qb_epa", NFL_QB_REPLACEMENT)) - float(os_.get("qb_epa", NFL_QB_REPLACEMENT)),
             "qb_changed": 0, "opp_qb_changed": 0,
+            "inj_total_diff": inj if t == team else -inj,
         }
+    inj = _nfl_live_injury_diff(team, opp) or 0.0
     return _row(team, opp, is_home), _row(opp, team, 1 - is_home)
 
 

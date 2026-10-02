@@ -47,13 +47,14 @@ const NFL_ABBR: Record<string, string> = {
 function getAbbr(t: string) { return NFL_ABBR[t] ?? t.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???"; }
 
 function TeamLogo({ team }: { team: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const abbr = getAbbr(team);
-  if (err || abbr === "???") {
+  const url = `https://a.espncdn.com/i/teamlogos/nfl/500/${abbr.toLowerCase()}.png`;
+  if (failedSrc === url || abbr === "???") {
     return <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-gray-500">{abbr.slice(0, 2)}</span>;
   }
-  return <img src={`https://a.espncdn.com/i/teamlogos/nfl/500/${abbr.toLowerCase()}.png`} alt={team}
-    className="w-6 h-6 object-contain flex-shrink-0" onError={() => setErr(true)} />;
+  return <img src={url} alt={team} className="w-6 h-6 object-contain flex-shrink-0" onError={() => setFailedSrc(url)} />;
 }
 
 // ── Formatting ─────────────────────────────────────────────────────────────────

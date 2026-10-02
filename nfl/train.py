@@ -47,6 +47,8 @@ FEATURES = [
     "net_epa_diff",
     # Starting quarterback
     "qb_epa_diff", "qb_changed", "opp_qb_changed",
+    # Non-QB injuries: gap in status-weighted snap share of players on the injury report
+    "inj_total_diff",
 ]
 TARGET   = "win"
 GAME_KEY = "game_id"

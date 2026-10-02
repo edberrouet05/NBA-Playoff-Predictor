@@ -126,9 +126,10 @@ function ordinalSuffix(n: number): string {
 // ── Team logo ──────────────────────────────────────────────────────────────────
 
 function TeamLogo({ team, size }: { team: string; size: string }) {
-  const [err, setErr] = useState(false);
+  // Remember which URL failed, so a new team/player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
-  if (!url || err) {
+  if (!url || (failedSrc !== null && failedSrc === url)) {
     return (
       <div
         className={`${size} rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-bold`}
@@ -140,7 +141,7 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
   }
   return (
     <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`}
-      onError={() => setErr(true)} />
+      onError={() => setFailedSrc(url)} />
   );
 }
 
