@@ -3,3 +3,8 @@
 export function teamHref(league: "nfl" | "mlb" | "nba", teamName: string): string {
   return `/${league}/team/${teamName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
 }
+
+// URL of a player page from an ESPN athlete id, e.g. playerHref("nfl", "3122840") → "/nfl/player/3122840"
+export function playerHref(league: "nfl" | "mlb" | "nba", athleteId: string): string {
+  return `/${league}/player/${athleteId}`;
+}

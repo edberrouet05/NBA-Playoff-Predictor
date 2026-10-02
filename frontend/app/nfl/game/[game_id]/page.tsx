@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { teamHref } from "../../../components/teamLinks";
+import { playerHref, teamHref } from "../../../components/teamLinks";
 import { probClass } from "../../../components/PredictionBits";
 import { pickMatchupColors } from "../../../components/teamColors";
 import {
@@ -43,7 +43,7 @@ interface NFLGameDetail {
 }
 
 interface Leader {
-  category: string; label: string; name: string; position: string; value: string; headshot: string | null;
+  category: string; label: string; id: string | null; name: string; position: string; value: string; headshot: string | null;
 }
 
 interface H2HRecord { games: number; away_wins: number; home_wins: number; ties: number; }
@@ -66,7 +66,7 @@ interface HeadToHead extends Partial<H2HRecord> {
 }
 
 interface Injury {
-  name: string; position: string; status: string; injury: string; return_date: string | null;
+  id?: string | null; name: string; position: string; status: string; injury: string; return_date: string | null;
 }
 
 interface Factor {
@@ -449,7 +449,9 @@ function InjuryList({ team, players }: { team: string; players: Injury[] }) {
                 <span title={p.status} className={`flex-shrink-0 mt-px w-14 text-center text-[10px] font-bold px-1 py-0.5 rounded ${st.cls}`}>{st.short}</span>
                 <div className="min-w-0">
                   <p className="text-xs text-gray-800 dark:text-gray-200 truncate">
-                    <span className={p.position === "QB" ? "font-bold" : "font-medium"}>{p.name}</span>
+                    {p.id
+                      ? <Link href={playerHref("nfl", p.id)} className={`inline-block transition-transform hover:scale-105 origin-left ${p.position === "QB" ? "font-bold" : "font-medium"}`}>{p.name}</Link>
+                      : <span className={p.position === "QB" ? "font-bold" : "font-medium"}>{p.name}</span>}
                     <span className="text-gray-400"> · {p.position}</span>
                   </p>
                   {(p.injury || ret) && (
@@ -633,7 +635,7 @@ function PerformerCell({ p, team, align }: { p?: Leader; team: string; align: "l
       <Headshot src={p.headshot} team={team} />
       <div className="min-w-0">
         <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
-          {p.name}<span className="font-normal text-gray-400"> · {p.position}</span>
+          {p.id ? <Link href={playerHref("nfl", p.id)} className={`inline-block transition-transform hover:scale-105 ${align === "right" ? "origin-right" : "origin-left"}`}>{p.name}</Link> : p.name}<span className="font-normal text-gray-400"> · {p.position}</span>
         </p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate tabular-nums">{p.value}</p>
       </div>
@@ -825,10 +827,10 @@ export default function NFLGamePage({
         {/* Mobile */}
         <div className="lg:hidden px-4 pt-3 pb-0 flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo team={away} size="w-10 h-10" />
+            <div className="group flex items-center">
+              <Link href={teamHref("nfl", away)} title={`${away} team page`} className="flex-shrink-0 pr-3 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-10 h-10" /></Link>
               <div>
-                <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", away)} className="hover:underline">{getNick(away)}</Link></p>
+                <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", away)} className="inline-block transition-transform group-hover:scale-110">{getNick(away)}</Link></p>
                 {showScore && awayScore !== null && <p className="text-xs text-gray-400 mt-0.5">{awayProb}%</p>}
               </div>
             </div>
@@ -839,10 +841,10 @@ export default function NFLGamePage({
             )}
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo team={home} size="w-10 h-10" />
+            <div className="group flex items-center">
+              <Link href={teamHref("nfl", home)} title={`${home} team page`} className="flex-shrink-0 pr-3 origin-left transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-10 h-10" /></Link>
               <div>
-                <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", home)} className="hover:underline">{getNick(home)}</Link></p>
+                <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", home)} className="inline-block transition-transform group-hover:scale-110">{getNick(home)}</Link></p>
                 {showScore && homeScore !== null && <p className="text-xs text-gray-400 mt-0.5">{homeProb}%</p>}
               </div>
             </div>
@@ -856,10 +858,10 @@ export default function NFLGamePage({
 
         {/* Desktop */}
         <div className="hidden lg:grid px-8 pt-4 pb-3 grid-cols-[1fr_auto_1fr] items-center gap-6">
-          <div className="flex items-center gap-4">
-            <TeamLogo team={away} size="w-14 h-14" />
+          <div className="group flex items-center">
+            <Link href={teamHref("nfl", away)} title={`${away} team page`} className="flex-shrink-0 pr-4 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-14 h-14" /></Link>
             <div>
-              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", away)} className="hover:underline">{getNick(away)}</Link></p>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", away)} className="inline-block transition-transform group-hover:scale-110">{getNick(away)}</Link></p>
               {showScore && awayScore !== null && (
                 <p className={`text-3xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{awayScore}</p>
               )}
@@ -873,10 +875,10 @@ export default function NFLGamePage({
               <span className={probClass(homeProb > awayProb, awayWins)}>{homeProb}%</span>
             </p>
           </div>
-          <div className="flex items-center gap-4 flex-row-reverse">
-            <TeamLogo team={home} size="w-14 h-14" />
+          <div className="group flex items-center flex-row-reverse">
+            <Link href={teamHref("nfl", home)} title={`${home} team page`} className="flex-shrink-0 pl-4 origin-right transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-14 h-14" /></Link>
             <div className="text-right">
-              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", home)} className="hover:underline">{getNick(home)}</Link></p>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", home)} className="inline-block transition-transform group-hover:scale-110">{getNick(home)}</Link></p>
               {showScore && homeScore !== null && (
                 <p className={`text-3xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{homeScore}</p>
               )}

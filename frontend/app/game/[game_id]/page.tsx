@@ -2,7 +2,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import { pickMatchupColors } from "../../components/teamColors";
 import Link from "next/link";
-import { teamHref } from "../../components/teamLinks";
+import { playerHref, teamHref } from "../../components/teamLinks";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, LabelList,
@@ -20,7 +20,7 @@ interface CompareResult {
   team_a_stats: TeamStats; team_b_stats: TeamStats;
 }
 interface HistoryPoint  { game: string; team_a_prob: number; team_b_prob: number; series: string; }
-interface InjuryPlayer { name: string; status: string; pts_per_game: number | null; }
+interface InjuryPlayer { id?: string | null; name: string; status: string; pts_per_game: number | null; }
 interface InjuryData   { factor: number; players: InjuryPlayer[]; }
 type InjuryReport = Record<string, InjuryData>;
 
@@ -243,10 +243,10 @@ export default function GamePage({
         <div className="px-4 md:px-8 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-6">
 
           {/* Away */}
-          <div className="flex items-center gap-2 md:gap-4">
-            <TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" />
+          <div className="group flex items-center">
+            <Link href={teamHref("nba", away)} title={`${away} team page`} className="flex-shrink-0 pr-2 md:pr-4 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" /></Link>
             <div>
-              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", away)} className="hover:underline">{lastName(away)}</Link></p>
+              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", away)} className="inline-block transition-transform group-hover:scale-110">{lastName(away)}</Link></p>
               {showScore && awayScore !== null ? (
                 <p className={`text-xl md:text-2xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{awayScore}</p>
               ) : (
@@ -266,10 +266,10 @@ export default function GamePage({
           </div>
 
           {/* Home */}
-          <div className="flex items-center gap-2 md:gap-4 flex-row-reverse">
-            <TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" />
+          <div className="group flex items-center flex-row-reverse">
+            <Link href={teamHref("nba", home)} title={`${home} team page`} className="flex-shrink-0 pl-2 md:pl-4 origin-right transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" /></Link>
             <div className="text-right">
-              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", home)} className="hover:underline">{lastName(home)}</Link></p>
+              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", home)} className="inline-block transition-transform group-hover:scale-110">{lastName(home)}</Link></p>
               {showScore && homeScore !== null ? (
                 <p className={`text-xl md:text-2xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{homeScore}</p>
               ) : (
@@ -478,7 +478,9 @@ function InjuryColumn({ team, data }: { team: string; data: InjuryData | undefin
               <span className={`text-[10px] px-1 py-0.5 rounded font-bold flex-shrink-0 ${STATUS_COLOR[p.status] ?? "bg-white/10 text-gray-400"}`}>
                 {p.status === "Day-To-Day" ? "D2D" : p.status}
               </span>
-              <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate">{p.name.split(" ").pop()}</span>
+              {p.id
+                ? <Link href={playerHref("nba", p.id)} title={p.name} className="text-[11px] text-gray-600 dark:text-gray-300 truncate inline-block transition-transform hover:scale-105 origin-left">{p.name.split(" ").pop()}</Link>
+                : <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate">{p.name.split(" ").pop()}</span>}
             </div>
           ))}
         </div>

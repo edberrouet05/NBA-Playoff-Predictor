@@ -145,7 +145,7 @@ function DivisionTable({ division }: { division: Division }) {
                     <div className="flex items-center gap-3">
                       <TeamLogo team={team.name} />
                       <div className="flex flex-col leading-tight">
-                        <Link href={teamHref("mlb", team.name)} className={`text-sm font-semibold hover:underline ${isFirst ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                        <Link href={teamHref("mlb", team.name)} className={`text-sm font-semibold inline-block transition-transform hover:scale-105 origin-left ${isFirst ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
                           {team.name}
                         </Link>
                       </div>

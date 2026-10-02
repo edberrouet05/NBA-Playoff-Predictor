@@ -47,10 +47,15 @@ function IconStats() {
 function IconStandings() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4h14" />
-      <path d="M2 8h14" />
-      <path d="M2 12h14" />
-      <path d="M2 16h8" />
+      {/* Ranked list: 1, 2, 3 with rows getting shorter */}
+      <g fill="currentColor" stroke="none" fontSize="6" fontWeight="800" fontFamily="inherit" textAnchor="middle">
+        <text x="3" y="6.2">1</text>
+        <text x="3" y="11.2">2</text>
+        <text x="3" y="16.2">3</text>
+      </g>
+      <path d="M7.5 4h8.5" />
+      <path d="M7.5 9h7" />
+      <path d="M7.5 14h5.5" />
     </svg>
   );
 }

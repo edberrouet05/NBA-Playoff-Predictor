@@ -151,7 +151,7 @@ function DivisionTable({ division, proj }: { division: Division; proj: Record<st
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <TeamLogo team={team.name} />
-                      <Link href={teamHref("nfl", team.name)} className={`text-sm font-semibold hover:underline ${isFirst ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                      <Link href={teamHref("nfl", team.name)} className={`text-sm font-semibold inline-block transition-transform hover:scale-105 origin-left ${isFirst ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
                         {team.name}
                       </Link>
                     </div>

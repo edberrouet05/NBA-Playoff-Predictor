@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { playerHref, teamHref } from "./teamLinks";
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -28,7 +29,7 @@ interface Facts {
   by_month?: { month: string; record: string; differential: number }[];
 }
 interface StatRow { label: string; value: string; rank: number | null; rank_display: string | null; }
-interface LeaderRow { label: string; name: string; position: string; value: string; headshot: string | null; }
+interface LeaderRow { label: string; id: string | null; name: string; position: string; value: string; headshot: string | null; }
 interface ModelBlock {
   power?: number; power_rank?: number; trend?: number; off_rank?: number; def_rank?: number;
   qb_name?: string; qb_rank?: number; sos_rank?: number; rem_sos_rank?: number;
@@ -154,17 +155,18 @@ function NextGame({ d }: { d: TeamPageData }) {
   if (!g) return null;
   const href = gameHref(d.league, g.game_id);
   const body = (
-    <div className={`${card} h-full ${href ? "hover:ring-1 hover:ring-gray-200 dark:hover:ring-gray-700 transition" : ""}`}>
+    <div className={`${card} h-full flex flex-col ${href ? "hover:ring-1 hover:ring-gray-200 dark:hover:ring-gray-700 transition" : ""}`}>
       <p className={cardTitle}>Next game{g.season_type === "post" ? " · Playoffs" : ""}</p>
-      <div className="mt-3 flex items-center gap-3">
-        <img src={logoUrl(d.league, g.opponent_abbr)} alt="" className="w-12 h-12 object-contain" />
+      <div className="flex-1 flex items-center gap-4 py-3">
+        <img src={logoUrl(d.league, g.opponent_abbr)} alt="" className="w-16 h-16 object-contain" />
         <div className="min-w-0">
-          <p className="font-bold text-gray-900 dark:text-white truncate">{g.home ? "vs" : "@"} {g.opponent}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white truncate">{g.home ? "vs" : "@"} {g.opponent}</p>
           <p className="text-xs text-gray-400">{fmtDateTime(g.date)}{g.label ? ` · ${g.label}` : ""}</p>
+          <p className="text-xs text-gray-400">{g.neutral ? "Neutral site" : g.home ? "Home" : "Away"}</p>
         </div>
       </div>
       {g.win_prob != null && (
-        <div className="mt-4">
+        <div>
           <div className="flex justify-between text-xs mb-1">
             <span className="text-gray-500">Our model</span>
             <span className="font-bold text-gray-900 dark:text-white tabular-nums">{g.win_prob}% to win</span>
@@ -231,14 +233,14 @@ function StatsCard({ d }: { d: TeamPageData }) {
   if (!d.stats.length) return null;
   const of = d.stats_rank_scope === "division" ? 5 : LEAGUE_TEAMS[d.league];
   return (
-    <div className={`${card} h-full`}>
+    <div className={`${card} h-full flex flex-col`}>
       <div className="flex items-baseline justify-between mb-3">
         <p className={cardTitle}>Team stats</p>
         <p className="text-[11px] text-gray-400">Rank {d.stats_rank_scope === "division" ? "in division" : "in league"}</p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 auto-rows-fr gap-2">
         {d.stats.map(s => (
-          <div key={s.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2">
+          <div key={s.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2 flex flex-col justify-center">
             <p className="text-[10px] text-gray-400 uppercase tracking-wide truncate">{s.label}</p>
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-base font-black text-gray-900 dark:text-white tabular-nums">{s.value}</span>
@@ -254,16 +256,23 @@ function StatsCard({ d }: { d: TeamPageData }) {
 function LeadersCard({ d }: { d: TeamPageData }) {
   if (!d.leaders.length) return null;
   return (
-    <div className={`${card} h-full`}>
-      <p className={`${cardTitle} mb-3`}>Team leaders</p>
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+    <div className={`${card} h-full flex flex-col`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className={cardTitle}>Team leaders</p>
+        <Link href={`${teamHref(d.league, d.team.name)}/roster`}
+          className="inline-flex items-center gap-1 rounded-full bg-gray-50 dark:bg-gray-800 px-3 py-1 text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          View roster
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3.5 1.5L7 5l-3.5 3.5" /></svg>
+        </Link>
+      </div>
+      <ul className="flex-1 grid grid-cols-1 sm:grid-cols-2 auto-rows-fr gap-x-6 gap-y-3">
         {d.leaders.map(l => (
           <li key={l.label} className="flex items-center gap-3 min-w-0">
             <Img src={l.headshot} alt="" className="w-11 h-11 rounded-full object-cover bg-gray-100 dark:bg-gray-800 flex-shrink-0" fallback={d.team.color} />
             <div className="min-w-0 flex-1">
               <p className="text-[10px] text-gray-400 uppercase tracking-wide">{l.label}</p>
               <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                {l.name}{l.position && <span className="font-normal text-gray-400"> · {l.position}</span>}
+                {l.id ? <Link href={playerHref(d.league, l.id)} className="inline-block transition-transform hover:scale-105 origin-left">{l.name}</Link> : l.name}{l.position && <span className="font-normal text-gray-400"> · {l.position}</span>}
               </p>
             </div>
             <span className="text-lg font-black tabular-nums" style={{ color: d.team.color }}>{l.value}</span>
@@ -305,7 +314,7 @@ function FactsCard({ d }: { d: TeamPageData }) {
     ["Longest losing streak", `${f.longest_loss_streak}`],
   ];
   return (
-    <div className={`${card} h-full`}>
+    <div className={card}>
       <p className={`${cardTitle} mb-3`}>Splits &amp; facts</p>
       <dl className="flex flex-col gap-1.5">
         {rows.map(([k, v]) => (

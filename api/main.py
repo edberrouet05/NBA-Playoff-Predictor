@@ -407,6 +407,7 @@ def _compute_injury_factor(
             missing_impact += impact * weight
 
         affected.append({
+            "id":           _espn_athlete_id(inj.get("athlete", {})),
             "name":         name,
             "status":       status,
             "pts_per_game": round(ppg, 1) if ppg is not None else None,
@@ -2962,6 +2963,7 @@ def _nfl_parse_injuries(summary: dict) -> dict[str, list[dict]]:
             status = (inj.get("type", {}).get("description") or inj.get("status") or "Unknown").title()
             detail = det.get("detail") or det.get("type") or ""
             players.append({
+                "id":          _espn_athlete_id(ath),
                 "name":        ath.get("displayName", ""),
                 "position":    ath.get("position", {}).get("abbreviation", ""),
                 "status":      status,
@@ -3358,6 +3360,7 @@ def _nfl_parse_leaders(data: dict) -> dict[str, list[dict]]:
             rows.append({
                 "category": key,
                 "label":    _NFL_LEADER_CATEGORIES[key],
+                "id":       _espn_athlete_id(ath),
                 "name":     ath.get("displayName", ""),
                 "position": (ath.get("position") or {}).get("abbreviation", ""),
                 "value":    top.get("displayValue", ""),
@@ -3781,21 +3784,63 @@ def _team_stats(sport: str, league: str, team_id: str, season: int, cfg: dict) -
     return out
 
 
-def _team_leaders(sport: str, league: str, team_id: str, season: int, cfg: dict) -> list[dict]:
+_ROSTER_GROUP_LABELS = {
+    "offense": "Offense", "defense": "Defense", "specialTeam": "Special Teams",
+    "injuredReserveOrOut": "Injured Reserve / Out", "suspended": "Suspended", "practiceSquad": "Practice Squad",
+}
+# Display order inside a group (unlisted positions go last)
+_ROSTER_POS_ORDER = {
+    "nfl": ["QB", "RB", "FB", "WR", "TE", "OT", "G", "C", "OL", "DE", "DT", "NT", "DL", "LB", "OLB", "ILB",
+            "CB", "S", "SAF", "DB", "PK", "K", "P", "LS"],
+    "mlb": ["SP", "RP", "P", "C", "1B", "2B", "3B", "SS", "IF", "LF", "CF", "RF", "OF", "DH"],
+    "nba": ["PG", "SG", "G", "SF", "F", "PF", "C"],
+}
+
+
+def _team_roster(sport: str, league: str, team_id: str) -> tuple[list[dict], dict[str, dict]]:
+    """Roster grouped like ESPN (offense / defense…, pitchers / catchers…) + raw athletes by id."""
+    try:
+        r = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{team_id}/roster")
+    except Exception:
+        return [], {}
+    athletes = r.get("athletes", [])
+    raw_groups = athletes if athletes and "items" in athletes[0] else [{"position": "Roster", "items": athletes}]
+    order = _ROSTER_POS_ORDER.get(league, [])
+    by_id: dict[str, dict] = {}
+    groups = []
+    for g in raw_groups:
+        players = []
+        for p in g.get("items", []):
+            by_id[str(p.get("id"))] = p
+            pos = (p.get("position") or {}).get("abbreviation", "")
+            inj = (p.get("injuries") or [{}])[0]
+            players.append({
+                "id": str(p.get("id")), "name": p.get("displayName", ""), "jersey": p.get("jersey"),
+                "position": pos, "age": p.get("age"), "experience": (p.get("experience") or {}).get("years"),
+                "headshot": (p.get("headshot") or {}).get("href"),
+                "injury": inj.get("status"),
+                "height": p.get("displayHeight"), "weight": p.get("displayWeight"),
+                "college": (p.get("college") or {}).get("name"),
+                "bats_throws": "/".join(x for x in ((p.get("bats") or {}).get("abbreviation"),
+                                                     (p.get("throws") or {}).get("abbreviation")) if x) or None,
+            })
+        if not players:
+            continue
+        players.sort(key=lambda x: (order.index(x["position"]) if x["position"] in order else len(order),
+                                    int(x["jersey"]) if str(x["jersey"] or "").isdigit() else 999))
+        name = g.get("position", "")
+        groups.append({"name": _ROSTER_GROUP_LABELS.get(name, name), "players": players})
+    return groups, by_id
+
+
+def _team_leaders(sport: str, league: str, team_id: str, season: int, cfg: dict,
+                  roster: dict[str, dict]) -> list[dict]:
     try:
         data = _espn_json(f"https://sports.core.api.espn.com/v2/sports/{sport}/leagues/{league}"
                           f"/seasons/{season}/types/2/teams/{team_id}/leaders")
     except Exception:
         return []
-    # Names / headshots from the roster; anyone no longer on it is fetched individually
-    roster: dict[str, dict] = {}
-    try:
-        r = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{team_id}/roster")
-        for a in r.get("athletes", []):
-            for p in (a.get("items", []) if "items" in a else [a]):
-                roster[str(p.get("id"))] = p
-    except Exception:
-        pass
+    # Names / headshots come from the roster; anyone no longer on it is fetched individually
 
     cats = {c["name"]: c for c in data.get("categories", [])}
     out = []
@@ -3815,6 +3860,7 @@ def _team_leaders(sport: str, league: str, team_id: str, season: int, cfg: dict)
         ath = ath or {}
         out.append({
             "label":    label,
+            "id":       aid or _espn_athlete_id(ath),
             "name":     ath.get("displayName", ""),
             "position": (ath.get("position") or {}).get("abbreviation", ""),
             "value":    top.get("displayValue", ""),
@@ -3908,6 +3954,7 @@ def get_team_page(league: str, team: str):
     if next_game:
         next_game = {**next_game, "win_prob": _team_next_game_prob(league, next_game, t["displayName"])}
 
+    roster_groups, roster_by_id = _team_roster(sport, league, tid)
     logos = info.get("logos") or t.get("logos") or []
     record = ({i.get("type"): i.get("summary") for i in (info.get("record") or {}).get("items", [])}
               if season == cur_year else {})
@@ -3932,10 +3979,294 @@ def get_team_page(league: str, team: str):
         "stats": _team_stats(sport, league, tid, season, cfg),
         # ESPN ranks NBA team stats within the division, other leagues league-wide
         "stats_rank_scope": "division" if league == "nba" else "league",
-        "leaders": _team_leaders(sport, league, tid, season, cfg),
+        "leaders": _team_leaders(sport, league, tid, season, cfg, roster_by_id),
+        "roster": roster_groups,
         "model": _team_model_block(league, t["displayName"]),
         "games": games,
         "postseason": post,
     }
     _team_page_cache[key] = (_time_mod.time(), result)
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Player pages (NFL / MLB / NBA) — ESPN athlete data
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Stats to feature, by player type: (gamelog stat names, chart stat, chart kind)
+_PLAYER_FOCUS = {
+    "nfl_qb":  (["passingYards", "passingTouchdowns", "interceptions", "QBRating"], "passingYards", "bar"),
+    "nfl_rb":  (["rushingYards", "rushingAttempts", "rushingTouchdowns", "receivingYards"], "rushingYards", "bar"),
+    "nfl_rec": (["receivingYards", "receptions", "receivingTargets", "receivingTouchdowns"], "receivingYards", "bar"),
+    "nfl_def": (["totalTackles", "sacks", "interceptions", "passesDefended"], "totalTackles", "bar"),
+    "mlb_bat": (["hits", "homeRuns", "RBIs", "runs"], "OPS", "line"),
+    "mlb_pit": (["innings", "strikeouts", "earnedRuns", "walks"], "strikeouts", "bar"),
+    "nba":     (["points", "totalRebounds", "assists", "threePointFieldGoalsMade-threePointFieldGoalsAttempted"], "points", "bar"),
+}
+# Columns to show in split tables (names from ESPN's /splits payload)
+_PLAYER_SPLIT_COLS = {
+    "nfl_qb":  ["completions", "passingAttempts", "passingYards", "passingTouchdowns", "interceptions", "QBRating"],
+    "nfl_rb":  ["rushingAttempts", "rushingYards", "yardsPerRushAttempt", "rushingTouchdowns", "receptions", "receivingYards"],
+    "nfl_rec": ["receptions", "receivingTargets", "receivingYards", "yardsPerReception", "receivingTouchdowns"],
+    "nfl_def": ["totalTackles", "soloTackles", "sacks", "interceptions", "passesDefended"],
+    "mlb_bat": ["atBats", "hits", "homeRuns", "RBIs", "avg", "OPS"],
+    "mlb_pit": ["ERA", "innings", "strikeouts", "walks", "opponentAvg"],
+    "nba":     ["gamesPlayed", "avgPoints", "avgRebounds", "avgAssists", "fieldGoalPct", "threePointFieldGoalPct"],
+}
+# Clear labels where ESPN's abbreviations collide (e.g. "YDS" for rushing and receiving)
+_PLAYER_STAT_LABELS = {
+    "passingYards": "Pass YDS", "passingTouchdowns": "Pass TD", "interceptions": "INT", "QBRating": "Rating",
+    "completions": "CMP", "passingAttempts": "ATT", "rushingYards": "Rush YDS", "rushingAttempts": "Carries",
+    "rushingTouchdowns": "Rush TD", "yardsPerRushAttempt": "YPC", "receivingYards": "Rec YDS",
+    "receptions": "Rec", "receivingTargets": "Targets", "receivingTouchdowns": "Rec TD",
+    "yardsPerReception": "Y/Rec", "totalTackles": "Tackles", "soloTackles": "Solo", "sacks": "Sacks",
+    "passesDefended": "PD", "hits": "H", "homeRuns": "HR", "RBIs": "RBI", "runs": "R", "innings": "IP",
+    "strikeouts": "K", "earnedRuns": "ER", "walks": "BB", "points": "PTS", "totalRebounds": "REB",
+    "assists": "AST", "threePointFieldGoalsMade-threePointFieldGoalsAttempted": "3PM",
+}
+_player_cache: dict[tuple[str, str], tuple[float, dict]] = {}
+_PLAYER_TTL = 900.0
+
+
+def _player_kind(league: str, names: list[str]) -> str:
+    if league == "nba":
+        return "nba"
+    if league == "mlb":
+        return "mlb_bat" if "atBats" in names else "mlb_pit"
+    first = names[0] if names else ""
+    if first == "completions":
+        return "nfl_qb"
+    if first == "rushingAttempts":
+        return "nfl_rb"
+    if first == "receptions":
+        return "nfl_rec"
+    return "nfl_def"
+
+
+def _stat_num(v: str) -> float | None:
+    """'3-7' → 3, '6.2' innings stay as-is (converted separately), '1,234' → 1234, '-' → None."""
+    if v in (None, "", "-", "--"):
+        return None
+    s = str(v).replace(",", "")
+    if "-" in s[1:]:
+        s = s.split("-")[0]
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _innings_to_float(v: float) -> float:
+    whole = int(v)
+    return whole + round((v - whole) * 10) / 3   # 6.2 innings = 6⅔
+
+
+def _espn_athlete_id(ath: dict) -> str | None:
+    """Athlete id from an ESPN athlete object (direct field or profile link)."""
+    import re
+    if ath.get("id"):
+        return str(ath["id"])
+    for link in ath.get("links", []) or []:
+        m = re.search(r"/id/(\d+)", link.get("href", ""))
+        if m:
+            return m.group(1)
+    return None
+
+
+@app.get("/api/player/{league}/{athlete_id}")
+def get_player_page(league: str, athlete_id: str):
+    """Bio, season / career stats, game log with trend, splits, awards and news for one player."""
+    league = league.lower()
+    if league not in _TEAM_LEAGUES:
+        raise HTTPException(status_code=404, detail=f"Unknown league: {league}")
+    if not athlete_id.isdigit():
+        raise HTTPException(status_code=404, detail="Unknown player")
+    key = (league, athlete_id)
+    hit = _player_cache.get(key)
+    if hit and _time_mod.time() - hit[0] < _PLAYER_TTL:
+        return hit[1]
+
+    sport = _TEAM_LEAGUES[league]["sport"]
+    base = f"https://site.web.api.espn.com/apis/common/v3/sports/{sport}/{league}/athletes/{athlete_id}"
+    try:
+        ath = _espn_json(base).get("athlete", {})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    def safe(path: str) -> dict:
+        try:
+            return _espn_json(base + path)
+        except Exception:
+            return {}
+
+    overview, gamelog, splits_raw, career_raw = safe("/overview"), safe("/gamelog"), safe("/splits"), safe("/stats")
+
+    names = gamelog.get("names") or []
+    labels = gamelog.get("labels") or []
+    kind = _player_kind(league, names)
+    focus, chart_stat, chart_kind = _PLAYER_FOCUS[kind]
+    focus = [f for f in focus if f in names]
+
+    # ── Game log: the latest regular season (fall back to the first season type listed)
+    season_types = gamelog.get("seasonTypes") or []
+    st = next((s for s in season_types if "Regular" in s.get("displayName", "")), season_types[0] if season_types else {})
+    events_meta = gamelog.get("events") or {}
+    games = []
+    for cat in st.get("categories", []):
+        for row in cat.get("events", []):
+            meta = events_meta.get(row.get("eventId"), {})
+            opp = meta.get("opponent") or {}
+            games.append({
+                "game_id":  row.get("eventId"),
+                "date":     meta.get("gameDate", ""),
+                "at_vs":    meta.get("atVs", ""),
+                "opponent": opp.get("displayName", ""),
+                "opponent_abbr": opp.get("abbreviation", ""),
+                "opponent_logo": opp.get("logo"),
+                "result":   meta.get("gameResult"),
+                "score":    meta.get("score", ""),
+                "stats":    row.get("stats", []),
+            })
+    games.sort(key=lambda g: g["date"])
+
+    def col(name: str) -> int | None:
+        return names.index(name) if name in names else None
+
+    def values(name: str, rows: list[dict]) -> list[float]:
+        i = col(name)
+        if i is None:
+            return []
+        out = []
+        for g in rows:
+            v = _stat_num(g["stats"][i]) if i < len(g["stats"]) else None
+            if v is not None:
+                out.append(_innings_to_float(v) if name == "innings" else v)
+        return out
+
+    # Season average vs last 5 games for the featured stats
+    form = []
+    for name in focus:
+        all_v, last_v = values(name, games), values(name, games[-5:])
+        if all_v:
+            form.append({
+                "label":  _PLAYER_STAT_LABELS.get(name) or (labels[col(name)] if col(name) < len(labels) else name),
+                "season": round(sum(all_v) / len(all_v), 1),
+                "last5":  round(sum(last_v) / len(last_v), 1) if last_v else None,
+            })
+
+    # Trend chart + best game
+    ci = col(chart_stat)
+    chart, best = [], None
+    if ci is not None:
+        for g in games:
+            v = _stat_num(g["stats"][ci]) if ci < len(g["stats"]) else None
+            if v is None:
+                continue
+            chart.append({"date": g["date"], "opp": g["opponent_abbr"], "at_vs": g["at_vs"], "value": v,
+                          "result": g["result"], "score": g["score"]})
+        if chart and chart_kind == "bar":
+            b = max(chart, key=lambda x: x["value"])
+            best = {**b, "label": _PLAYER_STAT_LABELS.get(chart_stat) or (labels[ci] if ci < len(labels) else chart_stat)}
+
+    # ── Splits (home/away, wins/losses, month…): small categories only
+    split_names = splits_raw.get("names") or []
+    split_labels = splits_raw.get("labels") or []
+    wanted = [n for n in _PLAYER_SPLIT_COLS[kind] if n in split_names] or split_names[:6]
+    idx = [split_names.index(n) for n in wanted]
+    split_tables = []
+    for cat in splits_raw.get("splitCategories") or splits_raw.get("categories") or []:
+        rows = cat.get("splits", [])
+        if not rows or len(rows) > 8:
+            continue
+        split_tables.append({
+            "title": cat.get("displayName", "").replace("split", "Overall").title() if cat.get("displayName") == "split" else cat.get("displayName", ""),
+            "rows": [{"label": r.get("displayName", ""), "stats": [r.get("stats", [])[i] if i < len(r.get("stats", [])) else "" for i in idx]}
+                     for r in rows],
+        })
+        if len(split_tables) == 3:
+            break
+
+    # ── Career by season: the category that holds the featured stat
+    cats = career_raw.get("categories") or []
+    career_cat = next((c for c in cats if league == "nba" and c.get("name") == "averages"), None) \
+        or next((c for c in cats if chart_stat in (c.get("names") or [])), None) \
+        or next((c for c in cats if set(focus) & set(c.get("names") or [])), None) \
+        or (cats[0] if cats else None)
+    career = None
+    if career_cat:
+        career = {
+            "title":  career_cat.get("displayName", ""),
+            "labels": career_cat.get("labels", []),
+            "rows":   [{"season": (s.get("season") or {}).get("displayName", ""),
+                        "team":   s.get("teamSlug", "").replace("-", " ").title(),
+                        "stats":  s.get("stats", [])}
+                       for s in career_cat.get("statistics", [])],
+            "totals": career_cat.get("totals"),
+        }
+
+    ov_stats = overview.get("statistics") or {}
+    team = ath.get("team") or {}
+    rot = overview.get("rotowire") or {}
+    result = {
+        "league": league,
+        "player": {
+            "id": athlete_id, "name": ath.get("displayName", ""), "jersey": ath.get("displayJersey") or ath.get("jersey"),
+            "position": (ath.get("position") or {}).get("displayName", ""),
+            "position_abbr": (ath.get("position") or {}).get("abbreviation", ""),
+            "headshot": (ath.get("headshot") or {}).get("href"),
+            "age": ath.get("age"), "height": ath.get("displayHeight"), "weight": ath.get("displayWeight"),
+            "birthplace": ath.get("displayBirthPlace"), "draft": ath.get("displayDraft"),
+            "college": (ath.get("college") or {}).get("name"), "experience": ath.get("displayExperience"),
+            "bats_throws": ath.get("displayBatsThrows"),
+            "status": (ath.get("status") or {}).get("name"),
+        },
+        "team": {
+            "name": team.get("displayName", ""), "abbr": team.get("abbreviation", ""),
+            "color": "#" + (team.get("color") or "555555"),
+            "logo": ((team.get("logos") or [{}])[0]).get("href") or team.get("logo"),
+        } if team else None,
+        "summary": [{"label": s.get("shortDisplayName") or s.get("displayName"), "value": s.get("displayValue"),
+                     "rank": s.get("rankDisplayValue")}
+                    for s in (ath.get("statsSummary") or {}).get("statistics", [])],
+        "summary_title": (ath.get("statsSummary") or {}).get("displayName", ""),
+        "season_lines": {"labels": ov_stats.get("labels", []),
+                         "rows": [{"label": s.get("displayName"), "stats": s.get("stats", [])}
+                                  for s in ov_stats.get("splits", [])]},
+        "form": form,
+        "chart": {"label": _PLAYER_STAT_LABELS.get(chart_stat) or (labels[ci] if ci is not None and ci < len(labels) else chart_stat),
+                  "kind": chart_kind, "points": chart},
+        "best_game": best,
+        "game_log": {"title": st.get("displayName", ""), "labels": labels, "games": list(reversed(games))},
+        "splits": {"labels": [_PLAYER_STAT_LABELS.get(n) or (split_labels[i] if i < len(split_labels) else n)
+                              for n, i in zip(wanted, idx)], "tables": split_tables},
+        "career": career,
+        "note": {"headline": rot.get("headline"), "story": rot.get("story"), "published": rot.get("published")}
+                if rot.get("headline") else None,
+        "awards": [{"name": a.get("name"), "count": a.get("displayCount"), "seasons": a.get("seasons", [])}
+                   for a in overview.get("awards") or []],
+        "news": [{"headline": n.get("headline"), "published": n.get("published"),
+                  "url": ((n.get("links") or {}).get("web") or {}).get("href")}
+                 for n in (overview.get("news") or [])[:4]],
+    }
+    _player_cache[key] = (_time_mod.time(), result)
+    return result
+
+
+@app.get("/api/team/{league}/{team}/roster")
+def get_team_roster(league: str, team: str):
+    """Full roster grouped by unit / position group, for the team roster page."""
+    league = league.lower()
+    if league not in _TEAM_LEAGUES:
+        raise HTTPException(status_code=404, detail=f"Unknown league: {league}")
+    t = _resolve_espn_team(league, team)
+    if t is None:
+        raise HTTPException(status_code=404, detail=f"Team not found: {team}")
+    groups, _ = _team_roster(_TEAM_LEAGUES[league]["sport"], league, t["id"])
+    logos = t.get("logos") or []
+    return {
+        "league": league,
+        "team": {"name": t["displayName"], "abbr": t["abbreviation"],
+                 "color": "#" + (t.get("color") or "555555"),
+                 "logo": logos[0]["href"] if logos else None},
+        "groups": groups,
+    }

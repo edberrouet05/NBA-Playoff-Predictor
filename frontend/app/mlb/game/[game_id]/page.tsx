@@ -508,11 +508,11 @@ export default function MLBGamePage({
         {/* Mobile + tablet: two stacked rows */}
         <div className="lg:hidden px-4 pt-3 pb-0 flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo team={away} size="w-10 h-10" />
+            <div className="group flex items-center">
+              <Link href={teamHref("mlb", away)} title={`${away} team page`} className="flex-shrink-0 pr-3 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-10 h-10" /></Link>
               <div>
                 <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
-                  {getNick(away)}
+                  <Link href={teamHref("mlb", away)} className="inline-block transition-transform group-hover:scale-110">{getNick(away)}</Link>
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{awayProb}%</p>
               </div>
@@ -524,11 +524,11 @@ export default function MLBGamePage({
             )}
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo team={home} size="w-10 h-10" />
+            <div className="group flex items-center">
+              <Link href={teamHref("mlb", home)} title={`${home} team page`} className="flex-shrink-0 pr-3 origin-left transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-10 h-10" /></Link>
               <div>
                 <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>
-                  {getNick(home)}
+                  <Link href={teamHref("mlb", home)} className="inline-block transition-transform group-hover:scale-110">{getNick(home)}</Link>
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{homeProb}%</p>
               </div>
@@ -543,10 +543,10 @@ export default function MLBGamePage({
 
         {/* Desktop (lg+): 3-col grid */}
         <div className="hidden lg:grid px-8 pt-4 pb-3 grid-cols-[1fr_auto_1fr] items-center gap-6">
-          <div className="flex items-center gap-4">
-            <TeamLogo team={away} size="w-14 h-14" />
+          <div className="group flex items-center">
+            <Link href={teamHref("mlb", away)} title={`${away} team page`} className="flex-shrink-0 pr-4 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-14 h-14" /></Link>
             <div>
-              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("mlb", away)} className="hover:underline">{getNick(away)}</Link></p>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("mlb", away)} className="inline-block transition-transform group-hover:scale-110">{getNick(away)}</Link></p>
               {showScore && g ? (
                 <p className={`text-3xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{g.away_score}</p>
               ) : (
@@ -562,10 +562,10 @@ export default function MLBGamePage({
               <span style={{ color: homeWins ? "#16a34a" : "#6b7280" }}>{homeProb}%</span>
             </p>
           </div>
-          <div className="flex items-center gap-4 flex-row-reverse">
-            <TeamLogo team={home} size="w-14 h-14" />
+          <div className="group flex items-center flex-row-reverse">
+            <Link href={teamHref("mlb", home)} title={`${home} team page`} className="flex-shrink-0 pl-4 origin-right transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-14 h-14" /></Link>
             <div className="text-right">
-              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("mlb", home)} className="hover:underline">{getNick(home)}</Link></p>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("mlb", home)} className="inline-block transition-transform group-hover:scale-110">{getNick(home)}</Link></p>
               {showScore && g ? (
                 <p className={`text-3xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{g.home_score}</p>
               ) : (
