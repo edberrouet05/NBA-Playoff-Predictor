@@ -2,6 +2,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { probClass } from "../../../components/PredictionBits";
+import { pickMatchupColors } from "../../../components/teamColors";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, ReferenceLine, LabelList,
@@ -35,6 +36,32 @@ interface NFLGameDetail {
   explanation?:  Factor[];
   away_injuries?: Injury[];
   home_injuries?: Injury[];
+  h2h?:          HeadToHead | null;
+  leaders?:      Record<string, Leader[]>;
+  leaders_scope?: "game" | "season";
+}
+
+interface Leader {
+  category: string; label: string; name: string; position: string; value: string; headshot: string | null;
+}
+
+interface H2HRecord { games: number; away_wins: number; home_wins: number; ties: number; }
+
+interface H2HMeeting {
+  date: string; season: number; game_type: string;
+  away_team: string; home_team: string; away_score: number; home_score: number;
+  winner: string; neutral: boolean; overtime: boolean;
+}
+
+interface HeadToHead extends Partial<H2HRecord> {
+  since: number;
+  games: number;
+  at_home?: H2HRecord & { neutral: boolean };
+  playoffs?: H2HRecord;
+  avg_points?: Record<string, number>;
+  notes: string[];
+  result_notes?: string[];
+  last_meetings: H2HMeeting[];
 }
 
 interface Injury {
@@ -73,8 +100,26 @@ const NFL_COLORS: Record<string, string> = {
   SEA: "#002a5c", TB:  "#bd1c36", TEN: "#4495d2", WSH: "#5a1414",
 };
 
+// Secondary team colors, used when both primaries look alike (e.g. PIT black vs CLE brown)
+const NFL_ALT_COLORS: Record<string, string> = {
+  ARI: "#ffb612", ATL: "#000000", BAL: "#9e7c0c", BUF: "#c60c30",
+  CAR: "#101820", CHI: "#c83803", CIN: "#000000", CLE: "#ff3c00",
+  DAL: "#869397", DEN: "#fb4f14", DET: "#b0b7bc", GB:  "#ffb612",
+  HOU: "#a71930", IND: "#a2aaad", JAX: "#d7a22a", KC:  "#ffb81c",
+  LV:  "#a5acaf", LAC: "#ffc20e", LAR: "#ffa300", MIA: "#fc4c02",
+  MIN: "#ffc62f", NE:  "#c60c30", NO:  "#101820", NYG: "#a71930",
+  NYJ: "#000000", PHI: "#a5acaf", PIT: "#ffb612", SF:  "#b3995d",
+  SEA: "#69be28", TB:  "#34302b", TEN: "#0c2340", WSH: "#ffb612",
+};
+
 function getAbbr(t: string) { return NFL_ABBR[t] ?? t.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???"; }
-function getColor(t: string) { return NFL_COLORS[getAbbr(t)] ?? "#555"; }
+function teamColorCandidates(t: string): string[] {
+  const a = getAbbr(t);
+  return [NFL_COLORS[a] ?? "#555", ...(NFL_ALT_COLORS[a] ? [NFL_ALT_COLORS[a]] : [])];
+}
+// Colors for the matchup on screen, set by the page so both teams are clearly distinct
+let matchupColors: Record<string, string> = {};
+function getColor(t: string) { return matchupColors[t] ?? NFL_COLORS[getAbbr(t)] ?? "#555"; }
 function getNick(t: string) { return t.split(" ").slice(-1)[0]; }
 function getLogoUrl(t: string): string {
   const abbr = getAbbr(t);
@@ -161,7 +206,8 @@ function WinProbChart({ data, awayTeam, homeTeam }: {
     (props: { x?: number; y?: number; index?: number; value?: number }) => {
       const { x = 0, y = 0, index = 0, value = 0 } = props;
       if (index !== data.length - 1) return null;
-      const adjY = Number(y) + yOff;
+      // Keep the two-line label (abbr above the value) inside the chart near 100 %
+      const adjY = Math.max(16, Number(y) + yOff);
       return (
         <g>
           <text x={Number(x) + 10} y={adjY - 5} fill={color} fontSize={9} fontWeight="700" fontFamily="inherit">
@@ -437,6 +483,195 @@ function InjuryPanel({ awayTeam, homeTeam, away, home }: {
   );
 }
 
+// ── Head-to-head ───────────────────────────────────────────────────────────────
+
+const PLAYOFF_LABEL: Record<string, string> = { WC: "Wild Card", DIV: "Divisional", CON: "Conf. Champ.", SB: "Super Bowl" };
+
+function fmtRecord(w: number, l: number, t: number) {
+  return `${w}–${l}${t ? `–${t}` : ""}`;
+}
+
+function fmtMeetingDate(d: string) {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function H2HPanel({ h2h, awayTeam, homeTeam, isFinal }: {
+  h2h: HeadToHead; awayTeam: string; homeTeam: string; isFinal: boolean;
+}) {
+  const aw = h2h.away_wins ?? 0, hw = h2h.home_wins ?? 0, ties = h2h.ties ?? 0;
+  const total = Math.max(1, aw + hw + ties);
+  const ah = h2h.at_home;
+  const po = h2h.playoffs;
+
+  return (
+    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <div className="flex items-baseline justify-between mb-4">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Head-to-Head</p>
+        <p className="text-[11px] text-gray-400">
+          {h2h.games > 0 ? `${h2h.games} meetings since ${h2h.since}` : `No meetings since ${h2h.since}`}
+          {isFinal && h2h.games > 0 ? " · before this game" : ""}
+        </p>
+      </div>
+
+      {h2h.games > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_17rem] gap-8">
+          {/* Series summary + notes */}
+          <div className="min-w-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <TeamLogo team={awayTeam} size="w-8 h-8" />
+                <span className="text-2xl font-black tabular-nums" style={{ color: getColor(awayTeam) }}>{aw}</span>
+              </div>
+              <span className="text-[11px] text-gray-400 uppercase tracking-wide">
+                Series{ties ? ` · ${ties} tie${ties > 1 ? "s" : ""}` : ""}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-black tabular-nums" style={{ color: getColor(homeTeam) }}>{hw}</span>
+                <TeamLogo team={homeTeam} size="w-8 h-8" />
+              </div>
+            </div>
+            <div className="mt-2 h-1.5 flex rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+              <div style={{ width: `${(aw / total) * 100}%`, background: getColor(awayTeam) }} />
+              <div style={{ width: `${(ties / total) * 100}%` }} className="bg-gray-300 dark:bg-gray-600" />
+              <div style={{ width: `${(hw / total) * 100}%`, background: getColor(homeTeam) }} />
+            </div>
+
+            <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+              {ah && ah.games > 0 && !ah.neutral && (
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-800/60 py-2">
+                  <dt className="text-[10px] text-gray-400 uppercase tracking-wide">At {getAbbr(homeTeam)}</dt>
+                  <dd className="text-sm font-bold text-gray-800 dark:text-gray-200 tabular-nums">
+                    {getAbbr(awayTeam)} {fmtRecord(ah.away_wins, ah.home_wins, ah.ties)}
+                  </dd>
+                </div>
+              )}
+              {po && po.games > 0 && (
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-800/60 py-2">
+                  <dt className="text-[10px] text-gray-400 uppercase tracking-wide">Playoffs</dt>
+                  <dd className="text-sm font-bold text-gray-800 dark:text-gray-200 tabular-nums">
+                    {getAbbr(awayTeam)} {fmtRecord(po.away_wins, po.home_wins, po.ties)}
+                  </dd>
+                </div>
+              )}
+              {h2h.avg_points && (
+                <div className="rounded-lg bg-gray-50 dark:bg-gray-800/60 py-2">
+                  <dt className="text-[10px] text-gray-400 uppercase tracking-wide">Avg score</dt>
+                  <dd className="text-sm font-bold text-gray-800 dark:text-gray-200 tabular-nums">
+                    {h2h.avg_points[awayTeam]?.toFixed(1)}–{h2h.avg_points[homeTeam]?.toFixed(1)}
+                  </dd>
+                </div>
+              )}
+            </dl>
+
+            {((h2h.result_notes?.length ?? 0) > 0 || h2h.notes.length > 0) && (
+              <ul className="mt-4 flex flex-col gap-2">
+                {(h2h.result_notes ?? []).map(n => (
+                  <li key={n} className="flex gap-2 text-xs font-semibold text-gray-900 dark:text-white">
+                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />{n}
+                  </li>
+                ))}
+                {h2h.notes.map(n => (
+                  <li key={n} className="flex gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />{n}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Last meetings */}
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Last meetings</p>
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {h2h.last_meetings.map(m => {
+                const awayWon = m.winner === m.away_team, homeWon = m.winner === m.home_team;
+                const tag = PLAYOFF_LABEL[m.game_type];
+                return (
+                  <li key={m.date + m.home_team} className="flex items-center gap-3 py-1.5 text-xs">
+                    <span className="w-24 flex-shrink-0 text-gray-400 tabular-nums">{fmtMeetingDate(m.date)}</span>
+                    <span className="flex-1 min-w-0 truncate text-gray-700 dark:text-gray-300 tabular-nums">
+                      <span className={awayWon ? "font-bold text-gray-900 dark:text-white" : ""}>{getAbbr(m.away_team)} {m.away_score}</span>
+                      <span className="text-gray-400"> {m.neutral ? "vs" : "@"} </span>
+                      <span className={homeWon ? "font-bold text-gray-900 dark:text-white" : ""}>{getAbbr(m.home_team)} {m.home_score}</span>
+                      {m.overtime && <span className="text-gray-400"> · OT</span>}
+                    </span>
+                    {tag && (
+                      <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        {tag}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Top performers ─────────────────────────────────────────────────────────────
+
+function Headshot({ src, team }: { src: string | null; team: string }) {
+  const [err, setErr] = useState(false);
+  if (!src || err) {
+    return <div className="w-9 h-9 rounded-full flex-shrink-0 bg-gray-100 dark:bg-gray-800" style={{ border: `2px solid ${getColor(team)}` }} />;
+  }
+  return (
+    <img src={src} alt="" onError={() => setErr(true)}
+      className="w-9 h-9 rounded-full flex-shrink-0 object-cover bg-gray-100 dark:bg-gray-800" />
+  );
+}
+
+function PerformerCell({ p, team, align }: { p?: Leader; team: string; align: "left" | "right" }) {
+  if (!p) return <div className="flex-1 min-w-0 text-xs text-gray-400 text-center">—</div>;
+  return (
+    <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
+      <Headshot src={p.headshot} team={team} />
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+          {p.name}<span className="font-normal text-gray-400"> · {p.position}</span>
+        </p>
+        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate tabular-nums">{p.value}</p>
+      </div>
+    </div>
+  );
+}
+
+function TopPerformers({ leaders, scope, awayTeam, homeTeam }: {
+  leaders: Record<string, Leader[]>; scope: "game" | "season"; awayTeam: string; homeTeam: string;
+}) {
+  const away = leaders[awayTeam] ?? [];
+  const home = leaders[homeTeam] ?? [];
+  const cats = (away.length ? away : home).map(l => ({ category: l.category, label: l.label }));
+
+  return (
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">
+          {scope === "game" ? "Game Leaders" : "Season Leaders"}
+        </p>
+        <div className="flex items-center gap-3">
+          <TeamLogo team={awayTeam} size="w-5 h-5" />
+          <span className="text-[11px] text-gray-400">vs</span>
+          <TeamLogo team={homeTeam} size="w-5 h-5" />
+        </div>
+      </div>
+      <ul className="flex-1 flex flex-col justify-between divide-y divide-gray-100 dark:divide-gray-800">
+        {cats.map(({ category, label }) => (
+          <li key={category} className="flex-1 flex items-center gap-3 py-2">
+            <PerformerCell p={away.find(l => l.category === category)} team={awayTeam} align="left" />
+            <span className="w-16 flex-shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-widest text-center">{label}</span>
+            <PerformerCell p={home.find(l => l.category === category)} team={homeTeam} align="right" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Quarterscore({
   awayTeam, homeTeam, awayQuarters, homeQuarters, awayScore, homeScore,
 }: {
@@ -543,6 +778,8 @@ export default function NFLGamePage({
   const g       = gameData;
   const away    = g?.away_team ?? awayParam;
   const home    = g?.home_team ?? homeParam;
+  const [awayColor, homeColor] = pickMatchupColors(teamColorCandidates(away), teamColorCandidates(home));
+  matchupColors = { [away]: awayColor, [home]: homeColor };
   const status  = g?.status    ?? statusParam;
   const isFinal = status.startsWith("Final");
   const isLive  = !isFinal && status !== "Scheduled" && status !== "";
@@ -717,6 +954,17 @@ export default function NFLGamePage({
               )}
               {(g.away_injuries || g.home_injuries) && (
                 <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />
+              )}
+            </div>
+          )}
+
+          {/* Head-to-head + top performers side by side; the leaders column sizes to its
+              content (full QB stat lines) and head-to-head takes the rest */}
+          {(g.h2h || (g.leaders && Object.keys(g.leaders).length > 0)) && (
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-3 items-stretch">
+              {g.h2h && <H2HPanel h2h={g.h2h} awayTeam={away} homeTeam={home} isFinal={isFinal} />}
+              {g.leaders && Object.keys(g.leaders).length > 0 && (
+                <TopPerformers leaders={g.leaders} scope={g.leaders_scope ?? "game"} awayTeam={away} homeTeam={home} />
               )}
             </div>
           )}

@@ -523,6 +523,22 @@ def get_espn_standings(season: int) -> dict[str, dict]:
     return result
 
 
+def save_games_history(games: pd.DataFrame) -> pd.DataFrame:
+    """Completed games with ESPN team names — used by the API for head-to-head records."""
+    done = games[games["home_score"].notna() & games["away_score"].notna()].copy()
+    done["away_team"] = done["away_team"].map(TEAM_NAMES)
+    done["home_team"] = done["home_team"].map(TEAM_NAMES)
+    done["espn"] = pd.to_numeric(done["espn"], errors="coerce").astype("Int64")
+    cols = ["season", "game_type", "week", "gameday", "location", "away_team", "home_team",
+            "away_score", "home_score", "overtime", "away_qb_name", "home_qb_name",
+            "away_coach", "home_coach", "stadium", "espn"]
+    out = done[cols].dropna(subset=["away_team", "home_team"])
+    out = out.astype({"away_score": int, "home_score": int})
+    out.to_csv(NFL_DIR / "nfl_games_history.csv", index=False)
+    _progress(f"  Saved: {NFL_DIR / 'nfl_games_history.csv'}  ({len(out):,} games)")
+    return out
+
+
 def build_current_stats(state: dict) -> pd.DataFrame:
     standings = get_espn_standings(CURRENT_SEASON)
     team_ids: dict[str, int] = {}
@@ -565,6 +581,7 @@ if __name__ == "__main__":
     _progress("\nLoading schedule / results...")
     games = load_games()
     _progress(f"  {len(games):,} games ({games['season'].min()}-{games['season'].max()})")
+    save_games_history(games)
 
     _progress("\nLoading play-by-play...")
     pbp = load_pbp(list(range(PBP_START, CURRENT_SEASON + 1)))

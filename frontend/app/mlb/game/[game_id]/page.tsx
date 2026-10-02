@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useRef, useState } from "react";
+import { pickMatchupColors } from "../../../components/teamColors";
 import Link from "next/link";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -78,8 +79,26 @@ const MLB_LOGO_IDS: Record<string, number> = {
   SEA: 136, STL: 138, TB:  139, TEX: 140, TOR: 141, WSH: 120,
 };
 
+// Secondary team colors, used when both primaries look alike
+const MLB_ALT_COLORS: Record<string, string> = {
+  ARI: "#30CED8", ATL: "#13274F", BAL: "#000000", BOS: "#0C2340",
+  CHC: "#CC3433", CWS: "#8A8D8F", CIN: "#000000", CLE: "#0C2340",
+  COL: "#000000", DET: "#FA4616", HOU: "#EB6E1F", KC:  "#BD9B60",
+  LAA: "#003263", LAD: "#EF3E42", MIA: "#EF3340", MIL: "#FFC52F",
+  MIN: "#D31145", NYM: "#FF5910", NYY: "#8A8D8F", OAK: "#EFB21E",
+  PHI: "#002D72", PIT: "#27251F", SD:  "#FFC425", SF:  "#27251F",
+  SEA: "#005C5C", STL: "#0C2340", TB:  "#8FBCE6", TEX: "#C0111F",
+  TOR: "#E8291C", WSH: "#14225A",
+};
+
 function getAbbr(t: string)  { return MLB_ABBR[t] ?? t.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???"; }
-function getColor(t: string) { return MLB_COLORS[getAbbr(t)] ?? "#555"; }
+function teamColorCandidates(t: string): string[] {
+  const a = getAbbr(t);
+  return [MLB_COLORS[a] ?? "#555", ...(MLB_ALT_COLORS[a] ? [MLB_ALT_COLORS[a]] : [])];
+}
+// Colors for the matchup on screen, set by the page so both teams are clearly distinct
+let matchupColors: Record<string, string> = {};
+function getColor(t: string) { return matchupColors[t] ?? MLB_COLORS[getAbbr(t)] ?? "#555"; }
 function getNick(t: string)  { return t.split(" ").slice(-1)[0]; }
 
 function getLogoUrl(t: string): string {
@@ -177,7 +196,7 @@ function WinProbChart({ data, awayTeam, homeTeam }: {
     (props: { x?: number; y?: number; index?: number; value?: number }) => {
       const { x = 0, y = 0, index = 0, value = 0 } = props;
       if (index !== data.length - 1) return null;
-      const adjY = Number(y) + yOff;
+      const adjY = Math.max(16, Number(y) + yOff);  // keep the label inside the chart near 100 %
       return (
         <g>
           <text x={Number(x) + 10} y={adjY - 5} fill={color} fontSize={9} fontWeight="700" fontFamily="inherit">
@@ -433,6 +452,8 @@ export default function MLBGamePage({
   const g       = gameData;
   const away    = g?.away_team  ?? awayParam;
   const home    = g?.home_team  ?? homeParam;
+  const [awayColor, homeColor] = pickMatchupColors(teamColorCandidates(away), teamColorCandidates(home));
+  matchupColors = { [away]: awayColor, [home]: homeColor };
   const status  = g?.status     ?? statusParam;
   const isLive  = status === "Live" || status === "In Progress";
   const isFinal = status.startsWith("Final") || status === "Game Over" || status === "Completed";

@@ -3323,8 +3323,220 @@ def get_nfl_game_detail(game_id: str):
             "explanation":   _nfl_explain(_load_nfl_model(), _load_nfl_stats(), away_name, home_name, game_id),
             "away_injuries": injuries.get(away_name, []),
             "home_injuries": injuries.get(home_name, []),
+            "h2h":           _nfl_head_to_head(away_name, home_name, comp.get("date", ""),
+                                               game_id, bool(comp.get("neutralSite"))),
+            "leaders":       _nfl_parse_leaders(data),
+            # ESPN returns game leaders once the game starts, season leaders before
+            "leaders_scope": "season" if status.get("state") == "pre" else "game",
         }
         return result
 
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"NFL game detail fetch failed: {e}")
+
+
+# ── Top performers ────────────────────────────────────────────────────────────
+
+_NFL_LEADER_CATEGORIES = {
+    "passingYards": "Passing", "rushingYards": "Rushing", "receivingYards": "Receiving",
+    "sacks": "Sacks", "totalTackles": "Tackles",
+}
+
+
+def _nfl_parse_leaders(data: dict) -> dict[str, list[dict]]:
+    """{team displayName: [{category, label, name, position, value, headshot}]} from an ESPN summary."""
+    out: dict[str, list[dict]] = {}
+    for team_block in data.get("leaders", []):
+        team = team_block.get("team", {}).get("displayName", "")
+        rows = []
+        for cat in team_block.get("leaders", []):
+            key = cat.get("name")
+            if key not in _NFL_LEADER_CATEGORIES or not cat.get("leaders"):
+                continue
+            top = cat["leaders"][0]
+            ath = top.get("athlete", {})
+            rows.append({
+                "category": key,
+                "label":    _NFL_LEADER_CATEGORIES[key],
+                "name":     ath.get("displayName", ""),
+                "position": (ath.get("position") or {}).get("abbreviation", ""),
+                "value":    top.get("displayValue", ""),
+                "headshot": (ath.get("headshot") or {}).get("href"),
+            })
+        if team:
+            out[team] = rows
+    return out
+
+
+# ── Head-to-head history ──────────────────────────────────────────────────────
+
+NFL_GAMES_HISTORY_PATH = ROOT / "data" / "nfl" / "nfl_games_history.csv"
+_nfl_history_cache: tuple[float, pd.DataFrame] | None = None
+
+
+def _load_nfl_history() -> pd.DataFrame | None:
+    """Completed games since 1999 (written by nfl/pipeline.py), reloaded when the file changes."""
+    global _nfl_history_cache
+    if not NFL_GAMES_HISTORY_PATH.exists():
+        return None
+    mtime = NFL_GAMES_HISTORY_PATH.stat().st_mtime
+    if _nfl_history_cache is None or _nfl_history_cache[0] != mtime:
+        h = pd.read_csv(NFL_GAMES_HISTORY_PATH, dtype={"espn": "string"})
+        h["winner"] = np.where(h["home_score"] > h["away_score"], h["home_team"],
+                               np.where(h["away_score"] > h["home_score"], h["away_team"], ""))
+        _nfl_history_cache = (mtime, h)
+    return _nfl_history_cache[1]
+
+
+def _nfl_streak(winners: list[str]) -> tuple[str, int]:
+    """Current streak from a chronological list of winners ('' = tie): (team, length)."""
+    if not winners or not winners[-1]:
+        return "", 0
+    team, n = winners[-1], 0
+    for w in reversed(winners):
+        if w != team:
+            break
+        n += 1
+    return team, n
+
+
+def _nfl_head_to_head(away: str, home: str, game_time_utc: str, game_id: str,
+                      neutral: bool = False) -> dict | None:
+    """Series history between two teams, using only games played before this one."""
+    import datetime, zoneinfo
+    h = _load_nfl_history()
+    if h is None:
+        return None
+    try:
+        game_day = (datetime.datetime.fromisoformat(game_time_utc.replace("Z", "+00:00"))
+                    .astimezone(zoneinfo.ZoneInfo("America/New_York")).date().isoformat())
+    except ValueError:
+        game_day = datetime.date.today().isoformat()
+
+    pair = h[((h["away_team"] == away) & (h["home_team"] == home))
+             | ((h["away_team"] == home) & (h["home_team"] == away))]
+    this_game = pair[pair["espn"] == str(game_id)]
+    past = pair[pair["gameday"] < game_day]
+    if past.empty:
+        return {"since": int(h["season"].min()), "games": 0, "notes": [], "last_meetings": []}
+
+    nick = {away: away.split()[-1], home: home.split()[-1]}
+
+    def record(df: pd.DataFrame) -> dict:
+        return {"games": int(len(df)),
+                "away_wins": int((df["winner"] == away).sum()),
+                "home_wins": int((df["winner"] == home).sum()),
+                "ties": int((df["winner"] == "").sum())}
+
+    # Games hosted by today's home team (true home games, not neutral sites)
+    at_home = past[(past["home_team"] == home) & (past["location"] == "Home")]
+    playoffs = past[past["game_type"] != "REG"]
+    streak_team, streak_n = _nfl_streak(past["winner"].tolist())
+    venue_team, venue_n = _nfl_streak(at_home["winner"].tolist())
+
+    # Starting QBs: actual starters for a completed game, else the projected starters
+    qbs: dict[str, str] = {}
+    if not this_game.empty:
+        r = this_game.iloc[0]
+        qbs = {away: r["away_qb_name"], home: r["home_qb_name"]}
+    else:
+        stats = _load_nfl_stats()
+        if "qb_name" in stats.columns:
+            qbs = {t: stats.at[t, "qb_name"] for t in (away, home) if t in stats.index}
+
+    def qb_record(team: str, qb: str) -> tuple[int, int, int]:
+        side = past[((past["away_team"] == team) & (past["away_qb_name"] == qb))
+                    | ((past["home_team"] == team) & (past["home_qb_name"] == qb))]
+        return (int((side["winner"] == team).sum()),
+                int(((side["winner"] != team) & (side["winner"] != "")).sum()),
+                int((side["winner"] == "").sum()))
+
+    def fmt(w: int, l: int, t: int) -> str:
+        return f"{w}–{l}" + (f"–{t}" if t else "")
+
+    notes: list[str] = []
+    overall = record(past)
+    lead, trail = (away, home) if overall["away_wins"] >= overall["home_wins"] else (home, away)
+    lw = overall["away_wins"] if lead == away else overall["home_wins"]
+    tw = overall["home_wins"] if lead == away else overall["away_wins"]
+    if lw == tw:
+        notes.append(f"The series is tied {fmt(lw, tw, overall['ties'])} since {int(past['season'].min())}.")
+    else:
+        notes.append(f"{nick[lead]} lead the series {fmt(lw, tw, overall['ties'])} since {int(past['season'].min())}.")
+
+    if streak_n >= 3:
+        notes.append(f"{nick[streak_team]} have won the last {streak_n} meetings.")
+
+    if not neutral and len(at_home) >= 3:
+        away_wins_there = at_home[at_home["winner"] == away]
+        if away_wins_there.empty:
+            notes.append(f"{nick[away]} have never won at {nick[home]} home since {int(at_home['season'].min())} "
+                         f"(0–{(at_home['winner'] == home).sum()}).")
+        elif venue_team == home and venue_n >= 3:
+            last = away_wins_there.iloc[-1]
+            notes.append(f"{nick[home]} have won {venue_n} straight home games vs the {nick[away]}; "
+                         f"{nick[away]}' last win there was {_nfl_month_year(last['gameday'])}.")
+        elif venue_team == away and venue_n >= 3:
+            notes.append(f"{nick[away]} have won {venue_n} straight road games vs the {nick[home]}.")
+        home_wins_there = at_home[at_home["winner"] == home]
+        if home_wins_there.empty:
+            notes.append(f"{nick[home]} have never beaten the {nick[away]} at home since "
+                         f"{int(at_home['season'].min())} (0–{(at_home['winner'] == away).sum()}).")
+
+    if not playoffs.empty:
+        pr = record(playoffs)
+        notes.append(f"{len(playoffs)} playoff meeting{'s' if len(playoffs) > 1 else ''}: "
+                     f"{nick[away]} {pr['away_wins']}, {nick[home]} {pr['home_wins']}.")
+
+    for team, qb in qbs.items():
+        if isinstance(qb, str) and qb:
+            w, l, t = qb_record(team, qb)
+            if w + l + t >= 2:
+                opp = home if team == away else away
+                notes.append(f"{qb} is {fmt(w, l, t)} as a starter vs the {nick[opp]}.")
+
+    # What this game's result did to the streaks (completed games only)
+    result_notes: list[str] = []
+    if not this_game.empty and this_game.iloc[0]["winner"]:
+        g = this_game.iloc[0]
+        won, lost = g["winner"], (home if g["winner"] == away else away)
+        n_all = _nfl_streak(past["winner"].tolist() + [won])[1]
+        if streak_team == lost and streak_n >= 3:
+            result_notes.append(f"{nick[won]} snapped a {streak_n}-game losing streak against the {nick[lost]}.")
+        elif n_all >= 3:
+            result_notes.append(f"With this win, {nick[won]} have won {n_all} straight meetings.")
+        if not neutral and g["location"] == "Home":
+            n_home = _nfl_streak(at_home["winner"].tolist() + [won])[1]
+            if won == home and n_home >= 3:
+                result_notes.append(f"{nick[home]} extended their home streak vs the {nick[away]} to {n_home}.")
+            elif won == away and venue_team == home and venue_n >= 3:
+                result_notes.append(f"{nick[away]} ended a {venue_n}-game losing streak at {nick[home]} home.")
+
+    last = past.tail(10).iloc[::-1]
+    return {
+        "since":    int(past["season"].min()),
+        **overall,
+        "result_notes": result_notes,
+        "at_home":  {**record(at_home), "neutral": neutral},
+        "playoffs": record(playoffs),
+        "streak":   {"team": streak_team, "count": streak_n},
+        "home_streak": {"team": venue_team, "count": venue_n},
+        "avg_points": {away: round(float(np.where(past["away_team"] == away, past["away_score"], past["home_score"]).mean()), 1),
+                       home: round(float(np.where(past["home_team"] == home, past["home_score"], past["away_score"]).mean()), 1)},
+        "notes": notes,
+        "last_meetings": [
+            {"date": r["gameday"], "season": int(r["season"]), "game_type": r["game_type"],
+             "away_team": r["away_team"], "home_team": r["home_team"],
+             "away_score": int(r["away_score"]), "home_score": int(r["home_score"]),
+             "winner": r["winner"], "neutral": r["location"] != "Home", "overtime": bool(r["overtime"] == 1)}
+            for _, r in last.iterrows()
+        ],
+    }
+
+
+def _nfl_month_year(iso_day: str) -> str:
+    import datetime
+    try:
+        return datetime.date.fromisoformat(iso_day).strftime("%b %Y")
+    except ValueError:
+        return iso_day

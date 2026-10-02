@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useRef, useState } from "react";
+import { pickMatchupColors } from "../../components/teamColors";
 import Link from "next/link";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -63,8 +64,28 @@ const TEAM_COLORS: Record<string, string> = {
   TOR: "#CE1141", UTA: "#F9A01B", WAS: "#E31837",
 };
 
+// Secondary team colors, used when both primaries look alike
+const TEAM_ALT_COLORS: Record<string, string> = {
+  ATL: "#C1D32F", BOS: "#BA9653", BKN: "#000000",
+  CHA: "#1D1160", CHI: "#000000", CLE: "#FDBB30",
+  DAL: "#002B5E", DEN: "#0E2240", DET: "#C8102E",
+  GSW: "#1D428A", HOU: "#000000", IND: "#002D62",
+  LAC: "#1D428A", LAL: "#552583", MEM: "#12173F",
+  MIA: "#98002E", MIL: "#0077C0", MIN: "#78BE20",
+  NOP: "#0C2340", NYK: "#006BB6", OKC: "#EF3B24",
+  ORL: "#000000", PHI: "#ED174C", PHX: "#1D1160",
+  POR: "#000000", SAC: "#63727A", SAS: "#000000",
+  TOR: "#000000", UTA: "#002B5C", WAS: "#002B5C",
+};
+
 function getAbbr(t: string) { return TEAM_ABBR[t] ?? t.split(" ").pop()?.substring(0, 3).toUpperCase() ?? "???"; }
-function getColor(t: string) { return TEAM_COLORS[getAbbr(t)] ?? "#555"; }
+function teamColorCandidates(t: string): string[] {
+  const a = getAbbr(t);
+  return [TEAM_COLORS[a] ?? "#555", ...(TEAM_ALT_COLORS[a] ? [TEAM_ALT_COLORS[a]] : [])];
+}
+// Colors for the matchup on screen, set by the page so both teams are clearly distinct
+let matchupColors: Record<string, string> = {};
+function getColor(t: string) { return matchupColors[t] ?? TEAM_COLORS[getAbbr(t)] ?? "#555"; }
 
 const TEAM_IDS: Record<string, number> = {
   ATL: 1610612737, BOS: 1610612738, BKN: 1610612751,
@@ -114,6 +135,8 @@ export default function GamePage({
   const sp       = use(searchParams);
   const away     = (sp.away     as string) ?? "";
   const home     = (sp.home     as string) ?? "";
+  const [awayColor, homeColor] = pickMatchupColors(teamColorCandidates(away), teamColorCandidates(home));
+  matchupColors = { [away]: awayColor, [home]: homeColor };
   const time     = (sp.time     as string) ?? "";
   const status   = (sp.status   as string) ?? "";
   const winner   = (sp.winner   as string) ?? "";
@@ -371,7 +394,7 @@ function ProbChart({ data, awayTeam, homeTeam }: {
     (props: { x?: number; y?: number; index?: number; value?: number }) => {
       const { x = 0, y = 0, index = 0, value = 0 } = props;
       if (index !== data.length - 1) return null;
-      const adjY = Number(y) + yOff;
+      const adjY = Math.max(16, Number(y) + yOff);  // keep the label inside the chart near 100 %
       return (
         <g>
           <text x={Number(x) + 10} y={adjY - 5} fill={color} fontSize={9} fontWeight="700" fontFamily="inherit">{getAbbr(team)}</text>
