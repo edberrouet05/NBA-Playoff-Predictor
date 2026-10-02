@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { teamHref } from "../../components/teamLinks";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -149,9 +151,9 @@ function DivisionTable({ division, proj }: { division: Division; proj: Record<st
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <TeamLogo team={team.name} />
-                      <span className={`text-sm font-semibold ${isFirst ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
+                      <Link href={teamHref("nfl", team.name)} className={`text-sm font-semibold hover:underline ${isFirst ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"}`}>
                         {team.name}
-                      </span>
+                      </Link>
                     </div>
                   </td>
                   <td className="px-3 py-3 text-center">

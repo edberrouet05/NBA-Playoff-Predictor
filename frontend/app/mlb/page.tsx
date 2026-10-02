@@ -331,6 +331,7 @@ function ConfidencePicks({ games, loading }: { games: MLBGame[]; loading: boolea
       team: g.predicted_winner,
       opp:  g.predicted_winner === g.away_team ? g.home_team : g.away_team,
       prob: Math.max(g.away_win_prob, g.home_win_prob),
+      href: `/mlb/game/${g.game_id}?away=${encodeURIComponent(g.away_team)}&home=${encodeURIComponent(g.home_team)}&status=${encodeURIComponent(g.status)}`,
     }))
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 5);
@@ -361,10 +362,10 @@ function ConfidencePicks({ games, loading }: { games: MLBGame[]; loading: boolea
           {picks.map((pick, i) => {
             const c = conf(pick.prob);
             return (
-              <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2.5">
+              <Link key={i} href={pick.href} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 <span className="text-sm text-gray-800 dark:text-gray-200 font-medium">{getNick(pick.team)}</span>
                 <span className={`text-sm font-bold ${c.val}`}>{pick.prob}%</span>
-              </div>
+              </Link>
             );
           })}
         </div>

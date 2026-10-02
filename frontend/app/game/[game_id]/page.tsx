@@ -2,6 +2,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import { pickMatchupColors } from "../../components/teamColors";
 import Link from "next/link";
+import { teamHref } from "../../components/teamLinks";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, LabelList,
@@ -245,7 +246,7 @@ export default function GamePage({
           <div className="flex items-center gap-2 md:gap-4">
             <TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" />
             <div>
-              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight">{lastName(away)}</p>
+              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", away)} className="hover:underline">{lastName(away)}</Link></p>
               {showScore && awayScore !== null ? (
                 <p className={`text-xl md:text-2xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{awayScore}</p>
               ) : (
@@ -268,7 +269,7 @@ export default function GamePage({
           <div className="flex items-center gap-2 md:gap-4 flex-row-reverse">
             <TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" />
             <div className="text-right">
-              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight">{lastName(home)}</p>
+              <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", home)} className="hover:underline">{lastName(home)}</Link></p>
               {showScore && homeScore !== null ? (
                 <p className={`text-xl md:text-2xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{homeScore}</p>
               ) : (

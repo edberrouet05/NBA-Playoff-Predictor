@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { teamHref } from "../../components/teamLinks";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -165,7 +167,7 @@ function SortTable<T extends { team: string }>({ rows, cols, initial }: {
               <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-2.5">
                 <div className="flex items-center gap-2.5 min-w-[11rem]">
                   <TeamLogo team={r.team} />
-                  <span className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{r.team}</span>
+                  <Link href={teamHref("nfl", r.team)} className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap hover:underline">{r.team}</Link>
                 </div>
               </td>
               {cols.map(c => (

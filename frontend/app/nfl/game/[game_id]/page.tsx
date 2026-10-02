@@ -1,6 +1,7 @@
 "use client";
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { teamHref } from "../../../components/teamLinks";
 import { probClass } from "../../../components/PredictionBits";
 import { pickMatchupColors } from "../../../components/teamColors";
 import {
@@ -827,7 +828,7 @@ export default function NFLGamePage({
             <div className="flex items-center gap-3">
               <TeamLogo team={away} size="w-10 h-10" />
               <div>
-                <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(away)}</p>
+                <p className={`font-bold text-base leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", away)} className="hover:underline">{getNick(away)}</Link></p>
                 {showScore && awayScore !== null && <p className="text-xs text-gray-400 mt-0.5">{awayProb}%</p>}
               </div>
             </div>
@@ -841,7 +842,7 @@ export default function NFLGamePage({
             <div className="flex items-center gap-3">
               <TeamLogo team={home} size="w-10 h-10" />
               <div>
-                <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(home)}</p>
+                <p className={`font-bold text-base leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", home)} className="hover:underline">{getNick(home)}</Link></p>
                 {showScore && homeScore !== null && <p className="text-xs text-gray-400 mt-0.5">{homeProb}%</p>}
               </div>
             </div>
@@ -858,7 +859,7 @@ export default function NFLGamePage({
           <div className="flex items-center gap-4">
             <TeamLogo team={away} size="w-14 h-14" />
             <div>
-              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(away)}</p>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !awayWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", away)} className="hover:underline">{getNick(away)}</Link></p>
               {showScore && awayScore !== null && (
                 <p className={`text-3xl font-black mt-1 ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{awayScore}</p>
               )}
@@ -875,7 +876,7 @@ export default function NFLGamePage({
           <div className="flex items-center gap-4 flex-row-reverse">
             <TeamLogo team={home} size="w-14 h-14" />
             <div className="text-right">
-              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}>{getNick(home)}</p>
+              <p className={`font-bold text-xl leading-tight ${isFinal && !homeWins ? "text-gray-400 dark:text-gray-600" : "text-gray-900 dark:text-white"}`}><Link href={teamHref("nfl", home)} className="hover:underline">{getNick(home)}</Link></p>
               {showScore && homeScore !== null && (
                 <p className={`text-3xl font-black mt-1 ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"}`}>{homeScore}</p>
               )}

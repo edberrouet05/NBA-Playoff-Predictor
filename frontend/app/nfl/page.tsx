@@ -291,7 +291,7 @@ function PredictionsLog({ log, loading }: { log: NFLPredEntry[]; loading: boolea
 function ConfidencePicks({ games, loading }: { games: NFLGame[]; loading: boolean }) {
   const picks = games
     .filter(g => g.status_state !== "post")
-    .map(g => ({ team: g.predicted_winner, prob: Math.max(g.away_win_prob, g.home_win_prob) }))
+    .map(g => ({ team: g.predicted_winner, prob: Math.max(g.away_win_prob, g.home_win_prob), href: gameUrl(g) }))
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 5);
 
@@ -313,12 +313,12 @@ function ConfidencePicks({ games, loading }: { games: NFLGame[]; loading: boolea
       ) : (
         <div className="flex flex-col gap-2">
           {picks.map((pick, i) => (
-            <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2.5">
+            <Link key={i} href={pick.href} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <span className="text-sm text-gray-800 dark:text-gray-200 font-medium">{getNick(pick.team)}</span>
               <span className={`text-sm font-bold ${pick.prob >= 65 ? "text-green-600 dark:text-green-400" : pick.prob >= 58 ? "text-yellow-600 dark:text-yellow-400" : "text-gray-500"}`}>
                 {pick.prob}%
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       )}

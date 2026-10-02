@@ -774,5 +774,9 @@
   "san diego padres|milwaukee brewers": {
     "away_odds": 2.96,
     "home_odds": 1.45
+  },
+  "atlanta braves|los angeles dodgers": {
+    "away_odds": 2.87,
+    "home_odds": 1.47
   }
 }

@@ -3540,3 +3540,402 @@ def _nfl_month_year(iso_day: str) -> str:
         return datetime.date.fromisoformat(iso_day).strftime("%b %Y")
     except ValueError:
         return iso_day
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Team pages (NFL / MLB / NBA) — ESPN data + our model where we have one
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_TEAM_LEAGUES = {
+    "nfl": {
+        "sport": "football", "unit": "pts", "close": 8, "blowout": 17,
+        # (ESPN stat category, stat name, label, per_game)
+        "stats": [
+            ("scoring", "totalPointsPerGame", "Points / game", False),
+            ("passing", "yardsPerGame", "Yards / game", False),
+            ("passing", "netPassingYardsPerGame", "Pass yards / game", False),
+            ("rushing", "rushingYardsPerGame", "Rush yards / game", False),
+            ("rushing", "yardsPerRushAttempt", "Yards / carry", False),
+            ("miscellaneous", "thirdDownConvPct", "3rd down %", False),
+            ("miscellaneous", "redzoneTouchdownPct", "Red zone TD %", False),
+            ("miscellaneous", "turnOverDifferential", "Turnover diff.", False),
+            ("defensive", "sacks", "Sacks (defense)", False),
+            ("defensiveInterceptions", "interceptions", "Interceptions", False),
+            ("defensive", "tacklesForLoss", "Tackles for loss", False),
+            ("kicking", "fieldGoalPct", "Field goal %", False),
+        ],
+        "leaders": [("passingYards", "Passing"), ("rushingYards", "Rushing"), ("receivingYards", "Receiving"),
+                    ("sacks", "Sacks"), ("totalTackles", "Tackles"), ("interceptions", "Interceptions")],
+    },
+    "mlb": {
+        "sport": "baseball", "unit": "runs", "close": 1, "blowout": 5,
+        "stats": [
+            ("batting", "avg", "Batting avg", False),
+            ("batting", "onBasePct", "On-base %", False),
+            ("batting", "OPS", "OPS", False),
+            ("batting", "homeRuns", "Home runs", False),
+            ("batting", "runs", "Runs scored", False),
+            ("batting", "stolenBases", "Stolen bases", False),
+            ("pitching", "ERA", "ERA", False),
+            ("pitching", "WHIP", "WHIP", False),
+            ("pitching", "strikeoutsPerNineInnings", "K / 9", False),
+            ("pitching", "saves", "Saves", False),
+            ("pitching", "qualityStarts", "Quality starts", False),
+            ("fielding", "fieldingPct", "Fielding %", False),
+        ],
+        "leaders": [("avg", "Batting avg"), ("homeRuns", "Home runs"), ("RBIs", "RBI"), ("OPS", "OPS"),
+                    ("ERA", "ERA"), ("wins", "Wins"), ("strikeouts", "Strikeouts"), ("saves", "Saves")],
+    },
+    "nba": {
+        "sport": "basketball", "unit": "pts", "close": 5, "blowout": 15,
+        "stats": [
+            ("offensive", "fieldGoalPct", "Field goal %", False),
+            ("offensive", "threePointPct", "3-point %", False),
+            ("offensive", "freeThrowPct", "Free throw %", False),
+            ("offensive", "trueShootingPct", "True shooting %", False),
+            ("offensive", "threePointFieldGoalsMade", "3-pointers / game", True),
+            ("offensive", "assists", "Assists / game", True),
+            ("offensive", "offensiveRebounds", "Off. rebounds / game", True),
+            ("defensive", "defensiveRebounds", "Def. rebounds / game", True),
+            ("defensive", "steals", "Steals / game", True),
+            ("defensive", "blocks", "Blocks / game", True),
+            ("offensive", "turnovers", "Turnovers / game", True),
+            ("offensive", "paceFactor", "Pace", False),
+        ],
+        "leaders": [("pointsPerGame", "Points"), ("reboundsPerGame", "Rebounds"), ("assistsPerGame", "Assists"),
+                    ("stealsPerGame", "Steals"), ("blocksPerGame", "Blocks"), ("3PointMadePerGame", "3-pointers")],
+    },
+}
+# Our abbreviations (frontend) → ESPN's
+_TEAM_ABBR_ALIASES = {
+    "nba": {"gsw": "gs", "nyk": "ny", "nop": "no", "sas": "sa", "uta": "utah", "was": "wsh"},
+    "mlb": {"cws": "chw", "oak": "ath"},
+    "nfl": {"was": "wsh", "la": "lar"},
+}
+_team_list_cache: dict[str, list[dict]] = {}
+_team_page_cache: dict[tuple[str, str], tuple[float, dict]] = {}
+_TEAM_PAGE_TTL = 600.0
+
+
+def _espn_json(url: str, timeout: int = 15) -> dict:
+    import json, urllib.request
+    req = urllib.request.Request(url.replace("http://", "https://"), headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+def _resolve_espn_team(league: str, key: str) -> dict | None:
+    """Match an abbreviation (ours or ESPN's), a slug or a full team name to an ESPN team."""
+    sport = _TEAM_LEAGUES[league]["sport"]
+    if league not in _team_list_cache:
+        data = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams")
+        _team_list_cache[league] = [t["team"] for t in data["sports"][0]["leagues"][0]["teams"]]
+    k = key.strip().lower().replace("-", " ")
+    k = _TEAM_ABBR_ALIASES.get(league, {}).get(k, k)
+    for t in _team_list_cache[league]:
+        if k in (t["abbreviation"].lower(), t["displayName"].lower(), t.get("slug", "").replace("-", " "),
+                 t.get("shortDisplayName", "").lower(), t.get("name", "").lower()):
+            return t
+    return None
+
+
+def _espn_score(c: dict) -> int | None:
+    s = c.get("score")
+    if isinstance(s, dict):
+        s = s.get("value", s.get("displayValue"))
+    try:
+        return int(float(s)) if s not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _team_schedule(sport: str, league: str, team_id: str, season: int, season_type: int) -> list[dict]:
+    try:
+        data = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{team_id}"
+                          f"/schedule?season={season}&seasontype={season_type}")
+    except Exception:
+        return []
+    games = []
+    for ev in data.get("events", []):
+        comp = ev.get("competitions", [{}])[0]
+        cs = comp.get("competitors", [])
+        me  = next((c for c in cs if str(c.get("team", {}).get("id")) == str(team_id)), None)
+        opp = next((c for c in cs if c is not me), None)
+        if not me or not opp:
+            continue
+        if int((ev.get("seasonType") or {}).get("type") or season_type) != season_type:
+            continue   # ESPN can return other phases' games for a season type
+        st = comp.get("status", {}).get("type", {})
+        if st.get("name") in ("STATUS_POSTPONED", "STATUS_CANCELED"):
+            continue
+        ts, os_ = _espn_score(me), _espn_score(opp)
+        done = bool(st.get("completed")) and ts is not None and os_ is not None
+        games.append({
+            "game_id":       ev.get("id"),
+            "date":          ev.get("date", ""),
+            "season_type":   "post" if season_type == 3 else "reg",
+            "label":         (ev.get("week") or {}).get("text", ""),
+            "home":          me.get("homeAway") == "home",
+            "neutral":       bool(comp.get("neutralSite")),
+            "opponent":      opp.get("team", {}).get("displayName", ""),
+            "opponent_abbr": opp.get("team", {}).get("abbreviation", ""),
+            "team_score":    ts if done else None,
+            "opp_score":     os_ if done else None,
+            "result":        ("W" if ts > os_ else "L" if ts < os_ else "T") if done else None,
+            "completed":     done,
+            "status":        st.get("shortDetail") or st.get("description", ""),
+        })
+    return games
+
+
+def _record_str(games: list[dict]) -> str:
+    w = sum(g["result"] == "W" for g in games)
+    l = sum(g["result"] == "L" for g in games)
+    t = sum(g["result"] == "T" for g in games)
+    return f"{w}-{l}" + (f"-{t}" if t else "")
+
+
+def _team_facts(games: list[dict], cfg: dict) -> dict:
+    """Splits, streaks and notable games from completed regular-season games."""
+    done = [g for g in games if g["completed"]]
+    if not done:
+        return {}
+    margins = [g["team_score"] - g["opp_score"] for g in done]
+    res = [g["result"] for g in done]
+
+    def longest(r: str) -> int:
+        best = cur = 0
+        for x in res:
+            cur = cur + 1 if x == r else 0
+            best = max(best, cur)
+        return best
+
+    cur_r, cur_n = res[-1], 0
+    for x in reversed(res):
+        if x != cur_r:
+            break
+        cur_n += 1
+
+    close   = [g for g, m in zip(done, margins) if abs(m) <= cfg["close"]]
+    blowout = [g for g, m in zip(done, margins) if abs(m) >= cfg["blowout"]]
+    after_loss = [done[i] for i in range(1, len(done)) if done[i - 1]["result"] == "L"]
+    best  = max(zip(margins, done), key=lambda x: x[0])
+    worst = min(zip(margins, done), key=lambda x: x[0])
+
+    def game_ref(m: int, g: dict) -> dict:
+        return {"game_id": g["game_id"], "date": g["date"], "opponent": g["opponent"], "home": g["home"],
+                "team_score": g["team_score"], "opp_score": g["opp_score"], "margin": m}
+
+    n = len(done)
+    facts = {
+        "games":               n,
+        "record":              _record_str(done),
+        "home":                _record_str([g for g in done if g["home"] and not g["neutral"]]),
+        "road":                _record_str([g for g in done if not g["home"] and not g["neutral"]]),
+        "last10":              _record_str(done[-10:]),
+        "streak":              f"{cur_r}{cur_n}",
+        "longest_win_streak":  longest("W"),
+        "longest_loss_streak": longest("L"),
+        "points_for":          round(sum(g["team_score"] for g in done) / n, 1),
+        "points_against":      round(sum(g["opp_score"] for g in done) / n, 1),
+        "differential":        round(sum(margins) / n, 1),
+        "close":               {"record": _record_str(close), "threshold": cfg["close"]},
+        "blowouts":            {"record": _record_str(blowout), "threshold": cfg["blowout"]},
+        "after_loss":          _record_str(after_loss),
+        "best_win":            game_ref(*best) if best[0] > 0 else None,
+        "worst_loss":          game_ref(*worst) if worst[0] < 0 else None,
+        "unit":                cfg["unit"],
+    }
+    # Record by month for long seasons
+    if len(done) > 30:
+        by_month: dict[str, list[dict]] = {}
+        for g in done:
+            by_month.setdefault(g["date"][:7], []).append(g)
+        facts["by_month"] = [{"month": m, "record": _record_str(gs),
+                              "differential": round(sum(x["team_score"] - x["opp_score"] for x in gs) / len(gs), 1)}
+                             for m, gs in sorted(by_month.items())]
+    return facts
+
+
+def _team_stats(sport: str, league: str, team_id: str, season: int, cfg: dict) -> list[dict]:
+    try:
+        data = _espn_json(f"https://sports.core.api.espn.com/v2/sports/{sport}/leagues/{league}"
+                          f"/seasons/{season}/types/2/teams/{team_id}/statistics")
+    except Exception:
+        return []
+    cats = {c["name"]: {s["name"]: s for s in c.get("stats", [])}
+            for c in data.get("splits", {}).get("categories", [])}
+    games = None
+    for c in cats.values():
+        if "gamesPlayed" in c:
+            games = c["gamesPlayed"].get("value")
+            break
+    out = []
+    for cat, name, label, per_game in cfg["stats"]:
+        s = cats.get(cat, {}).get(name)
+        if not s or s.get("value") is None:
+            continue
+        display = f"{s['value'] / games:.1f}" if per_game and games else s.get("displayValue", "")
+        out.append({"label": label, "value": display, "rank": s.get("rank"),
+                    "rank_display": s.get("rankDisplayValue")})
+    return out
+
+
+def _team_leaders(sport: str, league: str, team_id: str, season: int, cfg: dict) -> list[dict]:
+    try:
+        data = _espn_json(f"https://sports.core.api.espn.com/v2/sports/{sport}/leagues/{league}"
+                          f"/seasons/{season}/types/2/teams/{team_id}/leaders")
+    except Exception:
+        return []
+    # Names / headshots from the roster; anyone no longer on it is fetched individually
+    roster: dict[str, dict] = {}
+    try:
+        r = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{team_id}/roster")
+        for a in r.get("athletes", []):
+            for p in (a.get("items", []) if "items" in a else [a]):
+                roster[str(p.get("id"))] = p
+    except Exception:
+        pass
+
+    cats = {c["name"]: c for c in data.get("categories", [])}
+    out = []
+    for name, label in cfg["leaders"]:
+        c = cats.get(name)
+        if not c or not c.get("leaders"):
+            continue
+        top = c["leaders"][0]
+        ref = (top.get("athlete") or {}).get("$ref", "")
+        aid = ref.split("/athletes/")[-1].split("?")[0] if "/athletes/" in ref else ""
+        ath = roster.get(aid)
+        if ath is None and ref:
+            try:
+                ath = _espn_json(ref)
+            except Exception:
+                ath = {}
+        ath = ath or {}
+        out.append({
+            "label":    label,
+            "name":     ath.get("displayName", ""),
+            "position": (ath.get("position") or {}).get("abbreviation", ""),
+            "value":    top.get("displayValue", ""),
+            "headshot": (ath.get("headshot") or {}).get("href"),
+        })
+    return [x for x in out if x["name"]]
+
+
+def _team_model_block(league: str, team_name: str) -> dict | None:
+    """Our model's view of the team (NFL: power index + season simulation)."""
+    if league != "nfl":
+        return None
+    out: dict = {}
+    try:
+        p = next((t for t in get_nfl_power()["teams"] if t["team"] == team_name), None)
+        if p:
+            out.update({"power": p["power"], "power_rank": p["rank"], "trend": p["trend"],
+                        "off_rank": p.get("off_epa_rank"), "def_rank": p.get("def_epa_rank"),
+                        "qb_name": p.get("qb_name"), "qb_rank": p.get("qb_rank"),
+                        "sos_rank": p.get("sos_rank"), "rem_sos_rank": p.get("rem_sos_rank")})
+    except Exception:
+        pass
+    try:
+        pr = next((t for t in get_nfl_projections()["teams"] if t["team"] == team_name), None)
+        if pr:
+            out.update({k: pr[k] for k in ("projected_wins", "playoff_pct", "division_pct",
+                                           "top_seed_pct", "conf_pct", "sb_win_pct")})
+    except Exception:
+        pass
+    return out or None
+
+
+def _team_next_game_prob(league: str, game: dict, team_name: str) -> float | None:
+    """Our pre-game win probability for the team's next game, when we can produce one."""
+    if league != "nfl":
+        return None
+    try:
+        cached = _nfl_game_pred_cache.get(str(game["game_id"]))
+        if cached:
+            away_wp, home_wp = cached["away_win_prob"], cached["home_win_prob"]
+        else:
+            away, home = (game["opponent"], team_name) if game["home"] else (team_name, game["opponent"])
+            pred = _predict_nfl_game(_load_nfl_model(), _load_nfl_stats(), away, home, game["game_id"])
+            if not pred:
+                return None
+            away_wp, home_wp = pred[0], pred[1]
+        return home_wp if game["home"] else away_wp
+    except Exception:
+        return None
+
+
+@app.get("/api/team/{league}/{team}")
+def get_team_page(league: str, team: str):
+    """Everything for a team page: record, schedule, key stats with league ranks,
+    player leaders, splits / notable facts and (NFL) our model's projections."""
+    import datetime
+    league = league.lower()
+    if league not in _TEAM_LEAGUES:
+        raise HTTPException(status_code=404, detail=f"Unknown league: {league}")
+    cfg = _TEAM_LEAGUES[league]
+    sport = cfg["sport"]
+
+    t = _resolve_espn_team(league, team)
+    if t is None:
+        raise HTTPException(status_code=404, detail=f"Team not found: {team}")
+    key = (league, t["id"])
+    hit = _team_page_cache.get(key)
+    if hit and _time_mod.time() - hit[0] < _TEAM_PAGE_TTL:
+        return hit[1]
+
+    tid = t["id"]
+    base = f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{tid}"
+    info = _espn_json(base).get("team", {})
+    cur = _espn_json(f"{base}/schedule").get("season") or {}
+    cur_year = int(cur.get("year") or datetime.date.today().year)
+
+    # Use the latest season with completed regular-season games (e.g. NBA preseason → last season)
+    season = cur_year
+    cur_reg = _team_schedule(sport, league, tid, season, 2)
+    games = cur_reg
+    if not any(g["completed"] for g in games):
+        prev = _team_schedule(sport, league, tid, season - 1, 2)
+        if any(g["completed"] for g in prev):
+            season, games = season - 1, prev
+    post = _team_schedule(sport, league, tid, season, 3)
+
+    soon = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M")
+    upcoming = sorted((g for g in cur_reg + post if not g["completed"] and g["date"] >= soon),
+                      key=lambda g: g["date"])
+    next_game = upcoming[0] if upcoming else None
+    if next_game:
+        next_game = {**next_game, "win_prob": _team_next_game_prob(league, next_game, t["displayName"])}
+
+    logos = info.get("logos") or t.get("logos") or []
+    record = ({i.get("type"): i.get("summary") for i in (info.get("record") or {}).get("items", [])}
+              if season == cur_year else {})
+    if not record.get("total") or record.get("total") == "0-0":
+        record = {"total": _record_str([g for g in games if g["completed"]])}
+
+    result = {
+        "league": league,
+        "team": {
+            "id": tid, "abbr": t["abbreviation"], "name": t["displayName"],
+            "nickname": t.get("name") or t.get("shortDisplayName"), "location": t.get("location", ""),
+            "color": "#" + (info.get("color") or t.get("color") or "555555"),
+            "alt_color": "#" + (info.get("alternateColor") or t.get("alternateColor") or "999999"),
+            "logo": logos[0]["href"] if logos else None,
+            "standing": info.get("standingSummary", "") if season == cur_year else "",
+        },
+        "season": {"year": season, "is_current": season == cur_year,
+                   "label": f"{season - 1}-{str(season)[-2:]}" if league == "nba" else str(season)},
+        "record": record,
+        "next_game": next_game,
+        "facts": _team_facts(games, cfg),
+        "stats": _team_stats(sport, league, tid, season, cfg),
+        # ESPN ranks NBA team stats within the division, other leagues league-wide
+        "stats_rank_scope": "division" if league == "nba" else "league",
+        "leaders": _team_leaders(sport, league, tid, season, cfg),
+        "model": _team_model_block(league, t["displayName"]),
+        "games": games,
+        "postseason": post,
+    }
+    _team_page_cache[key] = (_time_mod.time(), result)
+    return result

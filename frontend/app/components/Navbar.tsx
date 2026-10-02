@@ -55,16 +55,6 @@ function IconStandings() {
   );
 }
 
-function IconLog() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="2" width="14" height="14" rx="2" />
-      <path d="M5 6.5l2 2 4-4" />
-      <path d="M5 11.5l2 2 4-4" />
-    </svg>
-  );
-}
-
 function IconPower() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -109,12 +99,6 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       isActive: (p) => p === "/bracket" || p.startsWith("/team"),
     },
     {
-      href: "/predictions",
-      Icon: IconLog,
-      label: "Predictions",
-      isActive: (p) => p === "/predictions",
-    },
-    {
       href: "/stats",
       Icon: IconStats,
       label: "Stats",
@@ -133,12 +117,6 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       Icon: IconStandings,
       label: "Standings",
       isActive: (p) => p === "/mlb/standings",
-    },
-    {
-      href: "/mlb/predictions",
-      Icon: IconLog,
-      label: "Predictions",
-      isActive: (p) => p === "/mlb/predictions",
     },
     {
       href: "/mlb/stats",
@@ -165,12 +143,6 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       Icon: IconPower,
       label: "Power",
       isActive: (p) => p === "/nfl/power",
-    },
-    {
-      href: "/nfl/predictions",
-      Icon: IconLog,
-      label: "Predictions",
-      isActive: (p) => p === "/nfl/predictions",
     },
     {
       href: "/nfl/stats",

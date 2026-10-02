@@ -392,7 +392,7 @@ function PredictionsLog({ log, logLoading }: { log: PredictionEntry[]; logLoadin
 
 function ConfidencePicks({ games }: { games: TodayGame[] }) {
   const picks = games
-    .map(g => ({ team: g.predicted_winner, prob: Math.max(g.away_win_prob, g.home_win_prob) }))
+    .map(g => ({ team: g.predicted_winner, prob: Math.max(g.away_win_prob, g.home_win_prob), href: gameUrl(g) }))
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 5);
 
@@ -420,10 +420,10 @@ function ConfidencePicks({ games }: { games: TodayGame[] }) {
           {picks.map((pick, i) => {
             const c = conf(pick.prob);
             return (
-              <div key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2.5">
+              <Link key={i} href={pick.href} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 <span className="text-sm text-gray-800 dark:text-gray-200 font-medium">{pick.team}</span>
                 <span className={`text-sm font-bold ${c.val}`}>{pick.prob}%</span>
-              </div>
+              </Link>
             );
           })}
         </div>
