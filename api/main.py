@@ -4328,6 +4328,36 @@ def get_player_page(league: str, athlete_id: str):
             "totals": career_cat.get("totals"),
         }
 
+    # Last game: the player's featured stats in his most recent game
+    last_game = None
+    if games:
+        g = games[-1]
+        last_game = {k: g[k] for k in ("game_id", "date", "at_vs", "opponent", "opponent_abbr",
+                                        "opponent_logo", "result", "score")}
+        last_game["line"] = [
+            {"label": _PLAYER_STAT_LABELS.get(n) or (labels[col(n)] if col(n) < len(labels) else n),
+             "value": g["stats"][col(n)] if col(n) < len(g["stats"]) else "—"}
+            for n in focus
+        ]
+
+    # Next game of his team (ESPN overview), with our win probability for NFL games
+    next_game = None
+    team_name = (ath.get("team") or {}).get("displayName", "")
+    nxt = (((overview.get("nextGame") or {}).get("league") or {}).get("events") or [None])[0]
+    if nxt and nxt.get("status") == "pre" and " at " in nxt.get("name", "") and team_name:
+        away_t, home_t = nxt["name"].split(" at ", 1)
+        is_home = home_t == team_name
+        next_game = {
+            "game_id": str(nxt.get("id")), "date": nxt.get("date", ""), "home": is_home,
+            "opponent": away_t if is_home else home_t, "label": nxt.get("weekText", ""),
+            "location": nxt.get("location", ""), "broadcast": nxt.get("broadcast", ""),
+            "win_prob": None,
+        }
+        if league == "nfl":
+            next_game["win_prob"] = _team_next_game_prob(
+                "nfl", {"game_id": next_game["game_id"], "home": is_home, "opponent": next_game["opponent"]},
+                team_name)
+
     ov_stats = overview.get("statistics") or {}
     team = ath.get("team") or {}
     rot = overview.get("rotowire") or {}
@@ -4360,6 +4390,8 @@ def get_player_page(league: str, athlete_id: str):
         "chart": {"label": _PLAYER_STAT_LABELS.get(chart_stat) or (labels[ci] if ci is not None and ci < len(labels) else chart_stat),
                   "kind": chart_kind, "points": chart},
         "best_game": best,
+        "last_game": last_game,
+        "next_game": next_game,
         "game_log": {"title": st.get("displayName", ""), "labels": labels, "games": list(reversed(games))},
         "splits": {"labels": [_PLAYER_STAT_LABELS.get(n) or (split_labels[i] if i < len(split_labels) else n)
                               for n, i in zip(wanted, idx)], "tables": split_tables},

@@ -31,6 +31,14 @@ interface PlayerData {
   form: { label: string; season: number; last5: number | null }[];
   chart: { label: string; kind: "bar" | "line"; points: ChartPoint[] };
   best_game: (ChartPoint & { label: string }) | null;
+  last_game: {
+    game_id: string; date: string; at_vs: string; opponent: string; opponent_abbr: string;
+    opponent_logo: string | null; result: string | null; score: string; line: { label: string; value: string }[];
+  } | null;
+  next_game: {
+    game_id: string; date: string; home: boolean; opponent: string; label: string;
+    location: string; broadcast: string; win_prob: number | null;
+  } | null;
   game_log: { title: string; labels: string[]; games: LogGame[] };
   splits: { labels: string[]; tables: { title: string; rows: { label: string; stats: string[] }[] }[] };
   career: { title: string; labels: string[]; rows: { season: string; team: string; stats: string[] }[]; totals: string[] | null } | null;
@@ -143,9 +151,7 @@ function FormCard({ d }: { d: PlayerData }) {
     <div className={`${card} h-full flex flex-col`}>
       <div className="flex items-baseline justify-between mb-3">
         <p className={cardTitle}>{compare ? "Recent form" : "Averages"}</p>
-        <p className="text-[11px] text-gray-400">
-          {compare ? `Last ${FORM_WINDOW} games vs season · per game` : `Per game · form comparison after ${FORM_WINDOW} games`}
-        </p>
+        {compare && <p className="text-[11px] text-gray-400">Last {FORM_WINDOW} games vs season · per game</p>}
       </div>
       <div className="flex-1 grid grid-cols-2 auto-rows-fr gap-2">
         {d.form.map(f => {
@@ -225,6 +231,80 @@ function TrendCard({ d }: { d: PlayerData }) {
           {d.chart.kind === "bar" && <span className="text-gray-400"> · dashed line = season average ({avg.toFixed(1)})</span>}
         </p>
       )}
+    </div>
+  );
+}
+
+/** Stand-in for the trend chart until the player has at least 2 games this season. */
+function GamesCard({ d }: { d: PlayerData }) {
+  const last = d.last_game, next = d.next_game;
+  if (!last && !next) return null;
+  const color = d.team?.color ?? "#555";
+  const nextHref = next && d.league === "nfl" ? `/nfl/game/${next.game_id}` : null;
+  const lastHref = last && d.league === "nfl" ? `/nfl/game/${last.game_id}` : null;
+  const when = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    } catch { return iso; }
+  };
+
+  const lastBody = last && (
+    <div>
+      <p className={`${cardTitle} mb-2`}>Last game</p>
+      <div className="flex items-center gap-3">
+        {last.opponent_logo && <img src={last.opponent_logo} alt="" className="w-10 h-10 object-contain" />}
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{last.at_vs} {last.opponent}</p>
+          <p className="text-xs text-gray-400">
+            {fmtDate(last.date, true)}
+            {last.result && (
+              <span className={`ml-1.5 font-bold ${last.result === "W" ? "text-green-600 dark:text-green-400" : last.result === "L" ? "text-red-500" : ""}`}>
+                {last.result} {last.score}
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+      {last.line.length > 0 && (
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {last.line.map(s => (
+            <div key={s.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/60 px-2 py-1.5 text-center">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide truncate">{s.label}</p>
+              <p className="text-base font-black tabular-nums text-gray-900 dark:text-white">{s.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const nextBody = next && (
+    <div>
+      <p className={`${cardTitle} mb-2`}>Next game</p>
+      <p className="text-sm font-bold text-gray-900 dark:text-white">{next.home ? "vs" : "@"} {next.opponent}</p>
+      <p className="text-xs text-gray-400">
+        {when(next.date)}{next.label ? ` · ${next.label}` : ""}{next.broadcast ? ` · ${next.broadcast}` : ""}
+      </p>
+      {next.location && <p className="text-xs text-gray-400">{next.location}</p>}
+      {next.win_prob != null && (
+        <div className="mt-2.5">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-gray-500">Our model · {d.team?.name.split(" ").pop()}</span>
+            <span className="font-bold text-gray-900 dark:text-white tabular-nums">{next.win_prob}% to win</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${next.win_prob}%`, background: color }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={`${card} h-full flex flex-col justify-between gap-4`}>
+      {lastBody && (lastHref ? <Link href={lastHref} className="block hover:opacity-80 transition-opacity">{lastBody}</Link> : lastBody)}
+      {lastBody && nextBody && <div className="border-t border-gray-100 dark:border-gray-800" />}
+      {nextBody && (nextHref ? <Link href={nextHref} className="block hover:opacity-80 transition-opacity">{nextBody}</Link> : nextBody)}
     </div>
   );
 }
@@ -381,7 +461,8 @@ export default function PlayerPage({ league, id }: { league: League; id: string 
         <>
           <Hero d={data} />
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 items-stretch">
-            <TrendCard d={data} />
+            {/* Trend chart once there are 2+ games; until then, last / next game */}
+            {data.chart.points.length >= 2 ? <TrendCard d={data} /> : <GamesCard d={data} />}
             <FormCard d={data} />
           </div>
           <SeasonLinesCard d={data} />
