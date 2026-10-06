@@ -1,441 +1,330 @@
 team,key,player,offense_pct,defense_pct
-Arizona Cardinals,akeem davisgaither,Akeem Davis-Gaither,0.0,0.212
-Arizona Cardinals,andrew wingard,Andrew Wingard,0.0,0.75
-Arizona Cardinals,baron browning,Baron Browning,0.0,0.49
-Arizona Cardinals,bj ojulari,BJ Ojulari,0.0,0.102
-Arizona Cardinals,budda baker,Budda Baker,0.0,0.988
-Arizona Cardinals,calais campbell,Calais Campbell,0.0,0.082
-Arizona Cardinals,cody simon,Cody Simon,0.0,0.258
-Arizona Cardinals,corey kiner,Corey Kiner,0.062,0.0
-Arizona Cardinals,dadrion taylordemerson,Dadrion Taylor-Demerson,0.0,0.1
-Arizona Cardinals,dalvin tomlinson,Dalvin Tomlinson,0.0,0.13
-Arizona Cardinals,dante stills,Dante Stills,0.0,0.522
-Arizona Cardinals,darius robinson,Darius Robinson,0.0,0.425
-Arizona Cardinals,demontrey jacobs,Demontrey Jacobs,0.01,0.0
-Arizona Cardinals,denzel burke,Denzel Burke,0.0,0.905
-Arizona Cardinals,eku leota,Eku Leota,0.0,0.128
-Arizona Cardinals,elijah higgins,Elijah Higgins,0.382,0.0
-Arizona Cardinals,elijah jones,Elijah Jones,0.0,0.122
-Arizona Cardinals,elijah wilkinson,Elijah Wilkinson,0.75,0.0
-Arizona Cardinals,emari demercado,Emari Demercado,0.055,0.0
-Arizona Cardinals,garrett williams,Garrett Williams,0.0,0.088
-Arizona Cardinals,hayden conner,Hayden Conner,0.078,0.0
+Arizona Cardinals,andrew billings,Andrew Billings,0.0,0.038
+Arizona Cardinals,andrew wingard,Andrew Wingard,0.0,0.76
+Arizona Cardinals,baron browning,Baron Browning,0.0,0.485
+Arizona Cardinals,budda baker,Budda Baker,0.0,1.0
+Arizona Cardinals,cody simon,Cody Simon,0.0,0.028
+Arizona Cardinals,dadrion taylordemerson,Dadrion Taylor-Demerson,0.0,0.008
+Arizona Cardinals,dante stills,Dante Stills,0.0,0.592
+Arizona Cardinals,darius robinson,Darius Robinson,0.0,0.35
+Arizona Cardinals,denzel burke,Denzel Burke,0.0,0.867
+Arizona Cardinals,eku leota,Eku Leota,0.0,0.16
+Arizona Cardinals,elijah higgins,Elijah Higgins,0.322,0.0
+Arizona Cardinals,elijah wilkinson,Elijah Wilkinson,1.0,0.0
+Arizona Cardinals,garrett williams,Garrett Williams,0.0,0.21
+Arizona Cardinals,hayden conner,Hayden Conner,0.01,0.0
 Arizona Cardinals,hjalte froholdt,Hjalte Froholdt,1.0,0.0
-Arizona Cardinals,hunter long,Hunter Long,0.248,0.0
-Arizona Cardinals,isaac seumalo,Isaac Seumalo,0.74,0.0
-Arizona Cardinals,isaiah adams,Isaiah Adams,0.75,0.0
-Arizona Cardinals,jack gibbens,Jack Gibbens,0.0,0.725
+Arizona Cardinals,hunter long,Hunter Long,0.322,0.0
+Arizona Cardinals,isaac seumalo,Isaac Seumalo,0.99,0.0
+Arizona Cardinals,isaiah adams,Isaiah Adams,0.605,0.0
+Arizona Cardinals,jack gibbens,Jack Gibbens,0.0,0.952
 Arizona Cardinals,jacoby brissett,Jacoby Brissett,1.0,0.0
-Arizona Cardinals,jaden davis,Jaden Davis,0.0,0.002
-Arizona Cardinals,jalen brooks,Jalen Brooks,0.103,0.0
-Arizona Cardinals,jalen thompson,Jalen Thompson,0.0,0.25
-Arizona Cardinals,jayden williams,Jayden Williams,0.04,0.0
-Arizona Cardinals,jeremiyah love,Jeremiyah Love,0.368,0.0
-Arizona Cardinals,jon gaines,Jon Gaines,0.432,0.0
-Arizona Cardinals,jordan burch,Jordan Burch,0.0,0.445
-Arizona Cardinals,josh fryar,Josh Fryar,0.25,0.0
-Arizona Cardinals,josh sweat,Josh Sweat,0.0,0.428
-Arizona Cardinals,josiah deguara,Josiah Deguara,0.028,0.0
+Arizona Cardinals,jalen brooks,Jalen Brooks,0.048,0.0
+Arizona Cardinals,jayden williams,Jayden Williams,0.068,0.0
+Arizona Cardinals,jeremiyah love,Jeremiyah Love,0.48,0.0
+Arizona Cardinals,jon gaines,Jon Gaines,0.395,0.0
+Arizona Cardinals,jordan burch,Jordan Burch,0.0,0.435
+Arizona Cardinals,josh sweat,Josh Sweat,0.0,0.5
 Arizona Cardinals,kalen king,Kalen King,0.0,0.04
-Arizona Cardinals,keitrel clark,Kei'Trel Clark,0.0,0.08
-Arizona Cardinals,kelvin beachum,Kelvin Beachum,0.25,0.0
-Arizona Cardinals,kendrick bourne,Kendrick Bourne,0.455,0.0
+Arizona Cardinals,keitrel clark,Kei'Trel Clark,0.0,0.148
+Arizona Cardinals,kendrick bourne,Kendrick Bourne,0.615,0.0
 Arizona Cardinals,kitan crawford,Kitan Crawford,0.0,0.032
-Arizona Cardinals,lj collier,L.J. Collier,0.0,0.397
-Arizona Cardinals,mack wilson,Mack Wilson,0.0,0.722
-Arizona Cardinals,marvin harrison,Marvin Harrison Jr.,0.575,0.0
-Arizona Cardinals,max melton,Max Melton,0.0,0.43
-Arizona Cardinals,michael carter,Michael Carter,0.132,0.0
-Arizona Cardinals,michael wilson,Michael Wilson,0.912,0.002
-Arizona Cardinals,owen pappoe,Owen Pappoe,0.0,0.04
-Arizona Cardinals,paris johnson,Paris Johnson,0.75,0.0
-Arizona Cardinals,pharaoh brown,Pharaoh Brown,0.055,0.0
-Arizona Cardinals,roy lopez,Roy Lopez,0.0,0.452
+Arizona Cardinals,lj collier,L.J. Collier,0.0,0.388
+Arizona Cardinals,mack wilson,Mack Wilson,0.0,0.972
+Arizona Cardinals,marvin harrison,Marvin Harrison Jr.,0.738,0.0
+Arizona Cardinals,max melton,Max Melton,0.0,0.65
+Arizona Cardinals,michael wilson,Michael Wilson,0.915,0.002
+Arizona Cardinals,paris johnson,Paris Johnson,0.995,0.0
+Arizona Cardinals,roy lopez,Roy Lopez,0.0,0.558
 Arizona Cardinals,simi fehoko,Simi Fehoko,0.05,0.0
-Arizona Cardinals,steven sims,Steven Sims,0.01,0.0
-Arizona Cardinals,tejhaun palmer,Tejhaun Palmer,0.018,0.0
-Arizona Cardinals,trey mcbride,Trey McBride,0.885,0.0
-Arizona Cardinals,tyler allgeier,Tyler Allgeier,0.397,0.0
-Arizona Cardinals,walter nolen,Walter Nolen,0.0,0.462
-Arizona Cardinals,will johnson,Will Johnson,0.0,0.575
-Arizona Cardinals,wydett williams,Wydett Williams,0.0,0.07
-Arizona Cardinals,xavier weaver,Xavier Weaver,0.195,0.0
-Arizona Cardinals,zachary carter,Zachary Carter,0.0,0.108
-Arizona Cardinals,zaven collins,Zaven Collins,0.0,0.438
+Arizona Cardinals,trey mcbride,Trey McBride,0.89,0.0
+Arizona Cardinals,tyler allgeier,Tyler Allgeier,0.535,0.0
+Arizona Cardinals,walter nolen,Walter Nolen,0.0,0.612
+Arizona Cardinals,will johnson,Will Johnson,0.0,0.448
+Arizona Cardinals,wydett williams,Wydett Williams,0.0,0.31
+Arizona Cardinals,zaven collins,Zaven Collins,0.0,0.458
 Arizona Cardinals,zonovan knight,Zonovan Knight,0.025,0.0
-Atlanta Falcons,aj terrell,AJ Terrell,0.0,0.505
-Atlanta Falcons,arnold ebiketie,Arnold Ebiketie,0.0,0.08
-Atlanta Falcons,austin hooper,Austin Hooper,0.222,0.0
-Atlanta Falcons,avieon terrell,Avieon Terrell,0.0,0.232
-Atlanta Falcons,bijan robinson,Bijan Robinson,0.71,0.0
-Atlanta Falcons,billy bowman,Billy Bowman,0.0,0.162
+Atlanta Falcons,aj terrell,AJ Terrell,0.0,0.255
+Atlanta Falcons,austin hooper,Austin Hooper,0.28,0.0
+Atlanta Falcons,avieon terrell,Avieon Terrell,0.0,0.355
+Atlanta Falcons,bijan robinson,Bijan Robinson,0.65,0.0
+Atlanta Falcons,billy bowman,Billy Bowman,0.0,0.342
 Atlanta Falcons,bralen trice,Bralen Trice,0.0,0.132
-Atlanta Falcons,brandon dorlus,Brandon Dorlus,0.0,0.41
-Atlanta Falcons,brian robinson,Brian Robinson Jr.,0.25,0.0
-Atlanta Falcons,cameron thomas,Cameron Thomas,0.0,0.445
-Atlanta Falcons,charlie woerner,Charlie Woerner,0.445,0.0
-Atlanta Falcons,chris blair,Chris Blair,0.21,0.0
+Atlanta Falcons,brandon dorlus,Brandon Dorlus,0.0,0.552
+Atlanta Falcons,brian robinson,Brian Robinson Jr.,0.355,0.0
+Atlanta Falcons,cameron thomas,Cameron Thomas,0.0,0.6
+Atlanta Falcons,charlie woerner,Charlie Woerner,0.575,0.0
+Atlanta Falcons,chris blair,Chris Blair,0.272,0.0
 Atlanta Falcons,chris lindstrom,Chris Lindstrom,0.928,0.0
 Atlanta Falcons,christian harris,Christian Harris,0.0,0.015
-Atlanta Falcons,cj henderson,C.J. Henderson,0.0,0.722
-Atlanta Falcons,cobee bryant,Cobee Bryant,0.0,0.002
+Atlanta Falcons,cj henderson,C.J. Henderson,0.0,0.698
 Atlanta Falcons,cooper rush,Cooper Rush,0.395,0.0
 Atlanta Falcons,corey levin,Corey Levin,0.008,0.0
-Atlanta Falcons,darnell mooney,Darnell Mooney,0.208,0.0
 Atlanta Falcons,dashawn hand,Da'Shawn Hand,0.0,0.025
-Atlanta Falcons,david onyemata,David Onyemata,0.0,0.135
-Atlanta Falcons,david sills,David Sills V,0.178,0.0
-Atlanta Falcons,deaundre alford,DeAundre Alford,0.0,0.185
-Atlanta Falcons,demarcco hellams,DeMarcco Hellams,0.0,0.02
-Atlanta Falcons,deven thompkins,Deven Thompkins,0.02,0.0
-Atlanta Falcons,divine deablo,Divine Deablo,0.0,0.955
-Atlanta Falcons,drake london,Drake London,0.867,0.0
-Atlanta Falcons,dylan drummond,Dylan Drummond,0.04,0.0
-Atlanta Falcons,elijah garcia,Elijah Garcia,0.0,0.025
-Atlanta Falcons,elijah wilkinson,Elijah Wilkinson,0.25,0.0
-Atlanta Falcons,feleipe franks,Feleipe Franks,0.008,0.0
-Atlanta Falcons,gervon dexter,Gervon Dexter,0.0,0.398
-Atlanta Falcons,harold perkins,Harold Perkins,0.0,0.345
+Atlanta Falcons,demarcco hellams,DeMarcco Hellams,0.0,0.065
+Atlanta Falcons,divine deablo,Divine Deablo,0.0,0.908
+Atlanta Falcons,drake london,Drake London,0.855,0.0
+Atlanta Falcons,gervon dexter,Gervon Dexter,0.0,0.545
+Atlanta Falcons,harold perkins,Harold Perkins,0.0,0.52
 Atlanta Falcons,jack strand,Jack Strand,0.105,0.0
-Atlanta Falcons,jahan dotson,Jahan Dotson,0.51,0.0
-Atlanta Falcons,jake matthews,Jake Matthews,1.0,0.0
-Atlanta Falcons,jalon walker,Jalon Walker,0.0,0.122
-Atlanta Falcons,james pearce,James Pearce,0.0,0.135
+Atlanta Falcons,jahan dotson,Jahan Dotson,0.668,0.0
+Atlanta Falcons,jake matthews,Jake Matthews,0.798,0.0
 Atlanta Falcons,jared ivey,Jared Ivey,0.0,0.188
-Atlanta Falcons,jawaan taylor,Jawaan Taylor,0.655,0.0
-Atlanta Falcons,jd bertrand,JD Bertrand,0.0,0.04
-Atlanta Falcons,jessie bates,Jessie Bates III,0.0,0.98
-Atlanta Falcons,josh woods,Josh Woods,0.0,0.028
-Atlanta Falcons,kaden elliss,Kaden Elliss,0.0,0.25
-Atlanta Falcons,kendal daniels,Kendal Daniels,0.0,0.418
-Atlanta Falcons,kentavius street,Kentavius Street,0.0,0.122
-Atlanta Falcons,khalid kareem,Khalid Kareem,0.0,0.08
-Atlanta Falcons,kirk cousins,Kirk Cousins,0.25,0.0
+Atlanta Falcons,jawaan taylor,Jawaan Taylor,0.905,0.0
+Atlanta Falcons,jessie bates,Jessie Bates III,0.0,0.935
+Atlanta Falcons,josh woods,Josh Woods,0.0,0.05
+Atlanta Falcons,kendal daniels,Kendal Daniels,0.0,0.515
 Atlanta Falcons,kyle hinton,Kyle Hinton,0.075,0.0
-Atlanta Falcons,kyle pitts,Kyle Pitts,0.63,0.0
+Atlanta Falcons,kyle pitts,Kyle Pitts,0.528,0.0
 Atlanta Falcons,lacale london,LaCale London,0.0,0.368
-Atlanta Falcons,leonard floyd,Leonard Floyd,0.0,0.1
-Atlanta Falcons,maason smith,Maason Smith,0.0,0.412
+Atlanta Falcons,maason smith,Maason Smith,0.0,0.52
 Atlanta Falcons,matthew bergeron,Matthew Bergeron,1.0,0.0
-Atlanta Falcons,michael jerrell,Michael Jerrell,0.105,0.0
-Atlanta Falcons,michael penix,Michael Penix,0.25,0.0
-Atlanta Falcons,mike hughes,Mike Hughes,0.0,0.712
-Atlanta Falcons,nathan carter,Nathan Carter,0.008,0.0
-Atlanta Falcons,nick muse,Nick Muse,0.13,0.0
-Atlanta Falcons,olamide zaccheaus,Olamide Zaccheaus,0.268,0.0
-Atlanta Falcons,ruke orhorhoro,Ruke Orhorhoro,0.0,0.162
+Atlanta Falcons,michael jerrell,Michael Jerrell,0.308,0.0
+Atlanta Falcons,michael penix,Michael Penix,0.5,0.0
+Atlanta Falcons,mike hughes,Mike Hughes,0.0,0.875
+Atlanta Falcons,nick muse,Nick Muse,0.205,0.0
+Atlanta Falcons,olamide zaccheaus,Olamide Zaccheaus,0.36,0.0
 Atlanta Falcons,ryan neuzil,Ryan Neuzil,1.0,0.0
-Atlanta Falcons,samson ebukam,Samson Ebukam,0.0,0.212
-Atlanta Falcons,sydney brown,Sydney Brown,0.0,0.242
-Atlanta Falcons,teagan quitoriano,Teagan Quitoriano,0.008,0.0
-Atlanta Falcons,tyler allgeier,Tyler Allgeier,0.092,0.0
-Atlanta Falcons,xavier watts,Xavier Watts,0.0,0.988
-Atlanta Falcons,yasir abdullah,Yasir Abdullah,0.0,0.178
-Atlanta Falcons,zach harrison,Zach Harrison,0.0,0.167
-Atlanta Falcons,zachariah branch,Zachariah Branch,0.17,0.0
-Atlanta Falcons,zadarius smith,Za'Darius Smith,0.0,0.29
+Atlanta Falcons,samson ebukam,Samson Ebukam,0.0,0.36
+Atlanta Falcons,sydney brown,Sydney Brown,0.0,0.318
+Atlanta Falcons,xavier watts,Xavier Watts,0.0,0.978
+Atlanta Falcons,yasir abdullah,Yasir Abdullah,0.0,0.302
+Atlanta Falcons,zach harrison,Zach Harrison,0.0,0.272
+Atlanta Falcons,zachariah branch,Zachariah Branch,0.228,0.0
+Atlanta Falcons,zadarius smith,Za'Darius Smith,0.0,0.292
 Baltimore Ravens,aeneas peebles,Aeneas Peebles,0.0,0.078
-Baltimore Ravens,alohi gilman,Alohi Gilman,0.0,0.24
-Baltimore Ravens,andrew vorhees,Andrew Vorhees,0.22,0.0
-Baltimore Ravens,ardarius washington,Ar'Darius Washington,0.0,0.058
-Baltimore Ravens,brent urban,Brent Urban,0.0,0.07
-Baltimore Ravens,broderick washington,Broderick Washington Jr.,0.0,0.285
-Baltimore Ravens,calais campbell,Calais Campbell,0.0,0.39
-Baltimore Ravens,carson vinson,Carson Vinson,0.33,0.0
-Baltimore Ravens,chandler rivers,Chandler Rivers,0.0,0.195
-Baltimore Ravens,charlie kolar,Charlie Kolar,0.062,0.0
-Baltimore Ravens,chidobe awuzie,Chidobe Awuzie,0.0,0.23
+Baltimore Ravens,andrew vorhees,Andrew Vorhees,0.14,0.0
+Baltimore Ravens,broderick washington,Broderick Washington Jr.,0.0,0.36
+Baltimore Ravens,calais campbell,Calais Campbell,0.0,0.51
+Baltimore Ravens,carson vinson,Carson Vinson,0.338,0.0
+Baltimore Ravens,chandler rivers,Chandler Rivers,0.0,0.308
+Baltimore Ravens,chidobe awuzie,Chidobe Awuzie,0.0,0.3
 Baltimore Ravens,chris moore,Chris Moore,0.36,0.0
-Baltimore Ravens,cj okoye,CJ Okoye,0.0,0.038
-Baltimore Ravens,daniel faalele,Daniel Faalele,0.235,0.0
-Baltimore Ravens,david ojabo,David Ojabo,0.0,0.008
-Baltimore Ravens,deandre hopkins,DeAndre Hopkins,0.062,0.0
-Baltimore Ravens,derrick henry,Derrick Henry,0.612,0.0
-Baltimore Ravens,devontez walker,Devontez Walker,0.322,0.0
-Baltimore Ravens,dremont jones,Dre'Mont Jones,0.0,0.142
-Baltimore Ravens,durham smythe,Durham Smythe,0.425,0.0
-Baltimore Ravens,emery jones,Emery Jones,0.085,0.0
+Baltimore Ravens,derrick henry,Derrick Henry,0.59,0.0
+Baltimore Ravens,devontez walker,Devontez Walker,0.312,0.0
+Baltimore Ravens,durham smythe,Durham Smythe,0.495,0.0
+Baltimore Ravens,elijah sarratt,Elijah Sarratt,0.09,0.0
+Baltimore Ravens,emery jones,Emery Jones,0.153,0.0
+Baltimore Ravens,ethan burke,Ethan Burke,0.0,0.062
 Baltimore Ravens,ethan pocic,Ethan Pocic,0.04,0.0
-Baltimore Ravens,isaiah likely,Isaiah Likely,0.122,0.0
-Baltimore Ravens,jake hummel,Jake Hummel,0.0,0.002
 Baltimore Ravens,jakobi lane,Ja'Kobi Lane,0.1,0.0
-Baltimore Ravens,jay higgins,Jay Higgins,0.0,0.002
-Baltimore Ravens,jaylinn hawkins,Jaylinn Hawkins,0.0,0.68
-Baltimore Ravens,john jenkins,John Jenkins,0.0,0.31
-Baltimore Ravens,john simpson,John Simpson,0.75,0.0
-Baltimore Ravens,josh cuevas,Josh Cuevas,0.108,0.0
+Baltimore Ravens,jaylinn hawkins,Jaylinn Hawkins,0.0,0.855
+Baltimore Ravens,john jenkins,John Jenkins,0.0,0.212
+Baltimore Ravens,john simpson,John Simpson,1.0,0.0
+Baltimore Ravens,josh cuevas,Josh Cuevas,0.178,0.0
 Baltimore Ravens,jovaughn gwyn,Jovaughn Gwyn,0.68,0.0
-Baltimore Ravens,justice hill,Justice Hill,0.315,0.0
-Baltimore Ravens,keaton mitchell,Keaton Mitchell,0.035,0.0
+Baltimore Ravens,justice hill,Justice Hill,0.41,0.0
 Baltimore Ravens,keondre jackson,Keondre Jackson,0.0,0.002
 Baltimore Ravens,keyon martin,Keyon Martin,0.0,0.11
-Baltimore Ravens,kyle hamilton,Kyle Hamilton,0.0,0.855
-Baltimore Ravens,kyle van noy,Kyle Van Noy,0.0,0.118
-Baltimore Ravens,lajohntay wester,LaJohntay Wester,0.292,0.0
-Baltimore Ravens,lamar jackson,Lamar Jackson,1.0,0.0
-Baltimore Ravens,malaki starks,Malaki Starks,0.0,0.97
-Baltimore Ravens,mark andrews,Mark Andrews,0.635,0.0
-Baltimore Ravens,marlon humphrey,Marlon Humphrey,0.0,0.932
-Baltimore Ravens,matthew hibner,Matthew Hibner,0.292,0.0
-Baltimore Ravens,mike green,Mike Green,0.0,0.418
-Baltimore Ravens,nate wiggins,Nate Wiggins,0.0,0.95
-Baltimore Ravens,nnamdi madubuike,Nnamdi Madubuike,0.0,0.16
-Baltimore Ravens,olaivavega ioane,Olaivavega Ioane,0.75,0.0
-Baltimore Ravens,patrick ricard,Patrick Ricard,0.128,0.0
-Baltimore Ravens,rasheen ali,Rasheen Ali,0.04,0.0
-Baltimore Ravens,rashod bateman,Rashod Bateman,0.648,0.0
+Baltimore Ravens,kvon wallace,K'Von Wallace,0.0,0.008
+Baltimore Ravens,kyle hamilton,Kyle Hamilton,0.0,0.975
+Baltimore Ravens,lajohntay wester,LaJohntay Wester,0.255,0.0
+Baltimore Ravens,lamar jackson,Lamar Jackson,0.88,0.0
+Baltimore Ravens,malaki starks,Malaki Starks,0.0,0.978
+Baltimore Ravens,mark andrews,Mark Andrews,0.632,0.0
+Baltimore Ravens,marlon humphrey,Marlon Humphrey,0.0,0.715
+Baltimore Ravens,matthew hibner,Matthew Hibner,0.438,0.0
+Baltimore Ravens,mike green,Mike Green,0.0,0.43
+Baltimore Ravens,nate wiggins,Nate Wiggins,0.0,0.98
+Baltimore Ravens,nnamdi madubuike,Nnamdi Madubuike,0.0,0.34
+Baltimore Ravens,olaivavega ioane,Olaivavega Ioane,1.0,0.0
+Baltimore Ravens,rashod bateman,Rashod Bateman,0.765,0.0
 Baltimore Ravens,roger rosengarten,Roger Rosengarten,1.0,0.0
-Baltimore Ravens,ronnie stanley,Ronnie Stanley,0.698,0.0
+Baltimore Ravens,ronnie stanley,Ronnie Stanley,0.69,0.0
 Baltimore Ravens,roquan smith,Roquan Smith,0.0,1.0
-Baltimore Ravens,tavius robinson,Tavius Robinson,0.0,0.775
-Baltimore Ravens,teddye buchanan,Teddye Buchanan,0.0,0.01
-Baltimore Ravens,tj tampa,T.J. Tampa,0.0,0.012
-Baltimore Ravens,travis jones,Travis Jones,0.0,0.638
-Baltimore Ravens,trenton simpson,Trenton Simpson,0.0,0.62
+Baltimore Ravens,tavius robinson,Tavius Robinson,0.0,0.772
+Baltimore Ravens,teddye buchanan,Teddye Buchanan,0.0,0.053
+Baltimore Ravens,travis jones,Travis Jones,0.0,0.555
+Baltimore Ravens,trenton simpson,Trenton Simpson,0.0,0.598
 Baltimore Ravens,trey hendrickson,Trey Hendrickson,0.0,0.47
-Baltimore Ravens,tylan wallace,Tylan Wallace,0.005,0.0
-Baltimore Ravens,tyler linderbaum,Tyler Linderbaum,0.25,0.0
-Baltimore Ravens,zay flowers,Zay Flowers,0.4,0.0
-Baltimore Ravens,zion young,Zion Young,0.0,0.227
-Buffalo Bills,aj epenesa,A.J. Epenesa,0.0,0.098
-Buffalo Bills,alec anderson,Alec Anderson,0.798,0.0
-Buffalo Bills,baylon spector,Baylon Spector,0.0,0.045
-Buffalo Bills,bradley chubb,Bradley Chubb,0.0,0.565
-Buffalo Bills,brandin cooks,Brandin Cooks,0.145,0.0
-Buffalo Bills,cameron lewis,Cameron Lewis,0.0,0.24
-Buffalo Bills,christian benford,Christian Benford,0.0,0.932
-Buffalo Bills,cj gardnerjohnson,C.J. Gardner-Johnson,0.0,0.748
+Baltimore Ravens,tyler huntley,Tyler Huntley,0.12,0.0
+Baltimore Ravens,zay flowers,Zay Flowers,0.338,0.0
+Baltimore Ravens,zion young,Zion Young,0.0,0.325
+Buffalo Bills,alec anderson,Alec Anderson,1.0,0.0
+Buffalo Bills,bradley chubb,Bradley Chubb,0.0,0.772
+Buffalo Bills,christian benford,Christian Benford,0.0,0.682
+Buffalo Bills,cj gardnerjohnson,C.J. Gardner-Johnson,0.0,0.998
 Buffalo Bills,cole bishop,Cole Bishop,0.0,0.978
-Buffalo Bills,connor mcgovern,Connor McGovern,0.962,0.0
-Buffalo Bills,curtis samuel,Curtis Samuel,0.11,0.0
-Buffalo Bills,dalton kincaid,Dalton Kincaid,0.635,0.0
-Buffalo Bills,damar hamlin,Damar Hamlin,0.0,0.195
-Buffalo Bills,dane jackson,Dane Jackson,0.0,0.002
-Buffalo Bills,daquan jones,DaQuan Jones,0.0,0.178
-Buffalo Bills,darnell savage,Darnell Savage Jr.,0.0,0.01
-Buffalo Bills,david edwards,David Edwards,0.25,0.0
-Buffalo Bills,davison igbinosun,Davison Igbinosun,0.0,0.205
-Buffalo Bills,dawson knox,Dawson Knox,0.692,0.0
+Buffalo Bills,connor mcgovern,Connor McGovern,1.0,0.0
+Buffalo Bills,dalton kincaid,Dalton Kincaid,0.66,0.0
+Buffalo Bills,damar hamlin,Damar Hamlin,0.0,0.275
+Buffalo Bills,davison igbinosun,Davison Igbinosun,0.0,0.455
+Buffalo Bills,dawson knox,Dawson Knox,0.685,0.0
 Buffalo Bills,deaundre alford,DeAundre Alford,0.0,0.298
-Buffalo Bills,dee alford,Dee Alford,0.0,0.13
-Buffalo Bills,deone walker,Deone Walker,0.0,0.66
-Buffalo Bills,dewayne carter,DeWayne Carter,0.0,0.298
+Buffalo Bills,dee alford,Dee Alford,0.0,0.21
+Buffalo Bills,deone walker,Deone Walker,0.0,0.702
+Buffalo Bills,dewayne carter,DeWayne Carter,0.0,0.445
 Buffalo Bills,dion dawkins,Dion Dawkins,1.0,0.0
-Buffalo Bills,dj moore,D.J. Moore,0.428,0.0
-Buffalo Bills,dorian williams,Dorian Williams,0.0,0.498
-Buffalo Bills,ed oliver,Ed Oliver,0.0,0.362
-Buffalo Bills,frank gore,Frank Gore,0.078,0.0
-Buffalo Bills,greg dortch,Greg Dortch,0.032,0.0
-Buffalo Bills,greg gaines,Greg Gaines,0.0,0.198
-Buffalo Bills,gregory rousseau,Gregory Rousseau,0.0,0.753
-Buffalo Bills,jackson hawes,Jackson Hawes,0.408,0.0
-Buffalo Bills,james cook,James Cook,0.692,0.0
-Buffalo Bills,javon solomon,Javon Solomon,0.0,0.108
-Buffalo Bills,joey bosa,Joey Bosa,0.0,0.208
+Buffalo Bills,dj moore,D.J. Moore,0.525,0.0
+Buffalo Bills,dorian williams,Dorian Williams,0.0,0.668
+Buffalo Bills,ed oliver,Ed Oliver,0.0,0.387
+Buffalo Bills,frank gore,Frank Gore Jr.,0.078,0.0
+Buffalo Bills,greg dortch,Greg Dortch,0.04,0.0
+Buffalo Bills,greg gaines,Greg Gaines,0.0,0.3
+Buffalo Bills,gregory rousseau,Gregory Rousseau,0.0,0.772
+Buffalo Bills,jackson hawes,Jackson Hawes,0.388,0.0
+Buffalo Bills,james cook,James Cook,0.68,0.0
+Buffalo Bills,javon solomon,Javon Solomon,0.0,0.105
 Buffalo Bills,jordan hancock,Jordan Hancock,0.0,0.05
 Buffalo Bills,josh allen,Josh Allen,1.0,0.0
-Buffalo Bills,josh palmer,Josh Palmer,0.252,0.0
-Buffalo Bills,kaleb elarmsorr,Kaleb Elarms-Orr,0.0,0.103
-Buffalo Bills,keleki latu,Keleki Latu,0.05,0.0
-Buffalo Bills,keon coleman,Keon Coleman,0.542,0.0
-Buffalo Bills,khalil shakir,Khalil Shakir,0.598,0.0
-Buffalo Bills,landon jackson,Landon Jackson,0.0,0.295
-Buffalo Bills,larry ogunjobi,Larry Ogunjobi,0.0,0.042
-Buffalo Bills,matt milano,Matt Milano,0.0,0.25
-Buffalo Bills,maxwell hairston,Maxwell Hairston,0.0,0.6
-Buffalo Bills,mecole hardman,Mecole Hardman,0.058,0.0
+Buffalo Bills,josh palmer,Josh Palmer,0.4,0.0
+Buffalo Bills,kaleb elarmsorr,Kaleb Elarms-Orr,0.0,0.155
+Buffalo Bills,keleki latu,Keleki Latu,0.055,0.0
+Buffalo Bills,keon coleman,Keon Coleman,0.625,0.0
+Buffalo Bills,khalil shakir,Khalil Shakir,0.628,0.0
+Buffalo Bills,landon jackson,Landon Jackson,0.0,0.39
+Buffalo Bills,maxwell hairston,Maxwell Hairston,0.0,0.842
 Buffalo Bills,michael danna,Michael Danna,0.0,0.03
-Buffalo Bills,michael hoecht,Michael Hoecht,0.0,0.267
+Buffalo Bills,michael hoecht,Michael Hoecht,0.0,0.318
 Buffalo Bills,ocyrus torrence,O'Cyrus Torrence,1.0,0.0
-Buffalo Bills,ray davis,Ray Davis,0.165,0.0
-Buffalo Bills,reggie gilliam,Reggie Gilliam,0.048,0.0
-Buffalo Bills,shaq thompson,Shaq Thompson,0.0,0.25
+Buffalo Bills,ray davis,Ray Davis,0.095,0.0
 Buffalo Bills,spencer brown,Spencer Brown,1.0,0.0
-Buffalo Bills,taron johnson,Taron Johnson,0.0,0.222
-Buffalo Bills,terrel bernard,Terrel Bernard,0.0,0.732
-Buffalo Bills,tj parker,T.J. Parker,0.0,0.143
-Buffalo Bills,tj sanders,T.J. Sanders,0.0,0.062
-Buffalo Bills,tredavious white,Tre'Davious White,0.0,0.248
-Buffalo Bills,ty johnson,Ty Johnson,0.058,0.0
+Buffalo Bills,terrel bernard,Terrel Bernard,0.0,0.962
+Buffalo Bills,tj parker,T.J. Parker,0.0,0.208
+Buffalo Bills,ty johnson,Ty Johnson,0.138,0.0
 Buffalo Bills,tylan grable,Tylan Grable,0.012,0.0
-Carolina Panthers,aaron hall,Aaron Hall,0.0,0.328
-Carolina Panthers,aj dillon,AJ Dillon,0.08,0.0
-Carolina Panthers,akayleb evans,Akayleb Evans,0.0,0.205
-Carolina Panthers,ashawn robinson,A'Shawn Robinson,0.0,0.145
-Carolina Panthers,austin corbett,Austin Corbett,0.06,0.0
-Carolina Panthers,bam martinscott,Bam Martin-Scott,0.0,0.01
-Carolina Panthers,bobby brown,Bobby Brown,0.0,0.302
-Carolina Panthers,bobby okereke,Bobby Okereke,0.0,0.65
+Carolina Panthers,aaron hall,Aaron Hall,0.0,0.395
+Carolina Panthers,aj dillon,AJ Dillon,0.118,0.0
+Carolina Panthers,akayleb evans,Akayleb Evans,0.0,0.415
+Carolina Panthers,anthony tyus,Anthony Tyus,0.008,0.0
+Carolina Panthers,bobby brown,Bobby Brown,0.0,0.31
+Carolina Panthers,bobby okereke,Bobby Okereke,0.0,0.838
 Carolina Panthers,bryce young,Bryce Young,0.96,0.0
-Carolina Panthers,brycen tremayne,Brycen Tremayne,0.312,0.0
-Carolina Panthers,cade mays,Cade Mays,0.25,0.0
-Carolina Panthers,cam jackson,Cam Jackson,0.0,0.148
-Carolina Panthers,chau smithwade,Chau Smith-Wade,0.0,0.228
-Carolina Panthers,christian rozeboom,Christian Rozeboom,0.0,0.25
-Carolina Panthers,chuba hubbard,Chuba Hubbard,0.702,0.0
-Carolina Panthers,claudin cherelus,Claudin Cherelus,0.0,0.182
-Carolina Panthers,corey bullock,Corey Bullock,0.115,0.0
-Carolina Panthers,damien lewis,Damien Lewis,0.918,0.0
-Carolina Panthers,darren waller,Darren Waller,0.325,0.0
-Carolina Panthers,david moore,David Moore,0.015,0.0
-Carolina Panthers,derrick brown,Derrick Brown,0.0,0.728
-Carolina Panthers,devin lloyd,Devin Lloyd,0.0,0.425
-Carolina Panthers,dj wonnum,D.J. Wonnum,0.0,0.188
+Carolina Panthers,brycen tremayne,Brycen Tremayne,0.52,0.0
+Carolina Panthers,cam jackson,Cam Jackson,0.0,0.135
+Carolina Panthers,chau smithwade,Chau Smith-Wade,0.0,0.125
+Carolina Panthers,chuba hubbard,Chuba Hubbard,0.76,0.0
+Carolina Panthers,claudin cherelus,Claudin Cherelus,0.0,0.002
+Carolina Panthers,corey bullock,Corey Bullock,0.365,0.0
+Carolina Panthers,damien lewis,Damien Lewis,0.668,0.0
+Carolina Panthers,darren waller,Darren Waller,0.458,0.0
+Carolina Panthers,david moore,David Moore,0.017,0.0
+Carolina Panthers,derrick brown,Derrick Brown,0.0,0.678
+Carolina Panthers,devin lloyd,Devin Lloyd,0.0,0.675
 Carolina Panthers,feleipe franks,Feleipe Franks,0.032,0.0
-Carolina Panthers,ikem ekwonu,Ikem Ekwonu,0.03,0.0
-Carolina Panthers,isaiah simmons,Isaiah Simmons,0.0,0.018
+Carolina Panthers,isaiah simmons,Isaiah Simmons,0.0,0.02
 Carolina Panthers,jackson kuwatch,Jackson Kuwatch,0.0,0.065
-Carolina Panthers,jaelan phillips,Jaelan Phillips,0.0,0.545
-Carolina Panthers,jake curhan,Jake Curhan,0.002,0.0
-Carolina Panthers,jalen coker,Jalen Coker,0.71,0.0
-Carolina Panthers,james mitchell,James Mitchell,0.038,0.0
-Carolina Panthers,jaycee horn,Jaycee Horn,0.0,0.865
+Carolina Panthers,jaelan phillips,Jaelan Phillips,0.0,0.692
+Carolina Panthers,jalen coker,Jalen Coker,0.49,0.0
+Carolina Panthers,jaseem reed,Ja'seem Reed,0.032,0.0
+Carolina Panthers,jaycee horn,Jaycee Horn,0.0,0.655
 Carolina Panthers,jeremiah moon,Jeremiah Moon,0.0,0.145
-Carolina Panthers,jimmy horn,Jimmy Horn,0.122,0.0
-Carolina Panthers,john metchie,John Metchie,0.168,0.0
+Carolina Panthers,jimmy horn,Jimmy Horn,0.052,0.0
+Carolina Panthers,john metchie,John Metchie,0.26,0.0
 Carolina Panthers,jonathon brooks,Jonathon Brooks,0.122,0.0
 Carolina Panthers,kenny pickett,Kenny Pickett,0.04,0.0
-Carolina Panthers,lathan ransom,Lathan Ransom,0.0,0.555
-Carolina Panthers,lee hunter,Lee Hunter,0.0,0.292
-Carolina Panthers,luke fortner,Luke Fortner,0.71,0.0
-Carolina Panthers,michael jackson,Michael Jackson,0.0,0.768
-Carolina Panthers,mitchell evans,Mitchell Evans,0.428,0.0
-Carolina Panthers,monroe freeling,Monroe Freeling,0.725,0.0
-Carolina Panthers,nic scourton,Nic Scourton,0.0,0.185
-Carolina Panthers,nick scott,Nick Scott,0.0,0.507
-Carolina Panthers,patrick jones,Patrick Jones II,0.0,0.15
-Carolina Panthers,princely umanmielen,Princely Umanmielen,0.0,0.368
-Carolina Panthers,rasheed walker,Rasheed Walker,0.735,0.0
-Carolina Panthers,rico dowdle,Rico Dowdle,0.09,0.0
-Carolina Panthers,robert hunt,Robert Hunt,0.91,0.0
+Carolina Panthers,lathan ransom,Lathan Ransom,0.0,0.558
+Carolina Panthers,lee hunter,Lee Hunter,0.0,0.378
+Carolina Panthers,luke fortner,Luke Fortner,0.96,0.0
+Carolina Panthers,michael jackson,Michael Jackson,0.0,0.518
+Carolina Panthers,mitchell evans,Mitchell Evans,0.465,0.0
+Carolina Panthers,monroe freeling,Monroe Freeling,0.885,0.0
+Carolina Panthers,nick scott,Nick Scott,0.0,0.505
+Carolina Panthers,patrick jones,Patrick Jones II,0.0,0.34
+Carolina Panthers,princely umanmielen,Princely Umanmielen,0.0,0.455
+Carolina Panthers,rasheed walker,Rasheed Walker,0.985,0.0
+Carolina Panthers,robert hunt,Robert Hunt,0.97,0.0
 Carolina Panthers,ryan fitzgerald,Ryan Fitzgerald,0.002,0.0
 Carolina Panthers,sam hecht,Sam Hecht,0.04,0.0
-Carolina Panthers,stone forsythe,Stone Forsythe,0.052,0.0
-Carolina Panthers,taylor moton,Taylor Moton,0.25,0.0
-Carolina Panthers,terah edwards,TeRah Edwards,0.0,0.275
-Carolina Panthers,tershawn wharton,Tershawn Wharton,0.0,0.165
-Carolina Panthers,tetairoa mcmillan,Tetairoa McMillan,0.867,0.0
-Carolina Panthers,thomas incoom,Thomas Incoom,0.0,0.092
-Carolina Panthers,tommy tremble,Tommy Tremble,0.602,0.0
-Carolina Panthers,trevis gipson,Trevis Gipson,0.0,0.372
+Carolina Panthers,stone forsythe,Stone Forsythe,0.142,0.0
+Carolina Panthers,terah edwards,TeRah Edwards,0.0,0.325
+Carolina Panthers,tetairoa mcmillan,Tetairoa McMillan,0.865,0.0
+Carolina Panthers,thomas incoom,Thomas Incoom,0.0,0.128
+Carolina Panthers,tommy tremble,Tommy Tremble,0.528,0.0
+Carolina Panthers,trevis gipson,Trevis Gipson,0.0,0.39
 Carolina Panthers,trevon moehrig,Tre'von Moehrig,0.0,0.965
-Carolina Panthers,trevor etienne,Trevor Etienne,0.01,0.0
 Carolina Panthers,tyrel dodson,Tyrel Dodson,0.0,0.135
-Carolina Panthers,will lee,Will Lee,0.0,0.452
-Carolina Panthers,xavier legette,Xavier Legette,0.358,0.0
-Carolina Panthers,yosh nijman,Yosh Nijman,0.22,0.0
-Carolina Panthers,zakee wheatley,Zakee Wheatley,0.0,0.29
-Chicago Bears,amen ogbongbemiga,Amen Ogbongbemiga,0.0,0.022
-Chicago Bears,andrew billings,Andrew Billings,0.0,0.095
-Chicago Bears,austin booker,Austin Booker,0.0,0.61
+Carolina Panthers,will lee,Will Lee,0.0,0.702
+Carolina Panthers,xavier legette,Xavier Legette,0.258,0.0
+Carolina Panthers,zakee wheatley,Zakee Wheatley,0.0,0.448
+Chicago Bears,austin booker,Austin Booker,0.0,0.545
 Chicago Bears,braxton jones,Braxton Jones,0.488,0.0
-Chicago Bears,caleb williams,Caleb Williams,0.715,0.0
+Chicago Bears,caleb williams,Caleb Williams,0.465,0.0
 Chicago Bears,cameron lewis,Cameron Lewis,0.0,0.628
-Chicago Bears,case keenum,Case Keenum,0.25,0.0
-Chicago Bears,chris williams,Chris Williams,0.0,0.025
-Chicago Bears,cj gardnerjohnson,C.J. Gardner-Johnson,0.0,0.15
-Chicago Bears,cole kmet,Cole Kmet,0.658,0.0
-Chicago Bears,colston loveland,Colston Loveland,0.792,0.0
-Chicago Bears,dandre swift,D'Andre Swift,0.64,0.0
+Chicago Bears,case keenum,Case Keenum,0.252,0.0
+Chicago Bears,cole kmet,Cole Kmet,0.648,0.0
+Chicago Bears,colston loveland,Colston Loveland,0.86,0.0
+Chicago Bears,dandre swift,D'Andre Swift,0.572,0.0
 Chicago Bears,daniel hardy,Daniel Hardy,0.0,0.025
 Chicago Bears,darnell wright,Darnell Wright,1.0,0.0
-Chicago Bears,dayo odeyingbo,Dayo Odeyingbo,0.0,0.468
-Chicago Bears,devin bush,Devin Bush Jr.,0.0,0.71
-Chicago Bears,dillon thieneman,Dillon Thieneman,0.0,0.75
-Chicago Bears,dj moore,D.J. Moore,0.18,0.0
-Chicago Bears,dmarco jackson,D'Marco Jackson,0.0,0.465
-Chicago Bears,dominique robinson,Dominique Robinson,0.0,0.068
-Chicago Bears,drew dalman,Drew Dalman,0.25,0.0
-Chicago Bears,durham smythe,Durham Smythe,0.082,0.0
-Chicago Bears,elijah hicks,Elijah Hicks,0.0,0.09
-Chicago Bears,garrett bradbury,Garrett Bradbury,0.75,0.0
-Chicago Bears,gervon dexter,Gervon Dexter,0.0,0.158
-Chicago Bears,grady jarrett,Grady Jarrett,0.0,0.748
-Chicago Bears,jahdae walker,Jahdae Walker,0.15,0.0
+Chicago Bears,dayo odeyingbo,Dayo Odeyingbo,0.0,0.615
+Chicago Bears,devin bush,Devin Bush Jr.,0.0,0.952
+Chicago Bears,dillon thieneman,Dillon Thieneman,0.0,1.0
+Chicago Bears,dmarco jackson,D'Marco Jackson,0.0,0.322
+Chicago Bears,elijah hicks,Elijah Hicks,0.0,0.095
+Chicago Bears,garrett bradbury,Garrett Bradbury,1.0,0.0
+Chicago Bears,grady jarrett,Grady Jarrett,0.0,0.712
+Chicago Bears,jahdae walker,Jahdae Walker,0.155,0.0
 Chicago Bears,james lynch,James Lynch,0.0,0.305
-Chicago Bears,jaquan brisker,Jaquan Brisker,0.0,0.25
-Chicago Bears,jaylon johnson,Jaylon Johnson,0.0,0.952
+Chicago Bears,jaylon johnson,Jaylon Johnson,0.0,0.99
 Chicago Bears,joe thuney,Joe Thuney,1.0,0.0
 Chicago Bears,jonah jackson,Jonah Jackson,1.0,0.0
-Chicago Bears,jordan mcfadden,Jordan McFadden,0.25,0.0
-Chicago Bears,jordan van den berg,Jordan van den Berg,0.0,0.173
+Chicago Bears,jordan van den berg,Jordan van den Berg,0.0,0.228
 Chicago Bears,kaden davis,Kaden Davis,0.032,0.0
-Chicago Bears,kalif raymond,Kalif Raymond,0.492,0.0
-Chicago Bears,kentavius street,Kentavius Street,0.0,0.332
-Chicago Bears,kevin byard,Kevin Byard,0.0,0.25
-Chicago Bears,kyle monangai,Kyle Monangai,0.362,0.0
-Chicago Bears,kyler gordon,Kyler Gordon,0.0,0.168
-Chicago Bears,luke newman,Luke Newman,0.002,0.0
-Chicago Bears,luther burden,Luther Burden,0.61,0.0
-Chicago Bears,malik muhammad,Malik Muhammad,0.0,0.595
-Chicago Bears,montez sweat,Montez Sweat,0.0,0.725
-Chicago Bears,nahshon wright,Nahshon Wright,0.0,0.212
-Chicago Bears,neville gallimore,Neville Gallimore,0.0,0.26
-Chicago Bears,olamide zaccheaus,Olamide Zaccheaus,0.05,0.0
-Chicago Bears,rome odunze,Rome Odunze,0.735,0.0
-Chicago Bears,roschon johnson,Roschon Johnson,0.002,0.0
-Chicago Bears,sam roush,Sam Roush,0.162,0.0
+Chicago Bears,kalif raymond,Kalif Raymond,0.62,0.0
+Chicago Bears,kentavius street,Kentavius Street,0.0,0.45
+Chicago Bears,kyle monangai,Kyle Monangai,0.405,0.0
+Chicago Bears,luke newman,Luke Newman,0.005,0.0
+Chicago Bears,luther burden,Luther Burden,0.617,0.0
+Chicago Bears,malik muhammad,Malik Muhammad,0.0,0.815
+Chicago Bears,marcus davenport,Marcus Davenport,0.0,0.095
+Chicago Bears,montez sweat,Montez Sweat,0.0,0.692
+Chicago Bears,neville gallimore,Neville Gallimore,0.0,0.345
+Chicago Bears,rome odunze,Rome Odunze,0.765,0.0
+Chicago Bears,roschon johnson,Roschon Johnson,0.03,0.0
+Chicago Bears,sam roush,Sam Roush,0.225,0.0
 Chicago Bears,skyler thomas,Skyler Thomas,0.0,0.01
-Chicago Bears,theo benedet,Theo Benedet,0.275,0.0
-Chicago Bears,tj edwards,T.J. Edwards,0.0,0.75
-Chicago Bears,tremaine edmunds,Tremaine Edmunds,0.0,0.25
-Chicago Bears,tyrique stevenson,Tyrique Stevenson,0.0,0.513
-Chicago Bears,tyson bagent,Tyson Bagent,0.035,0.0
-Chicago Bears,xavier woods,Xavier Woods,0.0,0.242
-Chicago Bears,zavion thomas,Zavion Thomas,0.035,0.0
+Chicago Bears,theo benedet,Theo Benedet,0.512,0.0
+Chicago Bears,tj edwards,T.J. Edwards,0.0,1.0
+Chicago Bears,tyrique stevenson,Tyrique Stevenson,0.0,0.685
+Chicago Bears,tyson bagent,Tyson Bagent,0.285,0.0
+Chicago Bears,xavier woods,Xavier Woods,0.0,0.492
+Chicago Bears,zavion thomas,Zavion Thomas,0.06,0.0
 Cincinnati Bengals,amarius mims,Amarius Mims,0.988,0.0
-Cincinnati Bengals,andrei iosivas,Andrei Iosivas,0.418,0.0
+Cincinnati Bengals,andrei iosivas,Andrei Iosivas,0.285,0.0
 Cincinnati Bengals,barrett carter,Barrett Carter,0.0,1.0
-Cincinnati Bengals,bj hill,B.J. Hill,0.0,0.235
-Cincinnati Bengals,boye mafe,Boye Mafe,0.0,0.525
-Cincinnati Bengals,bralyn lux,Bralyn Lux,0.0,0.015
+Cincinnati Bengals,bj hill,B.J. Hill,0.0,0.105
+Cincinnati Bengals,boye mafe,Boye Mafe,0.0,0.735
 Cincinnati Bengals,bryan cook,Bryan Cook,0.0,0.585
-Cincinnati Bengals,cameron sample,Cameron Sample,0.0,0.178
-Cincinnati Bengals,cashius howell,Cashius Howell,0.0,0.338
-Cincinnati Bengals,cedric johnson,Cedric Johnson,0.0,0.322
-Cincinnati Bengals,chase brown,Chase Brown,0.67,0.0
+Cincinnati Bengals,cashius howell,Cashius Howell,0.0,0.408
+Cincinnati Bengals,cedric johnson,Cedric Johnson,0.0,0.26
+Cincinnati Bengals,chase brown,Chase Brown,0.728,0.0
 Cincinnati Bengals,colbie young,Colbie Young,0.082,0.0
 Cincinnati Bengals,dalton risner,Dalton Risner,1.0,0.0
-Cincinnati Bengals,daxton hill,Daxton Hill,0.0,0.982
-Cincinnati Bengals,demetrius knight,Demetrius Knight,0.0,0.893
-Cincinnati Bengals,dexter lawrence,Dexter Lawrence,0.0,0.51
-Cincinnati Bengals,dj ivey,DJ Ivey,0.0,0.148
-Cincinnati Bengals,dj turner,DJ Turner,0.0,0.942
-Cincinnati Bengals,dohnte meyers,Dohnte Meyers,0.225,0.0
-Cincinnati Bengals,drew sample,Drew Sample,0.622,0.0
+Cincinnati Bengals,daxton hill,Daxton Hill,0.0,0.998
+Cincinnati Bengals,demetrius knight,Demetrius Knight,0.0,0.858
+Cincinnati Bengals,dexter lawrence,Dexter Lawrence,0.0,0.702
+Cincinnati Bengals,dj ivey,DJ Ivey,0.0,0.232
+Cincinnati Bengals,dj turner,DJ Turner,0.0,0.995
+Cincinnati Bengals,dohnte meyers,Dohnte Meyers,0.448,0.0
+Cincinnati Bengals,drew sample,Drew Sample,0.508,0.0
 Cincinnati Bengals,dylan fairchild,Dylan Fairchild,1.0,0.0
-Cincinnati Bengals,erick all,Erick All,0.235,0.0
-Cincinnati Bengals,geno stone,Geno Stone,0.0,0.178
-Cincinnati Bengals,howard cross,Howard Cross III,0.0,0.01
+Cincinnati Bengals,erick all,Erick All,0.275,0.0
 Cincinnati Bengals,jack endries,Jack Endries,0.005,0.0
 Cincinnati Bengals,jacob bayer,Jacob Bayer,0.015,0.0
-Cincinnati Bengals,jalen davis,Jalen Davis,0.0,0.658
-Cincinnati Bengals,jamarr chase,Ja'Marr Chase,0.955,0.0
+Cincinnati Bengals,jalen davis,Jalen Davis,0.0,0.46
+Cincinnati Bengals,jamarr chase,Ja'Marr Chase,0.755,0.0
 Cincinnati Bengals,javon foster,Javon Foster,0.012,0.0
-Cincinnati Bengals,joe burrow,Joe Burrow,0.998,0.0
-Cincinnati Bengals,joe flacco,Joe Flacco,0.002,0.0
-Cincinnati Bengals,joe gilesharris,Joe Giles-Harris,0.0,0.005
-Cincinnati Bengals,jonathan allen,Jonathan Allen,0.0,0.493
+Cincinnati Bengals,joe burrow,Joe Burrow,1.0,0.0
+Cincinnati Bengals,jonathan allen,Jonathan Allen,0.0,0.668
 Cincinnati Bengals,jordan battle,Jordan Battle,0.0,0.995
-Cincinnati Bengals,keshawn williams,Ke'Shawn Williams,0.008,0.0
-Cincinnati Bengals,kris jenkins,Kris Jenkins,0.0,0.192
+Cincinnati Bengals,kris jenkins,Kris Jenkins,0.0,0.278
 Cincinnati Bengals,kyle dugger,Kyle Dugger,0.0,0.165
-Cincinnati Bengals,mckinnley jackson,McKinnley Jackson,0.0,0.032
-Cincinnati Bengals,mike gesicki,Mike Gesicki,0.392,0.0
-Cincinnati Bengals,mitchell tinsley,Mitchell Tinsley,0.03,0.0
-Cincinnati Bengals,myles murphy,Myles Murphy,0.0,0.708
-Cincinnati Bengals,noah fant,Noah Fant,0.055,0.0
-Cincinnati Bengals,oren burks,Oren Burks,0.0,0.088
+Cincinnati Bengals,mike gesicki,Mike Gesicki,0.452,0.0
+Cincinnati Bengals,mitchell tinsley,Mitchell Tinsley,0.132,0.0
+Cincinnati Bengals,myles murphy,Myles Murphy,0.0,0.64
+Cincinnati Bengals,oren burks,Oren Burks,0.0,0.07
 Cincinnati Bengals,orlando brown,Orlando Brown Jr.,1.0,0.0
-Cincinnati Bengals,samaje perine,Samaje Perine,0.372,0.0
-Cincinnati Bengals,shemar stewart,Shemar Stewart,0.0,0.172
-Cincinnati Bengals,tacario davis,Tacario Davis,0.0,0.165
+Cincinnati Bengals,pj jules,PJ Jules,0.0,0.165
+Cincinnati Bengals,russ yeast,Russ Yeast,0.0,0.085
+Cincinnati Bengals,samaje perine,Samaje Perine,0.34,0.0
+Cincinnati Bengals,shemar stewart,Shemar Stewart,0.0,0.032
+Cincinnati Bengals,tacario davis,Tacario Davis,0.0,0.215
 Cincinnati Bengals,tahj brooks,Tahj Brooks,0.012,0.0
-Cincinnati Bengals,tanner hudson,Tanner Hudson,0.103,0.0
+Cincinnati Bengals,tanner hudson,Tanner Hudson,0.182,0.0
 Cincinnati Bengals,ted karras,Ted Karras,1.0,0.0
-Cincinnati Bengals,tedarrell slaton,Tedarrell Slaton,0.0,0.39
-Cincinnati Bengals,tee higgins,Tee Higgins,0.81,0.0
-Cincinnati Bengals,tycen anderson,Tycen Anderson,0.0,0.068
+Cincinnati Bengals,tedarrell slaton,Tedarrell Slaton,0.0,0.342
+Cincinnati Bengals,tee higgins,Tee Higgins,0.79,0.0
 Cleveland Browns,adin huntington,Adin Huntington,0.0,0.438
 Cleveland Browns,austin barber,Austin Barber,1.0,0.0
 Cleveland Browns,blake whiteheart,Blake Whiteheart,0.398,0.0
@@ -479,1113 +368,838 @@ Cleveland Browns,tytus howard,Tytus Howard,0.992,0.0
 Cleveland Browns,winston reid,Winston Reid,0.0,0.005
 Cleveland Browns,zak zinter,Zak Zinter,0.01,0.0
 Cleveland Browns,zion johnson,Zion Johnson,0.995,0.0
-Dallas Cowboys,alijah clark,Alijah Clark,0.0,0.078
-Dallas Cowboys,ameer speed,Ameer Speed,0.0,0.03
-Dallas Cowboys,brevyn spannford,Brevyn Spann-Ford,0.322,0.0
-Dallas Cowboys,brock hoffman,Brock Hoffman,0.25,0.0
+Dallas Cowboys,alijah clark,Alijah Clark,0.0,0.115
+Dallas Cowboys,ameer speed,Ameer Speed,0.0,0.135
+Dallas Cowboys,brevyn spannford,Brevyn Spann-Ford,0.345,0.0
 Dallas Cowboys,broderick jones,Broderick Jones,0.002,0.0
-Dallas Cowboys,caelen carson,Caelen Carson,0.0,0.295
-Dallas Cowboys,caleb downs,Caleb Downs,0.0,0.72
-Dallas Cowboys,ceedee lamb,CeeDee Lamb,0.708,0.0
+Dallas Cowboys,caelen carson,Caelen Carson,0.0,0.068
+Dallas Cowboys,caleb downs,Caleb Downs,0.0,0.97
+Dallas Cowboys,ceedee lamb,CeeDee Lamb,0.81,0.0
 Dallas Cowboys,cobie durant,Cobie Durant,0.0,0.31
 Dallas Cowboys,cooper beebe,Cooper Beebe,1.0,0.0
-Dallas Cowboys,corey ballentine,Corey Ballentine,0.0,0.068
 Dallas Cowboys,curtis robinson,Curtis Robinson,0.0,0.008
-Dallas Cowboys,dak prescott,Dak Prescott,0.878,0.0
-Dallas Cowboys,dante fowler,Dante Fowler,0.0,0.05
-Dallas Cowboys,daron bland,DaRon Bland,0.0,0.735
-Dallas Cowboys,dee winters,Dee Winters,0.0,0.505
+Dallas Cowboys,dak prescott,Dak Prescott,1.0,0.0
+Dallas Cowboys,daron bland,DaRon Bland,0.0,0.985
+Dallas Cowboys,dee winters,Dee Winters,0.0,0.705
 Dallas Cowboys,demarvion overshown,DeMarvion Overshown,0.0,0.185
-Dallas Cowboys,donovan ezeiruaku,Donovan Ezeiruaku,0.0,0.598
-Dallas Cowboys,donovan wilson,Donovan Wilson,0.0,0.25
-Dallas Cowboys,drew shelton,Drew Shelton,0.018,0.0
+Dallas Cowboys,donovan ezeiruaku,Donovan Ezeiruaku,0.0,0.708
+Dallas Cowboys,drew shelton,Drew Shelton,0.02,0.0
+Dallas Cowboys,elijah garcia,Elijah Garcia,0.0,0.038
 Dallas Cowboys,emari demercado,Emari Demercado,0.062,0.0
-Dallas Cowboys,george pickens,George Pickens,0.725,0.0
-Dallas Cowboys,hunter luepke,Hunter Luepke,0.205,0.0
-Dallas Cowboys,jadeveon clowney,Jadeveon Clowney,0.0,0.15
-Dallas Cowboys,jaishawn barham,Jaishawn Barham,0.0,0.475
-Dallas Cowboys,jake ferguson,Jake Ferguson,0.662,0.0
+Dallas Cowboys,george pickens,George Pickens,0.828,0.0
+Dallas Cowboys,hunter luepke,Hunter Luepke,0.175,0.0
+Dallas Cowboys,jaishawn barham,Jaishawn Barham,0.0,0.652
+Dallas Cowboys,jake ferguson,Jake Ferguson,0.69,0.0
 Dallas Cowboys,jalen thompson,Jalen Thompson,0.0,0.605
-Dallas Cowboys,jalen tolbert,Jalen Tolbert,0.095,0.0
-Dallas Cowboys,james houston,James Houston,0.0,0.138
-Dallas Cowboys,javonte williams,Javonte Williams,0.568,0.0
-Dallas Cowboys,jaydon blue,Jaydon Blue,0.15,0.0
-Dallas Cowboys,joe milton,Joe Milton,0.122,0.0
+Dallas Cowboys,james houston,James Houston,0.0,0.035
+Dallas Cowboys,javonte williams,Javonte Williams,0.752,0.0
+Dallas Cowboys,joey porter,Joey Porter Jr.,0.0,0.112
 Dallas Cowboys,jonathan bullard,Jonathan Bullard,0.0,0.238
-Dallas Cowboys,jonathan mingo,Jonathan Mingo,0.252,0.0
-Dallas Cowboys,josh butler,Josh Butler,0.0,0.088
+Dallas Cowboys,jonathan mingo,Jonathan Mingo,0.188,0.0
 Dallas Cowboys,justin barron,Justin Barron,0.0,0.002
-Dallas Cowboys,kavontae turpin,KaVontae Turpin,0.138,0.0
-Dallas Cowboys,kenneth murray,Kenneth Murray,0.0,0.07
-Dallas Cowboys,kenny clark,Kenny Clark,0.0,0.69
-Dallas Cowboys,logan wilson,Logan Wilson,0.0,0.18
-Dallas Cowboys,lt overton,LT Overton,0.0,0.175
-Dallas Cowboys,luke schoonmaker,Luke Schoonmaker,0.255,0.0
-Dallas Cowboys,malachi lawrence,Malachi Lawrence,0.0,0.255
-Dallas Cowboys,malik hooker,Malik Hooker,0.0,0.265
-Dallas Cowboys,marist liufau,Marist Liufau,0.0,0.01
-Dallas Cowboys,markquese bell,Markquese Bell,0.0,0.38
-Dallas Cowboys,nathan thomas,Nathan Thomas,0.01,0.0
-Dallas Cowboys,osa odighizuwa,Osa Odighizuwa,0.0,0.16
-Dallas Cowboys,otito ogbonnia,Otito Ogbonnia,0.0,0.402
-Dallas Cowboys,phil mafah,Phil Mafah,0.045,0.0
+Dallas Cowboys,kavontae turpin,KaVontae Turpin,0.122,0.0
+Dallas Cowboys,kenny clark,Kenny Clark,0.0,0.688
+Dallas Cowboys,lt overton,LT Overton,0.0,0.265
+Dallas Cowboys,luke schoonmaker,Luke Schoonmaker,0.202,0.0
+Dallas Cowboys,malachi lawrence,Malachi Lawrence,0.0,0.345
+Dallas Cowboys,malik hooker,Malik Hooker,0.0,0.225
+Dallas Cowboys,markquese bell,Markquese Bell,0.0,0.418
+Dallas Cowboys,otito ogbonnia,Otito Ogbonnia,0.0,0.48
 Dallas Cowboys,pj locke,P.J. Locke,0.0,0.112
-Dallas Cowboys,quinnen williams,Quinnen Williams,0.0,0.702
-Dallas Cowboys,rashan gary,Rashan Gary,0.0,0.498
-Dallas Cowboys,reddy steward,Reddy Steward,0.0,0.158
-Dallas Cowboys,ryan flournoy,Ryan Flournoy,0.75,0.0
-Dallas Cowboys,sam williams,Sam Williams,0.0,0.12
-Dallas Cowboys,shavon revel,Shavon Revel,0.0,0.362
-Dallas Cowboys,shemar james,Shemar James,0.0,0.46
-Dallas Cowboys,solomon thomas,Solomon Thomas,0.0,0.082
+Dallas Cowboys,quinnen williams,Quinnen Williams,0.0,0.728
+Dallas Cowboys,rashan gary,Rashan Gary,0.0,0.67
+Dallas Cowboys,reddy steward,Reddy Steward,0.0,0.185
+Dallas Cowboys,ryan flournoy,Ryan Flournoy,0.718,0.0
+Dallas Cowboys,shavon revel,Shavon Revel,0.0,0.395
+Dallas Cowboys,shemar james,Shemar James,0.0,0.338
 Dallas Cowboys,terence steele,Terence Steele,0.998,0.0
-Dallas Cowboys,tj bass,T.J. Bass,0.75,0.0
-Dallas Cowboys,trikweze bridges,Trikweze Bridges,0.0,0.188
+Dallas Cowboys,tj bass,T.J. Bass,1.0,0.0
 Dallas Cowboys,tyler booker,Tyler Booker,1.0,0.0
-Dallas Cowboys,tyler goodson,Tyler Goodson,0.038,0.0
-Dallas Cowboys,tyler guyton,Tyler Guyton,0.75,0.0
-Dallas Cowboys,tyler smith,Tyler Smith,0.245,0.0
-Dallas Cowboys,tyrus wheat,Tyrus Wheat,0.0,0.018
-Dallas Cowboys,von miller,Von Miller,0.0,0.178
-Denver Broncos,adam prentice,Adam Prentice,0.125,0.0
-Denver Broncos,adam trautman,Adam Trautman,0.488,0.0
-Denver Broncos,alex palczewski,Alex Palczewski,0.038,0.0
+Dallas Cowboys,tyler goodson,Tyler Goodson,0.09,0.0
+Dallas Cowboys,tyler guyton,Tyler Guyton,1.0,0.0
+Dallas Cowboys,tyrus wheat,Tyrus Wheat,0.0,0.03
+Dallas Cowboys,von miller,Von Miller,0.0,0.24
+Denver Broncos,adam prentice,Adam Prentice,0.105,0.0
+Denver Broncos,adam trautman,Adam Trautman,0.468,0.0
+Denver Broncos,alex palczewski,Alex Palczewski,0.042,0.0
 Denver Broncos,alex singleton,Alex Singleton,0.0,0.998
-Denver Broncos,ben powers,Ben Powers,1.0,0.0
-Denver Broncos,bo nix,Bo Nix,0.75,0.0
-Denver Broncos,brandon jones,Brandon Jones,0.0,0.728
-Denver Broncos,courtland sutton,Courtland Sutton,0.822,0.0
-Denver Broncos,devon key,Devon Key,0.0,0.035
-Denver Broncos,dj jones,D.J. Jones,0.0,0.482
-Denver Broncos,dondrea tillman,Dondrea Tillman,0.0,0.355
-Denver Broncos,dre greenlaw,Dre Greenlaw,0.0,0.12
-Denver Broncos,elijah moore,Elijah Moore,0.03,0.0
-Denver Broncos,evan engram,Evan Engram,0.52,0.0
-Denver Broncos,eyioma uwazurike,Eyioma Uwazurike,0.0,0.495
-Denver Broncos,frank crum,Frank Crum,0.022,0.0
-Denver Broncos,garett bolles,Garett Bolles,1.0,0.0
-Denver Broncos,jahdae barron,Jahdae Barron,0.0,0.112
-Denver Broncos,jaleel mclaughlin,Jaleel McLaughlin,0.042,0.0
-Denver Broncos,jaquan mcmillian,Ja'Quan McMillian,0.0,0.638
-Denver Broncos,jarrett stidham,Jarrett Stidham,0.25,0.0
-Denver Broncos,jaylen waddle,Jaylen Waddle,0.522,0.0
-Denver Broncos,jk dobbins,J.K. Dobbins,0.315,0.0
+Denver Broncos,ben powers,Ben Powers,0.995,0.0
+Denver Broncos,bo nix,Bo Nix,0.995,0.0
+Denver Broncos,brandon jones,Brandon Jones,0.0,0.978
+Denver Broncos,courtland sutton,Courtland Sutton,0.772,0.0
+Denver Broncos,devon key,Devon Key,0.0,0.028
+Denver Broncos,dj jones,D.J. Jones,0.0,0.49
+Denver Broncos,dondrea tillman,Dondrea Tillman,0.0,0.27
+Denver Broncos,evan engram,Evan Engram,0.605,0.0
+Denver Broncos,eyioma uwazurike,Eyioma Uwazurike,0.0,0.528
+Denver Broncos,garett bolles,Garett Bolles,0.995,0.0
+Denver Broncos,jahdae barron,Jahdae Barron,0.0,0.245
+Denver Broncos,jaquan mcmillian,Ja'Quan McMillian,0.0,0.585
+Denver Broncos,jaylen waddle,Jaylen Waddle,0.692,0.0
+Denver Broncos,jk dobbins,J.K. Dobbins,0.395,0.0
 Denver Broncos,jl skinner,JL Skinner,0.0,0.005
-Denver Broncos,john franklinmyers,John Franklin-Myers,0.0,0.068
 Denver Broncos,jonah coleman,Jonah Coleman,0.115,0.0
-Denver Broncos,jonah elliss,Jonah Elliss,0.0,0.55
-Denver Broncos,jonathon cooper,Jonathon Cooper,0.0,0.172
-Denver Broncos,jordan jackson,Jordan Jackson,0.0,0.05
+Denver Broncos,jonah elliss,Jonah Elliss,0.0,0.625
+Denver Broncos,jordan jackson,Jordan Jackson,0.0,0.103
 Denver Broncos,jordan turner,Jordan Turner,0.0,0.01
-Denver Broncos,justin strnad,Justin Strnad,0.0,0.71
-Denver Broncos,liljordan humphrey,Lil'Jordan Humphrey,0.198,0.0
-Denver Broncos,luke wattenberg,Luke Wattenberg,1.0,0.0
-Denver Broncos,malcolm roach,Malcolm Roach,0.0,0.57
-Denver Broncos,marvin mims,Marvin Mims,0.21,0.0
-Denver Broncos,mike mcglinchey,Mike McGlinchey,1.0,0.0
-Denver Broncos,nate adkins,Nate Adkins,0.31,0.0
-Denver Broncos,nik bonitto,Nik Bonitto,0.0,0.585
-Denver Broncos,pat bryant,Pat Bryant,0.528,0.0
-Denver Broncos,patrick surtain,Patrick Surtain II,0.005,1.0
-Denver Broncos,pj locke,P.J. Locke,0.0,0.215
-Denver Broncos,quandarrius robinson,Quandarrius Robinson,0.0,0.345
-Denver Broncos,quinn meinerz,Quinn Meinerz,0.992,0.0
-Denver Broncos,riley moss,Riley Moss,0.0,0.99
-Denver Broncos,rj harvey,RJ Harvey,0.35,0.0
-Denver Broncos,saivion jones,Sai'vion Jones,0.0,0.08
+Denver Broncos,justin strnad,Justin Strnad,0.0,0.81
+Denver Broncos,kris abramsdraine,Kris Abrams-Draine,0.0,0.13
+Denver Broncos,liljordan humphrey,Lil'Jordan Humphrey,0.012,0.0
+Denver Broncos,luke wattenberg,Luke Wattenberg,0.995,0.0
+Denver Broncos,malcolm roach,Malcolm Roach,0.0,0.578
+Denver Broncos,marvin mims,Marvin Mims,0.112,0.0
+Denver Broncos,mike mcglinchey,Mike McGlinchey,0.995,0.0
+Denver Broncos,nate adkins,Nate Adkins,0.292,0.0
+Denver Broncos,nik bonitto,Nik Bonitto,0.0,0.615
+Denver Broncos,pat bryant,Pat Bryant,0.578,0.0
+Denver Broncos,patrick surtain,Patrick Surtain II,0.005,0.86
+Denver Broncos,quandarrius robinson,Quandarrius Robinson,0.0,0.46
+Denver Broncos,quinn meinerz,Quinn Meinerz,0.988,0.0
+Denver Broncos,riley moss,Riley Moss,0.0,0.875
+Denver Broncos,rj harvey,RJ Harvey,0.328,0.0
+Denver Broncos,saivion jones,Sai'vion Jones,0.0,0.13
 Denver Broncos,talanoa hufanga,Talanoa Hufanga,0.012,0.992
-Denver Broncos,troy franklin,Troy Franklin,0.18,0.0
-Denver Broncos,tyler badie,Tyler Badie,0.18,0.0
+Denver Broncos,troy franklin,Troy Franklin,0.3,0.0
+Denver Broncos,tyler badie,Tyler Badie,0.155,0.0
 Denver Broncos,zach allen,Zach Allen,0.0,0.692
-Detroit Lions,aidan hutchinson,Aidan Hutchinson,0.0,0.857
-Detroit Lions,alim mcneill,Alim McNeill,0.0,0.635
-Detroit Lions,alquadin muhammad,Al-Quadin Muhammad,0.0,0.078
-Detroit Lions,amik robertson,Amik Robertson,0.0,0.15
-Detroit Lions,amonra st brown,Amon-Ra St. Brown,0.885,0.0
-Detroit Lions,anthony firkser,Anthony Firkser,0.175,0.0
-Detroit Lions,avonte maddox,Avonte Maddox,0.0,0.57
+Detroit Lions,aidan hutchinson,Aidan Hutchinson,0.0,0.895
+Detroit Lions,alim mcneill,Alim McNeill,0.0,0.842
+Detroit Lions,amonra st brown,Amon-Ra St. Brown,0.888,0.0
+Detroit Lions,avonte maddox,Avonte Maddox,0.0,0.325
 Detroit Lions,ben bartch,Ben Bartch,0.465,0.0
 Detroit Lions,ben stille,Ben Stille,0.0,0.025
-Detroit Lions,blake miller,Blake Miller,0.5,0.0
-Detroit Lions,brock wright,Brock Wright,0.338,0.0
-Detroit Lions,chris hubbard,Chris Hubbard,0.25,0.0
-Detroit Lions,christian izien,Christian Izien,0.0,0.33
-Detroit Lions,christian mahogany,Christian Mahogany,0.525,0.0
-Detroit Lions,chuck clark,Chuck Clark,0.0,0.58
-Detroit Lions,dan skipper,Dan Skipper,0.002,0.0
-Detroit Lions,daniel thomas,Daniel Thomas,0.0,0.128
-Detroit Lions,david montgomery,David Montgomery,0.105,0.0
-Detroit Lions,derrick barnes,Derrick Barnes,0.0,0.93
-Detroit Lions,derrick moore,Derrick Moore,0.0,0.143
+Detroit Lions,blake miller,Blake Miller,0.75,0.0
+Detroit Lions,brock wright,Brock Wright,0.425,0.0
+Detroit Lions,christian izien,Christian Izien,0.0,0.572
+Detroit Lions,christian mahogany,Christian Mahogany,0.535,0.0
+Detroit Lions,chuck clark,Chuck Clark,0.0,0.83
+Detroit Lions,derrick barnes,Derrick Barnes,0.0,0.83
+Detroit Lions,derrick moore,Derrick Moore,0.0,0.17
 Detroit Lions,devin white,Devin White,0.0,0.162
-Detroit Lions,dj reader,D.J. Reader,0.0,0.132
-Detroit Lions,dj reed,D.J. Reed,0.0,0.872
-Detroit Lions,dj wonnum,D.J. Wonnum,0.0,0.45
-Detroit Lions,ennis rakestraw,Ennis Rakestraw,0.0,0.088
+Detroit Lions,dj reed,D.J. Reed,0.0,0.972
+Detroit Lions,dj wonnum,D.J. Wonnum,0.0,0.57
+Detroit Lions,ennis rakestraw,Ennis Rakestraw,0.0,0.19
 Detroit Lions,eric oneill,Eric O'Neill,0.0,0.015
-Detroit Lions,graham glasgow,Graham Glasgow,0.25,0.0
-Detroit Lions,isaac teslaa,Isaac TeSlaa,0.628,0.0
+Detroit Lions,isaac teslaa,Isaac TeSlaa,0.682,0.0
 Detroit Lions,jack campbell,Jack Campbell,0.0,1.0
 Detroit Lions,jackson meeks,Jackson Meeks,0.042,0.0
 Detroit Lions,jacob saylors,Jacob Saylors,0.008,0.0
-Detroit Lions,jahmyr gibbs,Jahmyr Gibbs,0.742,0.0
-Detroit Lions,jalen mills,Jalen Mills,0.0,0.122
-Detroit Lions,jameson williams,Jameson Williams,0.895,0.0
+Detroit Lions,jahmyr gibbs,Jahmyr Gibbs,0.782,0.0
+Detroit Lions,jalen mills,Jalen Mills,0.0,0.012
+Detroit Lions,jameson williams,Jameson Williams,0.905,0.0
 Detroit Lions,jared goff,Jared Goff,1.0,0.0
-Detroit Lions,juice scruggs,Juice Scruggs,0.75,0.0
-Detroit Lions,kalif raymond,Kalif Raymond,0.048,0.0
+Detroit Lions,jimmy rolder,Jimmy Rolder,0.0,0.022
+Detroit Lions,juice scruggs,Juice Scruggs,1.0,0.0
 Detroit Lions,keith abney,Keith Abney,0.0,0.07
 Detroit Lions,khalil dorsey,Khalil Dorsey,0.0,0.008
-Detroit Lions,larry borom,Larry Borom,0.338,0.0
-Detroit Lions,levi onwuzurike,Levi Onwuzurike,0.0,0.118
-Detroit Lions,malcolm rodriguez,Malcolm Rodriguez,0.0,0.36
-Detroit Lions,marcus davenport,Marcus Davenport,0.0,0.132
-Detroit Lions,mekhi wingo,Mekhi Wingo,0.0,0.1
-Detroit Lions,miles frazier,Miles Frazier,0.01,0.0
-Detroit Lions,penei sewell,Penei Sewell,0.75,0.0
-Detroit Lions,rock yasin,Rock Ya-Sin,0.0,0.775
-Detroit Lions,roger mccreary,Roger McCreary,0.0,0.41
-Detroit Lions,roy lopez,Roy Lopez,0.0,0.155
-Detroit Lions,sam laporta,Sam LaPorta,0.678,0.0
-Detroit Lions,shane zylstra,Shane Zylstra,0.102,0.0
-Detroit Lions,sione vaki,Sione Vaki,0.192,0.0
-Detroit Lions,skyler gillhoward,Skyler Gill-Howard,0.005,0.335
+Detroit Lions,larry borom,Larry Borom,0.345,0.0
+Detroit Lions,levi onwuzurike,Levi Onwuzurike,0.0,0.15
+Detroit Lions,malcolm rodriguez,Malcolm Rodriguez,0.0,0.27
+Detroit Lions,penei sewell,Penei Sewell,1.0,0.0
+Detroit Lions,rock yasin,Rock Ya-Sin,0.0,0.535
+Detroit Lions,roger mccreary,Roger McCreary,0.0,0.66
+Detroit Lions,sam laporta,Sam LaPorta,0.875,0.0
+Detroit Lions,sione vaki,Sione Vaki,0.235,0.0
+Detroit Lions,skyler gillhoward,Skyler Gill-Howard,0.008,0.442
 Detroit Lions,tate ratledge,Tate Ratledge,1.0,0.0
 Detroit Lions,tay martin,Tay Martin,0.008,0.0
-Detroit Lions,taylor decker,Taylor Decker,0.25,0.0
 Detroit Lions,thomas harper,Thomas Harper,0.0,0.262
 Detroit Lions,tom kennedy,Tom Kennedy,0.002,0.0
-Detroit Lions,trevor nowaske,Trevor Nowaske,0.0,0.202
-Detroit Lions,tyleik williams,Tyleik Williams,0.0,0.46
+Detroit Lions,trevor nowaske,Trevor Nowaske,0.0,0.285
+Detroit Lions,tyleik williams,Tyleik Williams,0.0,0.538
 Detroit Lions,tyler conklin,Tyler Conklin,0.048,0.0
-Detroit Lions,tyler lacy,Tyler Lacy,0.0,0.315
-Detroit Lions,tyrus wheat,Tyrus Wheat,0.0,0.038
-Detroit Lions,zach horton,Zach Horton,0.01,0.0
-Green Bay Packers,aaron banks,Aaron Banks,0.342,0.0
+Detroit Lions,tyler lacy,Tyler Lacy,0.0,0.348
+Green Bay Packers,aaron banks,Aaron Banks,0.092,0.0
 Green Bay Packers,anthony belton,Anthony Belton,0.752,0.0
 Green Bay Packers,anthony campbell,Anthony Campbell,0.0,0.03
-Green Bay Packers,barryn sorrell,Barryn Sorrell,0.0,0.452
+Green Bay Packers,barryn sorrell,Barryn Sorrell,0.0,0.492
 Green Bay Packers,benjamin stjuste,Benjamin St-Juste,0.0,0.005
-Green Bay Packers,bo melton,Bo Melton,0.148,0.0
-Green Bay Packers,brandon cisse,Brandon Cisse,0.0,0.685
-Green Bay Packers,brenton cox,Brenton Cox,0.0,0.308
-Green Bay Packers,carrington valentine,Carrington Valentine,0.0,0.318
-Green Bay Packers,chris brooks,Chris Brooks,0.425,0.0
-Green Bay Packers,chris mcclellan,Chris McClellan,0.0,0.325
-Green Bay Packers,christian watson,Christian Watson,0.815,0.0
-Green Bay Packers,colby wooden,Colby Wooden,0.0,0.112
-Green Bay Packers,dani dennissutton,Dani Dennis-Sutton,0.0,0.32
-Green Bay Packers,darian kinnard,Darian Kinnard,0.008,0.0
-Green Bay Packers,devonte wyatt,Devonte Wyatt,0.0,0.395
+Green Bay Packers,bo melton,Bo Melton,0.192,0.0
+Green Bay Packers,brandon cisse,Brandon Cisse,0.0,0.9
+Green Bay Packers,brenton cox,Brenton Cox,0.0,0.39
+Green Bay Packers,carrington valentine,Carrington Valentine,0.0,0.105
+Green Bay Packers,chris brooks,Chris Brooks,0.4,0.0
+Green Bay Packers,chris mcclellan,Chris McClellan,0.0,0.42
+Green Bay Packers,christian watson,Christian Watson,0.785,0.0
+Green Bay Packers,dani dennissutton,Dani Dennis-Sutton,0.0,0.415
+Green Bay Packers,devonte wyatt,Devonte Wyatt,0.0,0.495
 Green Bay Packers,donovan jennings,Donovan Jennings,0.338,0.0
-Green Bay Packers,edgerrin cooper,Edgerrin Cooper,0.0,0.828
-Green Bay Packers,emanuel wilson,Emanuel Wilson,0.045,0.0
-Green Bay Packers,evan williams,Evan Williams,0.0,0.992
-Green Bay Packers,isaiah mcduffie,Isaiah McDuffie,0.0,0.215
-Green Bay Packers,isaiah neyor,Isaiah Neyor,0.01,0.0
-Green Bay Packers,j michael sturdivant,J. Michael Sturdivant,0.118,0.0
+Green Bay Packers,edgerrin cooper,Edgerrin Cooper,0.0,0.825
+Green Bay Packers,evan williams,Evan Williams,0.0,1.0
+Green Bay Packers,isaiah mcduffie,Isaiah McDuffie,0.0,0.168
+Green Bay Packers,j michael sturdivant,J. Michael Sturdivant,0.125,0.0
 Green Bay Packers,jacob monk,Jacob Monk,0.722,0.0
 Green Bay Packers,jager burton,Jager Burton,0.348,0.0
-Green Bay Packers,javon bullard,Javon Bullard,0.0,0.678
-Green Bay Packers,javon hargrave,Javon Hargrave,0.0,0.23
-Green Bay Packers,jayden reed,Jayden Reed,0.32,0.0
-Green Bay Packers,jonathan ford,Jonathan Ford,0.0,0.368
-Green Bay Packers,jonnu smith,Jonnu Smith,0.255,0.0
+Green Bay Packers,javon bullard,Javon Bullard,0.0,0.725
+Green Bay Packers,javon hargrave,Javon Hargrave,0.0,0.345
+Green Bay Packers,jayden reed,Jayden Reed,0.15,0.0
+Green Bay Packers,jonathan ford,Jonathan Ford,0.0,0.362
+Green Bay Packers,jonnu smith,Jonnu Smith,0.31,0.0
 Green Bay Packers,jordan love,Jordan Love,1.0,0.0
 Green Bay Packers,jordan morgan,Jordan Morgan,1.0,0.0
-Green Bay Packers,josh jacobs,Josh Jacobs,0.158,0.0
-Green Bay Packers,josh whyle,Josh Whyle,0.13,0.0
-Green Bay Packers,kaleb johnson,Kaleb Johnson,0.158,0.0
-Green Bay Packers,karl brooks,Karl Brooks,0.0,0.612
-Green Bay Packers,keisean nixon,Keisean Nixon,0.0,0.995
-Green Bay Packers,kingsley enagbare,Kingsley Enagbare,0.0,0.17
-Green Bay Packers,kitan oladapo,Kitan Oladapo,0.0,0.002
-Green Bay Packers,lecitus smith,Lecitus Smith,0.01,0.0
-Green Bay Packers,lukas van ness,Lukas Van Ness,0.0,0.67
-Green Bay Packers,luke musgrave,Luke Musgrave,0.2,0.0
-Green Bay Packers,mark redman,Mark Redman,0.192,0.0
-Green Bay Packers,marshawn lloyd,MarShawn Lloyd,0.235,0.0
-Green Bay Packers,matthew golden,Matthew Golden,0.747,0.0
-Green Bay Packers,nazir stackhouse,Nazir Stackhouse,0.0,0.045
-Green Bay Packers,nick niemann,Nick Niemann,0.0,0.002
-Green Bay Packers,quay walker,Quay Walker,0.0,0.25
-Green Bay Packers,rashan gary,Rashan Gary,0.0,0.14
-Green Bay Packers,rasheed walker,Rasheed Walker,0.25,0.0
-Green Bay Packers,romeo doubs,Romeo Doubs,0.182,0.0
-Green Bay Packers,sean rhyan,Sean Rhyan,0.99,0.0
-Green Bay Packers,skyy moore,Skyy Moore,0.235,0.0
-Green Bay Packers,trevon diggs,Trevon Diggs,0.0,0.002
-Green Bay Packers,tucker kraft,Tucker Kraft,0.6,0.0
-Green Bay Packers,tyron hopper,Ty'Ron Hopper,0.0,0.025
-Green Bay Packers,warren brinson,Warren Brinson,0.0,0.08
+Green Bay Packers,josh whyle,Josh Whyle,0.103,0.0
+Green Bay Packers,kaleb johnson,Kaleb Johnson,0.228,0.0
+Green Bay Packers,karl brooks,Karl Brooks,0.0,0.605
+Green Bay Packers,keisean nixon,Keisean Nixon,0.0,0.998
+Green Bay Packers,laken tomlinson,Laken Tomlinson,0.25,0.0
+Green Bay Packers,lukas van ness,Lukas Van Ness,0.0,0.702
+Green Bay Packers,mark redman,Mark Redman,0.31,0.0
+Green Bay Packers,marshawn lloyd,MarShawn Lloyd,0.373,0.0
+Green Bay Packers,matthew golden,Matthew Golden,0.845,0.0
+Green Bay Packers,sean rhyan,Sean Rhyan,1.0,0.0
+Green Bay Packers,skyy moore,Skyy Moore,0.33,0.0
+Green Bay Packers,travis glover,Travis Glover,0.25,0.0
+Green Bay Packers,tucker kraft,Tucker Kraft,0.83,0.0
+Green Bay Packers,tyron hopper,Ty'Ron Hopper,0.0,0.022
 Green Bay Packers,xavier mckinney,Xavier McKinney,0.0,1.0
 Green Bay Packers,zach bakobewele,Zach Bako-Bewele,0.262,0.0
-Green Bay Packers,zaire franklin,Zaire Franklin,0.0,0.75
+Green Bay Packers,zaire franklin,Zaire Franklin,0.0,1.0
 Houston Texans,aireontae ersery,Aireontae Ersery,1.0,0.0
-Houston Texans,azeez alshaair,Azeez Al-Shaair,0.0,0.94
-Houston Texans,blake fisher,Blake Fisher,0.125,0.0
-Houston Texans,braxton berrios,Braxton Berrios,0.018,0.0
-Houston Texans,british brooks,British Brooks,0.008,0.0
-Houston Texans,cade stover,Cade Stover,0.378,0.0
-Houston Texans,calen bullock,Calen Bullock,0.0,0.98
-Houston Texans,christian kirk,Christian Kirk,0.172,0.0
+Houston Texans,azeez alshaair,Azeez Al-Shaair,0.0,0.69
+Houston Texans,blake fisher,Blake Fisher,0.103,0.0
+Houston Texans,brevin jordan,Brevin Jordan,0.022,0.0
+Houston Texans,cade stover,Cade Stover,0.27,0.0
+Houston Texans,calen bullock,Calen Bullock,0.0,0.982
 Houston Texans,cj stroud,C.J. Stroud,1.0,0.0
-Houston Texans,dalton schultz,Dalton Schultz,0.51,0.0
-Houston Texans,danielle hunter,Danielle Hunter,0.0,0.785
-Houston Texans,david montgomery,David Montgomery,0.41,0.0
-Houston Texans,denico autry,Denico Autry,0.0,0.058
-Houston Texans,derek barnett,Derek Barnett,0.0,0.072
-Houston Texans,derek stingley,Derek Stingley Jr.,0.0,0.988
-Houston Texans,dominique robinson,Dominique Robinson,0.0,0.132
-Houston Texans,dylan horton,Dylan Horton,0.0,0.065
+Houston Texans,dalton schultz,Dalton Schultz,0.63,0.0
+Houston Texans,danielle hunter,Danielle Hunter,0.0,0.792
+Houston Texans,david montgomery,David Montgomery,0.55,0.0
+Houston Texans,derek stingley,Derek Stingley Jr.,0.0,1.0
+Houston Texans,dominique robinson,Dominique Robinson,0.0,0.162
 Houston Texans,ed ingram,Ed Ingram,0.5,0.0
-Houston Texans,ej speed,E.J. Speed,0.0,0.03
-Houston Texans,evan brown,Evan Brown,0.75,0.0
-Houston Texans,foster moreau,Foster Moreau,0.325,0.0
-Houston Texans,harrison bryant,Harrison Bryant,0.098,0.0
-Houston Texans,henry tootoo,Henry To'oTo'o,0.0,0.458
-Houston Texans,jaden crumedy,Jaden Crumedy,0.0,0.068
-Houston Texans,jadeveon clowney,Jadeveon Clowney,0.0,0.085
-Houston Texans,jake andrews,Jake Andrews,0.25,0.0
-Houston Texans,jake hansen,Jake Hansen,0.0,0.5
-Houston Texans,jalen pitre,Jalen Pitre,0.0,1.0
-Houston Texans,jamarcus ingram,Ja'Marcus Ingram,0.0,0.005
-Houston Texans,jared wayne,Jared Wayne,0.358,0.0
-Houston Texans,jarrett patterson,Jarrett Patterson,0.25,0.0
-Houston Texans,jayden higgins,Jayden Higgins,0.22,0.005
-Houston Texans,jaylen reed,Jaylen Reed,0.0,0.205
-Houston Texans,jaylin noel,Jaylin Noel,0.31,0.0
+Houston Texans,evan brown,Evan Brown,1.0,0.0
+Houston Texans,foster moreau,Foster Moreau,0.415,0.0
+Houston Texans,henry tootoo,Henry To'oTo'o,0.0,0.22
+Houston Texans,jaden crumedy,Jaden Crumedy,0.0,0.138
+Houston Texans,jadeveon clowney,Jadeveon Clowney,0.0,0.18
+Houston Texans,jake hansen,Jake Hansen,0.0,0.738
+Houston Texans,jalen pitre,Jalen Pitre,0.0,0.992
+Houston Texans,jared wayne,Jared Wayne,0.43,0.0
+Houston Texans,jaylin noel,Jaylin Noel,0.445,0.0
 Houston Texans,jaylin smith,Jaylin Smith,0.0,0.03
 Houston Texans,kamari lassiter,Kamari Lassiter,0.0,1.0
-Houston Texans,kamari ramsey,Kamari Ramsey,0.0,0.005
-Houston Texans,kayshon boutte,Kayshon Boutte,0.467,0.0
-Houston Texans,keylan rutledge,Keylan Rutledge,0.75,0.0
-Houston Texans,leki fotu,Leki Fotu,0.0,0.035
+Houston Texans,kamari ramsey,Kamari Ramsey,0.0,0.057
+Houston Texans,kayshon boutte,Kayshon Boutte,0.622,0.0
+Houston Texans,kenneth murray,Kenneth Murray,0.0,0.205
+Houston Texans,keylan rutledge,Keylan Rutledge,1.0,0.0
 Houston Texans,lewis bond,Lewis Bond,0.082,0.0
-Houston Texans,logan hall,Logan Hall,0.0,0.282
+Houston Texans,logan hall,Logan Hall,0.0,0.378
 Houston Texans,mario edwards,Mario Edwards,0.0,0.222
 Houston Texans,marlin klein,Marlin Klein,0.073,0.0
-Houston Texans,naquan jones,Naquan Jones,0.0,0.095
-Houston Texans,nick chubb,Nick Chubb,0.072,0.0
-Houston Texans,nico collins,Nico Collins,0.18,0.0
-Houston Texans,reed blankenship,Reed Blankenship,0.0,0.685
+Houston Texans,nico collins,Nico Collins,0.352,0.0
+Houston Texans,reed blankenship,Reed Blankenship,0.0,0.92
 Houston Texans,sabastian harsh,Sabastian Harsh,0.0,0.065
-Houston Texans,sheldon rankins,Sheldon Rankins,0.0,0.688
-Houston Texans,tommy togiai,Tommy Togiai,0.002,0.662
-Houston Texans,trent brown,Trent Brown,0.75,0.0
-Houston Texans,tytus howard,Tytus Howard,0.242,0.0
-Houston Texans,wade woodaz,Wade Woodaz,0.0,0.06
-Houston Texans,will anderson,Will Anderson,0.0,0.792
-Houston Texans,woody marks,Woody Marks,0.51,0.0
+Houston Texans,sheldon rankins,Sheldon Rankins,0.0,0.698
+Houston Texans,tommy togiai,Tommy Togiai,0.0,0.642
+Houston Texans,trent brown,Trent Brown,1.0,0.0
+Houston Texans,wade woodaz,Wade Woodaz,0.0,0.072
+Houston Texans,will anderson,Will Anderson,0.0,0.812
+Houston Texans,woody marks,Woody Marks,0.45,0.0
 Houston Texans,wyatt teller,Wyatt Teller,0.5,0.0
-Houston Texans,xavier hutchinson,Xavier Hutchinson,0.688,0.0
-Indianapolis Colts,adetomiwa adebawore,Adetomiwa Adebawore,0.0,0.36
-Indianapolis Colts,aj haulcy,A.J. Haulcy,0.0,0.52
-Indianapolis Colts,akeem davisgaither,Akeem Davis-Gaither,0.0,0.72
-Indianapolis Colts,alec pierce,Alec Pierce,0.382,0.0
-Indianapolis Colts,ameer abdullah,Ameer Abdullah,0.03,0.0
-Indianapolis Colts,andrew ogletree,Andrew Ogletree,0.175,0.0
-Indianapolis Colts,arden key,Arden Key,0.0,0.545
-Indianapolis Colts,ashton dulin,Ashton Dulin,0.14,0.0
-Indianapolis Colts,austin ajiake,Austin Ajiake,0.0,0.01
-Indianapolis Colts,bernhard raimann,Bernhard Raimann,1.0,0.0
-Indianapolis Colts,bryce boettcher,Bryce Boettcher,0.0,0.23
-Indianapolis Colts,caden curry,Caden Curry,0.0,0.075
-Indianapolis Colts,cam taylorbritt,Cam Taylor-Britt,0.0,0.112
-Indianapolis Colts,cameron mitchell,Cameron Mitchell,0.0,0.088
+Houston Texans,xavier hutchinson,Xavier Hutchinson,0.555,0.0
+Indianapolis Colts,adetomiwa adebawore,Adetomiwa Adebawore,0.0,0.322
+Indianapolis Colts,aj haulcy,A.J. Haulcy,0.0,0.742
+Indianapolis Colts,akeem davisgaither,Akeem Davis-Gaither,0.0,0.962
+Indianapolis Colts,alec pierce,Alec Pierce,0.212,0.0
+Indianapolis Colts,andrew ogletree,Andrew Ogletree,0.248,0.0
+Indianapolis Colts,arden key,Arden Key,0.0,0.648
+Indianapolis Colts,ashton dulin,Ashton Dulin,0.135,0.0
+Indianapolis Colts,austin ajiake,Austin Ajiake,0.0,0.068
+Indianapolis Colts,bernhard raimann,Bernhard Raimann,0.972,0.0
+Indianapolis Colts,bryce boettcher,Bryce Boettcher,0.0,0.3
+Indianapolis Colts,caden curry,Caden Curry,0.0,0.132
+Indianapolis Colts,cam taylorbritt,Cam Taylor-Britt,0.0,0.128
 Indianapolis Colts,camryn bynum,Camryn Bynum,0.0,1.0
-Indianapolis Colts,charvarius ward,Charvarius Ward,0.0,0.592
-Indianapolis Colts,chris wormley,Chris Wormley,0.0,0.07
+Indianapolis Colts,charvarius ward,Charvarius Ward,0.0,0.842
 Indianapolis Colts,cj allen,CJ Allen,0.0,0.042
-Indianapolis Colts,daniel jones,Daniel Jones,0.75,0.0
-Indianapolis Colts,deforest buckner,DeForest Buckner,0.0,0.61
-Indianapolis Colts,deion burks,Deion Burks,0.048,0.0
-Indianapolis Colts,dj giddens,DJ Giddens,0.078,0.0
-Indianapolis Colts,germaine pratt,Germaine Pratt,0.0,0.212
-Indianapolis Colts,grover stewart,Grover Stewart,0.0,0.612
-Indianapolis Colts,hunter wohler,Hunter Wohler,0.0,0.208
+Indianapolis Colts,daniel jones,Daniel Jones,1.0,0.0
+Indianapolis Colts,deforest buckner,DeForest Buckner,0.0,0.81
+Indianapolis Colts,deion burks,Deion Burks,0.105,0.0
+Indianapolis Colts,grover stewart,Grover Stewart,0.0,0.602
+Indianapolis Colts,hunter wohler,Hunter Wohler,0.0,0.235
+Indianapolis Colts,jalen farmer,Jalen Farmer,0.012,0.0
 Indianapolis Colts,jalen travis,Jalen Travis,1.0,0.0
-Indianapolis Colts,jaylon carlies,Jaylon Carlies,0.0,0.482
-Indianapolis Colts,jaylon jones,Jaylon Jones,0.0,0.188
-Indianapolis Colts,jerry tillery,Jerry Tillery,0.0,0.355
-Indianapolis Colts,johnathan edwards,Johnathan Edwards,0.0,0.155
-Indianapolis Colts,jonathan owens,Jonathan Owens,0.0,0.008
-Indianapolis Colts,jonathan taylor,Jonathan Taylor,0.8,0.0
-Indianapolis Colts,josh downs,Josh Downs,0.758,0.0
-Indianapolis Colts,jt tuimoloau,JT Tuimoloau,0.0,0.365
-Indianapolis Colts,justin walley,Justin Walley,0.0,0.502
+Indianapolis Colts,jaylon carlies,Jaylon Carlies,0.0,0.6
+Indianapolis Colts,jerry tillery,Jerry Tillery,0.0,0.438
+Indianapolis Colts,jonathan owens,Jonathan Owens,0.0,0.012
+Indianapolis Colts,jonathan taylor,Jonathan Taylor,0.847,0.0
+Indianapolis Colts,josh downs,Josh Downs,0.792,0.0
+Indianapolis Colts,jt tuimoloau,JT Tuimoloau,0.0,0.428
+Indianapolis Colts,justin walley,Justin Walley,0.0,0.695
 Indianapolis Colts,kapena gushiken,Kapena Gushiken,0.0,0.025
 Indianapolis Colts,keenan allen,Keenan Allen,0.478,0.0
 Indianapolis Colts,kenneth harris,Kenneth Harris,0.0,0.015
-Indianapolis Colts,kenny moore,Kenny Moore,0.0,0.19
-Indianapolis Colts,kwity paye,Kwity Paye,0.0,0.108
-Indianapolis Colts,laiatu latu,Laiatu Latu,0.0,0.692
-Indianapolis Colts,laquon treadwell,Laquon Treadwell,0.49,0.0
-Indianapolis Colts,luke tenuta,Luke Tenuta,0.025,0.0
+Indianapolis Colts,laiatu latu,Laiatu Latu,0.0,0.715
+Indianapolis Colts,laquon treadwell,Laquon Treadwell,0.682,0.0
+Indianapolis Colts,luke tenuta,Luke Tenuta,0.06,0.0
 Indianapolis Colts,matt goncalves,Matt Goncalves,1.0,0.0
-Indianapolis Colts,mekhi blackmon,Mekhi Blackmon,0.0,0.065
-Indianapolis Colts,michael pittman,Michael Pittman Jr.,0.222,0.0
 Indianapolis Colts,micheal clemons,Micheal Clemons,0.0,0.128
-Indianapolis Colts,mo aliecox,Mo Alie-Cox,0.36,0.0
-Indianapolis Colts,neville gallimore,Neville Gallimore,0.0,0.14
-Indianapolis Colts,nick cross,Nick Cross,0.0,0.25
-Indianapolis Colts,nick westbrookikhine,Nick Westbrook-Ikhine,0.002,0.0
-Indianapolis Colts,quenton nelson,Quenton Nelson,1.0,0.0
-Indianapolis Colts,riley leonard,Riley Leonard,0.25,0.0
-Indianapolis Colts,rodney thomas,Rodney Thomas II,0.0,0.038
-Indianapolis Colts,samson ebukam,Samson Ebukam,0.0,0.132
-Indianapolis Colts,sauce gardner,Sauce Gardner,0.0,0.715
-Indianapolis Colts,sean mckeon,Sean McKeon,0.03,0.0
-Indianapolis Colts,seth mcgowan,Seth McGowan,0.08,0.0
+Indianapolis Colts,mo aliecox,Mo Alie-Cox,0.372,0.0
+Indianapolis Colts,nick westbrookikhine,Nick Westbrook-Ikhine,0.045,0.0
+Indianapolis Colts,quenton nelson,Quenton Nelson,0.988,0.0
+Indianapolis Colts,sauce gardner,Sauce Gardner,0.0,0.965
+Indianapolis Colts,seth mcgowan,Seth McGowan,0.152,0.0
 Indianapolis Colts,tanor bortolini,Tanor Bortolini,1.0,0.0
-Indianapolis Colts,tim smith,Tim Smith,0.0,0.105
-Indianapolis Colts,tyler goodson,Tyler Goodson,0.012,0.0
-Indianapolis Colts,tyler warren,Tyler Warren,0.895,0.005
-Indianapolis Colts,tyquan lewis,Tyquan Lewis,0.0,0.078
-Indianapolis Colts,zaire franklin,Zaire Franklin,0.0,0.25
-Jacksonville Jaguars,albert regis,Albert Regis,0.0,0.085
-Jacksonville Jaguars,ameer abdullah,Ameer Abdullah,0.075,0.0
-Jacksonville Jaguars,andrew wingard,Andrew Wingard,0.0,0.15
+Indianapolis Colts,tim smith,Tim Smith,0.0,0.145
+Indianapolis Colts,tyler warren,Tyler Warren,0.902,0.005
+Jacksonville Jaguars,albert regis,Albert Regis,0.0,0.098
+Jacksonville Jaguars,ameer abdullah,Ameer Abdullah,0.08,0.0
 Jacksonville Jaguars,anton harrison,Anton Harrison,1.0,0.0
-Jacksonville Jaguars,antonio johnson,Antonio Johnson,0.0,0.848
-Jacksonville Jaguars,arik armstead,Arik Armstead,0.0,0.622
-Jacksonville Jaguars,austin johnson,Austin Johnson,0.0,0.06
-Jacksonville Jaguars,bhayshul tuten,Bhayshul Tuten,0.442,0.0
-Jacksonville Jaguars,bj green,B.J. Green,0.0,0.005
-Jacksonville Jaguars,branson combs,Branson Combs,0.0,0.165
-Jacksonville Jaguars,brenton strange,Brenton Strange,0.79,0.0
-Jacksonville Jaguars,brian thomas,Brian Thomas,0.508,0.0
-Jacksonville Jaguars,bryan thomas,Bryan Thomas,0.0,0.12
+Jacksonville Jaguars,antonio johnson,Antonio Johnson,0.0,0.935
+Jacksonville Jaguars,arik armstead,Arik Armstead,0.0,0.642
+Jacksonville Jaguars,bhayshul tuten,Bhayshul Tuten,0.518,0.0
+Jacksonville Jaguars,branson combs,Branson Combs,0.0,0.215
+Jacksonville Jaguars,brenton strange,Brenton Strange,0.788,0.0
+Jacksonville Jaguars,brian thomas,Brian Thomas,0.47,0.0
+Jacksonville Jaguars,bryan thomas,Bryan Thomas,0.0,0.17
 Jacksonville Jaguars,caleb ransaw,Caleb Ransaw,0.0,0.265
-Jacksonville Jaguars,chris rodriguez,Chris Rodriguez,0.208,0.0
+Jacksonville Jaguars,chris rodriguez,Chris Rodriguez,0.27,0.0
 Jacksonville Jaguars,christian braswell,Christian Braswell,0.0,0.065
-Jacksonville Jaguars,chuma edoga,Chuma Edoga,0.012,0.0
 Jacksonville Jaguars,cj williams,CJ Williams,0.045,0.0
-Jacksonville Jaguars,cole van lanen,Cole Van Lanen,0.645,0.0
-Jacksonville Jaguars,danny striggow,Danny Striggow,0.0,0.275
-Jacksonville Jaguars,davon hamilton,DaVon Hamilton,0.0,0.47
-Jacksonville Jaguars,dawuane smoot,Dawuane Smoot,0.0,0.04
-Jacksonville Jaguars,dennis gardeck,Dennis Gardeck,0.0,0.4
-Jacksonville Jaguars,devin lloyd,Devin Lloyd,0.0,0.218
-Jacksonville Jaguars,emmanuel pregnon,Emmanuel Pregnon,0.75,0.0
-Jacksonville Jaguars,eric murray,Eric Murray,0.0,0.85
-Jacksonville Jaguars,ezra cleveland,Ezra Cleveland,0.938,0.0
+Jacksonville Jaguars,cole van lanen,Cole Van Lanen,0.895,0.0
+Jacksonville Jaguars,danny striggow,Danny Striggow,0.0,0.27
+Jacksonville Jaguars,davon hamilton,DaVon Hamilton,0.0,0.452
+Jacksonville Jaguars,dennis gardeck,Dennis Gardeck,0.0,0.38
+Jacksonville Jaguars,emmanuel pregnon,Emmanuel Pregnon,1.0,0.0
+Jacksonville Jaguars,eric murray,Eric Murray,0.0,0.762
+Jacksonville Jaguars,ezra cleveland,Ezra Cleveland,0.95,0.0
 Jacksonville Jaguars,foyesade oluokun,Foyesade Oluokun,0.0,0.865
-Jacksonville Jaguars,greg newsome,Greg Newsome II,0.0,0.222
+Jacksonville Jaguars,jabbar muhammad,Jabbar Muhammad,0.0,0.008
 Jacksonville Jaguars,jahlani tavai,Jahlani Tavai,0.0,0.07
-Jacksonville Jaguars,jakobi meyers,Jakobi Meyers,0.83,0.0
-Jacksonville Jaguars,jarrian jones,Jarrian Jones,0.0,0.74
-Jacksonville Jaguars,johnny mundt,Johnny Mundt,0.058,0.0
+Jacksonville Jaguars,jakobi meyers,Jakobi Meyers,0.795,0.0
+Jacksonville Jaguars,jarrian jones,Jarrian Jones,0.0,0.772
 Jacksonville Jaguars,jonah monheim,Jonah Monheim,0.042,0.0
-Jacksonville Jaguars,josh cameron,Josh Cameron,0.218,0.0
-Jacksonville Jaguars,josh hinesallen,Josh Hines-Allen,0.0,0.775
-Jacksonville Jaguars,jourdan lewis,Jourdan Lewis,0.0,0.425
-Jacksonville Jaguars,lequint allen,LeQuint Allen,0.138,0.0
-Jacksonville Jaguars,matt dickerson,Matt Dickerson,0.0,0.362
-Jacksonville Jaguars,montaric brown,Montaric Brown,0.0,0.74
-Jacksonville Jaguars,nate boerkircher,Nate Boerkircher,0.378,0.0
+Jacksonville Jaguars,josh cameron,Josh Cameron,0.308,0.0
+Jacksonville Jaguars,josh hinesallen,Josh Hines-Allen,0.0,0.76
+Jacksonville Jaguars,jourdan lewis,Jourdan Lewis,0.0,0.655
+Jacksonville Jaguars,lequint allen,LeQuint Allen,0.125,0.0
+Jacksonville Jaguars,matt dickerson,Matt Dickerson,0.0,0.312
+Jacksonville Jaguars,montaric brown,Montaric Brown,0.0,0.505
+Jacksonville Jaguars,nate boerkircher,Nate Boerkircher,0.462,0.0
 Jacksonville Jaguars,nick mullens,Nick Mullens,0.03,0.0
-Jacksonville Jaguars,parker washington,Parker Washington,0.735,0.0
-Jacksonville Jaguars,patrick mekari,Patrick Mekari,0.198,0.0
+Jacksonville Jaguars,parker washington,Parker Washington,0.758,0.0
 Jacksonville Jaguars,quinn ewers,Quinn Ewers,0.012,0.0
-Jacksonville Jaguars,quintin morris,Quintin Morris,0.26,0.0
-Jacksonville Jaguars,rayuan lane,Rayuan Lane,0.0,0.065
+Jacksonville Jaguars,quintin morris,Quintin Morris,0.238,0.0
+Jacksonville Jaguars,rayuan lane,Rayuan Lane,0.0,0.208
 Jacksonville Jaguars,robert hainsey,Robert Hainsey,0.958,0.0
-Jacksonville Jaguars,ruke orhorhoro,Ruke Orhorhoro,0.0,0.302
-Jacksonville Jaguars,tanner koziol,Tanner Koziol,0.012,0.0
-Jacksonville Jaguars,tim patrick,Tim Patrick,0.068,0.0
-Jacksonville Jaguars,travis etienne,Travis Etienne,0.135,0.0
-Jacksonville Jaguars,travis hunter,Travis Hunter,0.062,0.47
-Jacksonville Jaguars,travon walker,Travon Walker,0.0,0.775
+Jacksonville Jaguars,ruke orhorhoro,Ruke Orhorhoro,0.0,0.397
+Jacksonville Jaguars,tanner koziol,Tanner Koziol,0.053,0.0
+Jacksonville Jaguars,travis hunter,Travis Hunter,0.062,0.72
+Jacksonville Jaguars,travon walker,Travon Walker,0.0,0.755
 Jacksonville Jaguars,trevor lawrence,Trevor Lawrence,0.958,0.0
-Jacksonville Jaguars,ventrell miller,Ventrell Miller,0.0,0.535
-Jacksonville Jaguars,walker little,Walker Little,0.355,0.0
-Jacksonville Jaguars,wyatt milum,Wyatt Milum,0.145,0.0
-Kansas City Chiefs,alohi gilman,Alohi Gilman,0.0,0.75
-Kansas City Chiefs,ashton gillotte,Ashton Gillotte,0.0,0.48
-Kansas City Chiefs,ben vansumeren,Ben VanSumeren,0.01,0.0
-Kansas City Chiefs,brashard smith,Brashard Smith,0.152,0.0
-Kansas City Chiefs,bryan cook,Bryan Cook,0.0,0.245
-Kansas City Chiefs,bryson eason,Bryson Eason,0.0,0.025
-Kansas City Chiefs,chamarri conner,Chamarri Conner,0.0,0.25
-Kansas City Chiefs,charles omenihu,Charles Omenihu,0.0,0.165
-Kansas City Chiefs,chris jones,Chris Jones,0.0,0.568
-Kansas City Chiefs,chris oladokun,Chris Oladokun,0.138,0.0
-Kansas City Chiefs,christian rolandwallace,Christian Roland-Wallace,0.0,0.103
-Kansas City Chiefs,chukwuebuka godrick,Chukwuebuka Godrick,0.245,0.0
-Kansas City Chiefs,cooper mcdonald,Cooper McDonald,0.0,0.105
+Jacksonville Jaguars,ventrell miller,Ventrell Miller,0.0,0.702
+Jacksonville Jaguars,walker little,Walker Little,0.105,0.0
+Jacksonville Jaguars,wyatt milum,Wyatt Milum,0.078,0.0
+Kansas City Chiefs,alohi gilman,Alohi Gilman,0.0,0.975
+Kansas City Chiefs,ashton gillotte,Ashton Gillotte,0.0,0.402
+Kansas City Chiefs,ben vansumeren,Ben VanSumeren,0.015,0.0
+Kansas City Chiefs,brashard smith,Brashard Smith,0.028,0.0
+Kansas City Chiefs,bryson eason,Bryson Eason,0.0,0.04
+Kansas City Chiefs,chamarri conner,Chamarri Conner,0.0,0.188
+Kansas City Chiefs,chris jones,Chris Jones,0.0,0.682
+Kansas City Chiefs,christian rolandwallace,Christian Roland-Wallace,0.0,0.19
 Kansas City Chiefs,creed humphrey,Creed Humphrey,1.0,0.0
-Kansas City Chiefs,cyrus allen,Cyrus Allen,0.018,0.0
-Kansas City Chiefs,dameon pierce,Dameon Pierce,0.02,0.0
-Kansas City Chiefs,derrick nnadi,Derrick Nnadi,0.0,0.152
-Kansas City Chiefs,drue tranquill,Drue Tranquill,0.0,0.825
-Kansas City Chiefs,emmett johnson,Emmett Johnson,0.202,0.0
-Kansas City Chiefs,esa pole,Esa Pole,0.25,0.0
-Kansas City Chiefs,ethan downs,Ethan Downs,0.0,0.045
-Kansas City Chiefs,felix anudikeuzomah,Felix Anudike-Uzomah,0.0,0.355
-Kansas City Chiefs,george karlaftis,George Karlaftis III,0.0,0.635
-Kansas City Chiefs,hunter nourzad,Hunter Nourzad,0.29,0.0
-Kansas City Chiefs,jack cochrane,Jack Cochrane,0.0,0.188
-Kansas City Chiefs,jaden hicks,Jaden Hicks,0.0,0.9
+Kansas City Chiefs,cyrus allen,Cyrus Allen,0.038,0.0
+Kansas City Chiefs,drue tranquill,Drue Tranquill,0.0,0.862
+Kansas City Chiefs,emmett johnson,Emmett Johnson,0.27,0.0
+Kansas City Chiefs,felix anudikeuzomah,Felix Anudike-Uzomah,0.0,0.483
+Kansas City Chiefs,george karlaftis,George Karlaftis III,0.0,0.855
+Kansas City Chiefs,hunter nourzad,Hunter Nourzad,0.048,0.0
+Kansas City Chiefs,jack cochrane,Jack Cochrane,0.0,0.24
+Kansas City Chiefs,jaden hicks,Jaden Hicks,0.0,0.838
 Kansas City Chiefs,jadon canady,Jadon Canady,0.0,0.002
-Kansas City Chiefs,jake briningstool,Jake Briningstool,0.108,0.0
-Kansas City Chiefs,jalen royals,Jalen Royals,0.252,0.0
-Kansas City Chiefs,jared wiley,Jared Wiley,0.048,0.0
-Kansas City Chiefs,jason brownlee,Jason Brownlee,0.02,0.0
-Kansas City Chiefs,jaylon moore,Jaylon Moore,0.748,0.0
-Kansas City Chiefs,jeffrey bassa,Jeffrey Bassa,0.0,0.132
-Kansas City Chiefs,jerry tillery,Jerry Tillery,0.0,0.132
-Kansas City Chiefs,jimmy holiday,Jimmy Holiday,0.005,0.0
+Kansas City Chiefs,jake briningstool,Jake Briningstool,0.14,0.0
+Kansas City Chiefs,jalen royals,Jalen Royals,0.242,0.0
+Kansas City Chiefs,jaylon moore,Jaylon Moore,0.99,0.0
+Kansas City Chiefs,jeffrey bassa,Jeffrey Bassa,0.0,0.065
 Kansas City Chiefs,joshua ezeudu,Joshua Ezeudu,0.018,0.0
-Kansas City Chiefs,juju smithschuster,JuJu Smith-Schuster,0.195,0.0
 Kansas City Chiefs,justin fields,Justin Fields,0.002,0.0
-Kansas City Chiefs,kahlil benson,Kahlil Benson,0.75,0.0
-Kansas City Chiefs,kareem hunt,Kareem Hunt,0.098,0.0
-Kansas City Chiefs,kenneth walker,Kenneth Walker III,0.558,0.0
-Kansas City Chiefs,kevin knowles,Kevin Knowles,0.0,0.058
-Kansas City Chiefs,khyiris tonga,Khyiris Tonga,0.028,0.348
-Kansas City Chiefs,kingsley suamataia,Kingsley Suamataia,1.0,0.0
-Kansas City Chiefs,kristian fulton,Kristian Fulton,0.0,0.68
-Kansas City Chiefs,ljarius sneed,L'Jarius Sneed,0.0,0.595
-Kansas City Chiefs,mansoor delane,Mansoor Delane,0.0,0.262
+Kansas City Chiefs,kahlil benson,Kahlil Benson,1.0,0.0
+Kansas City Chiefs,kenneth walker,Kenneth Walker III,0.745,0.0
+Kansas City Chiefs,khyiris tonga,Khyiris Tonga,0.04,0.44
+Kansas City Chiefs,kingsley suamataia,Kingsley Suamataia,0.75,0.0
+Kansas City Chiefs,kristian fulton,Kristian Fulton,0.0,0.478
+Kansas City Chiefs,ljarius sneed,L'Jarius Sneed,0.0,0.782
+Kansas City Chiefs,mansoor delane,Mansoor Delane,0.0,0.495
 Kansas City Chiefs,marcus harris,Marcus Harris,0.0,0.032
-Kansas City Chiefs,marquise brown,Marquise Brown,0.202,0.0
-Kansas City Chiefs,michael danna,Michael Danna,0.0,0.145
-Kansas City Chiefs,mike caliendo,Mike Caliendo,0.032,0.0
-Kansas City Chiefs,mike edwards,Mike Edwards,0.0,0.012
+Kansas City Chiefs,mike caliendo,Mike Caliendo,0.27,0.0
 Kansas City Chiefs,nick bolton,Nick Bolton,0.0,1.0
-Kansas City Chiefs,noah gray,Noah Gray,0.56,0.0
-Kansas City Chiefs,nohl williams,Nohl Williams,0.0,0.982
-Kansas City Chiefs,patrick mahomes,Patrick Mahomes,0.75,0.0
-Kansas City Chiefs,peter woods,Peter Woods,0.0,0.392
-Kansas City Chiefs,r mason thomas,R Mason Thomas,0.0,0.378
-Kansas City Chiefs,rashee rice,Rashee Rice,0.598,0.0
-Kansas City Chiefs,robert tonyan,Robert Tonyan,0.008,0.0
-Kansas City Chiefs,shane buechele,Shane Buechele,0.112,0.0
-Kansas City Chiefs,travis kelce,Travis Kelce,0.788,0.0
-Kansas City Chiefs,trey smith,Trey Smith,0.75,0.0
-Kansas City Chiefs,tyquan thornton,Tyquan Thornton,0.432,0.0
-Kansas City Chiefs,xavier nwankpa,Xavier Nwankpa,0.0,0.002
-Kansas City Chiefs,xavier worthy,Xavier Worthy,0.615,0.0
-Kansas City Chiefs,zacch pickens,Zacch Pickens,0.0,0.052
+Kansas City Chiefs,noah gray,Noah Gray,0.59,0.0
+Kansas City Chiefs,nohl williams,Nohl Williams,0.0,0.94
+Kansas City Chiefs,patrick mahomes,Patrick Mahomes,1.0,0.0
+Kansas City Chiefs,peter woods,Peter Woods,0.0,0.475
+Kansas City Chiefs,r mason thomas,R Mason Thomas,0.0,0.528
+Kansas City Chiefs,rashee rice,Rashee Rice,0.622,0.0
+Kansas City Chiefs,travis kelce,Travis Kelce,0.795,0.0
+Kansas City Chiefs,trey smith,Trey Smith,1.0,0.0
+Kansas City Chiefs,tyquan thornton,Tyquan Thornton,0.59,0.0
+Kansas City Chiefs,xavier nwankpa,Xavier Nwankpa,0.0,0.005
+Kansas City Chiefs,xavier worthy,Xavier Worthy,0.802,0.0
 Los Angeles Rams,aaron donald,Aaron Donald,0.0,0.272
 Los Angeles Rams,alaric jackson,Alaric Jackson,1.0,0.0
 Los Angeles Rams,beaux limmer,Beaux Limmer,0.01,0.0
-Los Angeles Rams,blake corum,Blake Corum,0.338,0.0
-Los Angeles Rams,braden fiske,Braden Fiske,0.0,0.57
-Los Angeles Rams,byron young,Byron Young,0.0,0.745
-Los Angeles Rams,cobie durant,Cobie Durant,0.0,0.195
-Los Angeles Rams,colby parkinson,Colby Parkinson,0.67,0.0
+Los Angeles Rams,blake corum,Blake Corum,0.28,0.0
+Los Angeles Rams,braden fiske,Braden Fiske,0.0,0.552
+Los Angeles Rams,byron young,Byron Young,0.0,0.8
+Los Angeles Rams,colby parkinson,Colby Parkinson,0.478,0.0
 Los Angeles Rams,coleman shelton,Coleman Shelton,1.0,0.0
-Los Angeles Rams,darious williams,Darious Williams,0.0,0.105
-Los Angeles Rams,davante adams,Davante Adams,0.658,0.0
-Los Angeles Rams,davis allen,Davis Allen,0.46,0.0
-Los Angeles Rams,desjuan johnson,Desjuan Johnson,0.0,0.192
-Los Angeles Rams,emmanuel forbes,Emmanuel Forbes,0.0,0.267
-Los Angeles Rams,jared verse,Jared Verse,0.0,0.225
-Los Angeles Rams,jaylen mccollough,Jaylen McCollough,0.0,0.442
+Los Angeles Rams,davante adams,Davante Adams,0.742,0.0
+Los Angeles Rams,davis allen,Davis Allen,0.425,0.0
+Los Angeles Rams,desjuan johnson,Desjuan Johnson,0.0,0.173
+Los Angeles Rams,emmanuel forbes,Emmanuel Forbes,0.0,0.26
+Los Angeles Rams,jaylen mccollough,Jaylen McCollough,0.0,0.385
 Los Angeles Rams,jaylen watson,Jaylen Watson,0.0,0.562
-Los Angeles Rams,jordan whittington,Jordan Whittington,0.175,0.0
-Los Angeles Rams,josaiah stewart,Josaiah Stewart,0.0,0.582
-Los Angeles Rams,josh wallace,Josh Wallace,0.0,0.4
-Los Angeles Rams,kamren curl,Kamren Curl,0.0,0.855
-Los Angeles Rams,kamren kinchens,Kamren Kinchens,0.0,0.345
+Los Angeles Rams,jordan whittington,Jordan Whittington,0.288,0.0
+Los Angeles Rams,josaiah stewart,Josaiah Stewart,0.0,0.63
+Los Angeles Rams,josh wallace,Josh Wallace,0.0,0.65
+Los Angeles Rams,kamren curl,Kamren Curl,0.0,0.862
+Los Angeles Rams,kamren kinchens,Kamren Kinchens,0.0,0.375
 Los Angeles Rams,kevin dotson,Kevin Dotson,0.99,0.0
-Los Angeles Rams,kobie turner,Kobie Turner,0.0,0.602
-Los Angeles Rams,konata mumpfield,Konata Mumpfield,0.478,0.0
-Los Angeles Rams,kyren williams,Kyren Williams,0.602,0.0
+Los Angeles Rams,kobie turner,Kobie Turner,0.0,0.662
+Los Angeles Rams,konata mumpfield,Konata Mumpfield,0.488,0.0
+Los Angeles Rams,kyren williams,Kyren Williams,0.682,0.0
+Los Angeles Rams,larrell murchison,Larrell Murchison,0.0,0.05
 Los Angeles Rams,matthew stafford,Matthew Stafford,0.96,0.0
+Los Angeles Rams,max klare,Max Klare,0.002,0.0
 Los Angeles Rams,myles garrett,Myles Garrett,0.0,0.155
-Los Angeles Rams,nathan landman,Nathan Landman,0.0,0.925
-Los Angeles Rams,omar speights,Omar Speights,0.0,0.532
-Los Angeles Rams,poona ford,Poona Ford,0.0,0.42
-Los Angeles Rams,puka nacua,Puka Nacua,0.372,0.0
+Los Angeles Rams,nathan landman,Nathan Landman,0.0,0.908
+Los Angeles Rams,omar speights,Omar Speights,0.0,0.448
+Los Angeles Rams,poona ford,Poona Ford,0.0,0.39
+Los Angeles Rams,puka nacua,Puka Nacua,0.4,0.0
 Los Angeles Rams,quentin lake,Quentin Lake,0.0,1.0
-Los Angeles Rams,roger mccreary,Roger McCreary,0.0,0.092
-Los Angeles Rams,ronnie rivers,Ronnie Rivers,0.06,0.0
+Los Angeles Rams,ronnie rivers,Ronnie Rivers,0.032,0.0
 Los Angeles Rams,shaun dolac,Shaun Dolac,0.0,0.072
 Los Angeles Rams,stetson bennett,Stetson Bennett,0.04,0.0
 Los Angeles Rams,steve avila,Steve Avila,1.0,0.0
-Los Angeles Rams,terrance ferguson,Terrance Ferguson,0.485,0.0
-Los Angeles Rams,trent mcduffie,Trent McDuffie,0.0,0.748
-Los Angeles Rams,troy reeder,Troy Reeder,0.0,0.008
-Los Angeles Rams,tutu atwell,Tutu Atwell,0.045,0.0
-Los Angeles Rams,ty hamilton,Ty Hamilton,0.0,0.145
-Los Angeles Rams,tyler davis,Tyler Davis,0.0,0.405
-Los Angeles Rams,tyler higbee,Tyler Higbee,0.342,0.0
+Los Angeles Rams,terrance ferguson,Terrance Ferguson,0.338,0.0
+Los Angeles Rams,trent mcduffie,Trent McDuffie,0.0,0.998
+Los Angeles Rams,tutu atwell,Tutu Atwell,0.103,0.0
+Los Angeles Rams,ty hamilton,Ty Hamilton,0.0,0.158
+Los Angeles Rams,tyler davis,Tyler Davis,0.0,0.388
+Los Angeles Rams,tyler higbee,Tyler Higbee,0.455,0.0
 Los Angeles Rams,warren mcclendon,Warren McClendon,1.0,0.0
-Los Angeles Rams,wesley bailey,Wesley Bailey,0.0,0.13
-Los Angeles Rams,xavier smith,Xavier Smith,0.318,0.0
-Los Angeles Chargers,akheem mesidor,Akheem Mesidor,0.0,0.372
-Los Angeles Chargers,alec ingold,Alec Ingold,0.31,0.0
-Los Angeles Chargers,benjamin stjuste,Benjamin St-Juste,0.0,0.085
-Los Angeles Chargers,bradley bozeman,Bradley Bozeman,0.25,0.0
+Los Angeles Rams,wesley bailey,Wesley Bailey,0.0,0.25
+Los Angeles Rams,xavier smith,Xavier Smith,0.28,0.0
+Los Angeles Chargers,akheem mesidor,Akheem Mesidor,0.0,0.48
+Los Angeles Chargers,alec ingold,Alec Ingold,0.397,0.0
 Los Angeles Chargers,brenen thompson,Brenen Thompson,0.09,0.0
-Los Angeles Chargers,bud dupree,Bud Dupree,0.0,0.212
-Los Angeles Chargers,cam hart,Cam Hart,0.0,0.765
+Los Angeles Chargers,bud dupree,Bud Dupree,0.0,0.268
+Los Angeles Chargers,cam hart,Cam Hart,0.0,0.862
 Los Angeles Chargers,charlie kolar,Charlie Kolar,0.292,0.0
-Los Angeles Chargers,cole strange,Cole Strange,0.71,0.0
-Los Angeles Chargers,daiyan henley,Daiyan Henley,0.0,0.898
+Los Angeles Chargers,cole strange,Cole Strange,0.96,0.0
+Los Angeles Chargers,daiyan henley,Daiyan Henley,0.0,0.878
 Los Angeles Chargers,dalvin tomlinson,Dalvin Tomlinson,0.0,0.232
-Los Angeles Chargers,dashawn hand,Da'Shawn Hand,0.0,0.155
 Los Angeles Chargers,david njoku,David Njoku,0.178,0.0
-Los Angeles Chargers,delshawn phillips,Del'Shawn Phillips,0.0,0.468
-Los Angeles Chargers,denzel perryman,Denzel Perryman,0.0,0.155
-Los Angeles Chargers,derius davis,Derius Davis,0.095,0.0
-Los Angeles Chargers,derwin james,Derwin James,0.0,0.958
-Los Angeles Chargers,donte jackson,Donte Jackson,0.0,0.498
-Los Angeles Chargers,elijah molden,Elijah Molden,0.0,0.255
-Los Angeles Chargers,genesis smith,Genesis Smith,0.0,0.392
-Los Angeles Chargers,hayden rucci,Hayden Rucci,0.102,0.0
-Los Angeles Chargers,jake slaughter,Jake Slaughter,0.75,0.0
-Los Angeles Chargers,jamaree caldwell,Jamaree Caldwell,0.0,0.565
-Los Angeles Chargers,jamaree salyer,Jamaree Salyer,0.25,0.0
-Los Angeles Chargers,joe alt,Joe Alt,0.75,0.0
-Los Angeles Chargers,justin eboigbe,Justin Eboigbe,0.0,0.53
+Los Angeles Chargers,deane leonard,Deane Leonard,0.0,0.038
+Los Angeles Chargers,delshawn phillips,Del'Shawn Phillips,0.0,0.63
+Los Angeles Chargers,derius davis,Derius Davis,0.088,0.0
+Los Angeles Chargers,derwin james,Derwin James,0.0,0.708
+Los Angeles Chargers,donte jackson,Donte Jackson,0.0,0.415
+Los Angeles Chargers,elijah molden,Elijah Molden,0.0,0.308
+Los Angeles Chargers,genesis smith,Genesis Smith,0.0,0.555
+Los Angeles Chargers,hayden rucci,Hayden Rucci,0.225,0.0
+Los Angeles Chargers,jacob spomer,Jacob Spomer,0.038,0.0
+Los Angeles Chargers,jake slaughter,Jake Slaughter,1.0,0.0
+Los Angeles Chargers,jamaree caldwell,Jamaree Caldwell,0.0,0.592
+Los Angeles Chargers,joe alt,Joe Alt,0.842,0.0
+Los Angeles Chargers,justin eboigbe,Justin Eboigbe,0.0,0.622
 Los Angeles Chargers,justin herbert,Justin Herbert,1.0,0.0
 Los Angeles Chargers,kayode awosika,Kayode Awosika,0.345,0.0
-Los Angeles Chargers,keaton mitchell,Keaton Mitchell,0.235,0.0
-Los Angeles Chargers,keenan allen,Keenan Allen,0.15,0.0
-Los Angeles Chargers,khalil mack,Khalil Mack,0.0,0.732
-Los Angeles Chargers,kimani vidal,Kimani Vidal,0.338,0.0
-Los Angeles Chargers,ladd mcconkey,Ladd McConkey,0.678,0.0
-Los Angeles Chargers,marquez valdesscantling,Marquez Valdes-Scantling,0.01,0.0
-Los Angeles Chargers,mekhi becton,Mekhi Becton,0.25,0.0
-Los Angeles Chargers,nick barrett,Nick Barrett,0.0,0.15
-Los Angeles Chargers,odafe oweh,Odafe Oweh,0.0,0.098
-Los Angeles Chargers,omarion hampton,Omarion Hampton,0.415,0.0
-Los Angeles Chargers,oronde gadsden,Oronde Gadsden II,0.41,0.0
-Los Angeles Chargers,otito ogbonnia,Otito Ogbonnia,0.0,0.082
-Los Angeles Chargers,patrick herbert,Patrick Herbert,0.002,0.0
-Los Angeles Chargers,quentin johnston,Quentin Johnston,0.808,0.0
-Los Angeles Chargers,rashawn slater,Rashawn Slater,0.75,0.0
-Los Angeles Chargers,rj mickens,R.J. Mickens,0.0,0.33
-Los Angeles Chargers,rodney shelley,Rodney Shelley,0.0,0.053
-Los Angeles Chargers,scott matlock,Scott Matlock,0.058,0.0
-Los Angeles Chargers,tarheeb still,Tarheeb Still,0.0,0.885
-Los Angeles Chargers,teair tart,Teair Tart,0.0,0.488
-Los Angeles Chargers,tony jefferson,Tony Jefferson,0.0,0.62
-Los Angeles Chargers,travis burke,Travis Burke,0.032,0.0
-Los Angeles Chargers,tre harris,Tre Harris,0.68,0.0
-Los Angeles Chargers,trevor penning,Trevor Penning,0.375,0.0
-Los Angeles Chargers,trey pipkins,Trey Pipkins,0.34,0.0
-Los Angeles Chargers,troy dye,Troy Dye,0.0,0.227
-Los Angeles Chargers,tucker fisk,Tucker Fisk,0.08,0.0
-Los Angeles Chargers,tuli tuipulotu,Tuli Tuipulotu,0.0,0.788
-Los Angeles Chargers,will dissly,Will Dissly,0.02,0.0
-Los Angeles Chargers,zion johnson,Zion Johnson,0.25,0.0
-Las Vegas Raiders,adam butler,Adam Butler,0.0,0.295
-Las Vegas Raiders,aidan oconnell,Aidan O'Connell,0.205,0.0
-Las Vegas Raiders,alex bachman,Alex Bachman,0.015,0.0
-Las Vegas Raiders,alex cappa,Alex Cappa,0.25,0.0
-Las Vegas Raiders,ashton jeanty,Ashton Jeanty,0.84,0.0
-Las Vegas Raiders,atonio mafi,Atonio Mafi,0.25,0.0
-Las Vegas Raiders,brock bowers,Brock Bowers,0.198,0.0
+Los Angeles Chargers,keaton mitchell,Keaton Mitchell,0.328,0.0
+Los Angeles Chargers,khalil mack,Khalil Mack,0.0,0.69
+Los Angeles Chargers,kimani vidal,Kimani Vidal,0.192,0.0
+Los Angeles Chargers,ladd mcconkey,Ladd McConkey,0.542,0.0
+Los Angeles Chargers,logan taylor,Logan Taylor,0.098,0.0
+Los Angeles Chargers,marlowe wax,Marlowe Wax,0.0,0.008
+Los Angeles Chargers,marquez valdesscantling,Marquez Valdes-Scantling,0.102,0.0
+Los Angeles Chargers,nick barrett,Nick Barrett,0.0,0.218
+Los Angeles Chargers,omarion hampton,Omarion Hampton,0.495,0.0
+Los Angeles Chargers,oronde gadsden,Oronde Gadsden II,0.435,0.0
+Los Angeles Chargers,patrick herbert,Patrick Herbert,0.017,0.0
+Los Angeles Chargers,quentin johnston,Quentin Johnston,0.802,0.0
+Los Angeles Chargers,rashawn slater,Rashawn Slater,0.962,0.0
+Los Angeles Chargers,rj mickens,R.J. Mickens,0.0,0.308
+Los Angeles Chargers,rodney shelley,Rodney Shelley,0.0,0.123
+Los Angeles Chargers,tarheeb still,Tarheeb Still,0.0,0.9
+Los Angeles Chargers,teair tart,Teair Tart,0.0,0.538
+Los Angeles Chargers,tony jefferson,Tony Jefferson,0.0,0.643
+Los Angeles Chargers,travis burke,Travis Burke,0.205,0.0
+Los Angeles Chargers,tre harris,Tre Harris,0.77,0.0
+Los Angeles Chargers,trevor penning,Trevor Penning,0.51,0.0
+Los Angeles Chargers,trey pipkins,Trey Pipkins,0.09,0.0
+Los Angeles Chargers,troy dye,Troy Dye,0.0,0.208
+Los Angeles Chargers,tuli tuipulotu,Tuli Tuipulotu,0.0,0.78
+Las Vegas Raiders,adam butler,Adam Butler,0.0,0.412
+Las Vegas Raiders,ashton jeanty,Ashton Jeanty,0.765,0.0
+Las Vegas Raiders,brock bowers,Brock Bowers,0.402,0.0
 Las Vegas Raiders,caleb rogers,Caleb Rogers,0.268,0.0
-Las Vegas Raiders,carter runyon,Carter Runyon,0.032,0.0
-Las Vegas Raiders,charles grant,Charles Grant,0.178,0.0
-Las Vegas Raiders,charles snowden,Charles Snowden,0.0,0.05
 Las Vegas Raiders,chris myarick,Chris Myarick,0.03,0.0
-Las Vegas Raiders,cody white,Cody White,0.12,0.0
-Las Vegas Raiders,connor heyward,Connor Heyward,0.26,0.0
-Las Vegas Raiders,dalton wagner,Dalton Wagner,0.008,0.0
-Las Vegas Raiders,dareke young,Dareke Young,0.128,0.0
-Las Vegas Raiders,darien porter,Darien Porter,0.0,0.405
-Las Vegas Raiders,darnay holmes,Darnay Holmes,0.0,0.078
-Las Vegas Raiders,decamerion richardson,Decamerion Richardson,0.0,0.05
+Las Vegas Raiders,cody white,Cody White,0.275,0.0
+Las Vegas Raiders,connor heyward,Connor Heyward,0.318,0.0
+Las Vegas Raiders,dareke young,Dareke Young,0.162,0.0
+Las Vegas Raiders,darien porter,Darien Porter,0.0,0.218
 Las Vegas Raiders,delmar glaze,Delmar Glaze,1.0,0.0
-Las Vegas Raiders,devin white,Devin White,0.0,0.222
-Las Vegas Raiders,donte thornton,Dont'e Thornton,0.032,0.0
-Las Vegas Raiders,dylan laube,Dylan Laube,0.085,0.0
-Las Vegas Raiders,elandon roberts,Elandon Roberts,0.0,0.112
+Las Vegas Raiders,dylan laube,Dylan Laube,0.105,0.0
 Las Vegas Raiders,eric stokes,Eric Stokes,0.0,1.0
-Las Vegas Raiders,folorunso fatukasi,Folorunso Fatukasi,0.0,0.288
-Las Vegas Raiders,greedy vance,Greedy Vance,0.0,0.085
-Las Vegas Raiders,hezekiah masses,Hezekiah Masses,0.0,0.48
-Las Vegas Raiders,ian thomas,Ian Thomas,0.385,0.0
-Las Vegas Raiders,isaiah polamao,Isaiah Pola-Mao,0.0,0.508
-Las Vegas Raiders,jack bech,Jack Bech,0.42,0.0
+Las Vegas Raiders,folorunso fatukasi,Folorunso Fatukasi,0.0,0.418
+Las Vegas Raiders,hezekiah masses,Hezekiah Masses,0.0,0.722
+Las Vegas Raiders,ian thomas,Ian Thomas,0.365,0.0
+Las Vegas Raiders,isaiah polamao,Isaiah Pola-Mao,0.0,0.39
+Las Vegas Raiders,jack bech,Jack Bech,0.275,0.0
 Las Vegas Raiders,jackson powersjohnson,Jackson Powers-Johnson,0.732,0.0
-Las Vegas Raiders,jahfari harvey,Jahfari Harvey,0.0,0.055
-Las Vegas Raiders,jalen nailor,Jalen Nailor,0.442,0.0
-Las Vegas Raiders,jamal adams,Jamal Adams,0.0,0.152
-Las Vegas Raiders,jamin davis,Jamin Davis,0.0,0.012
-Las Vegas Raiders,jeremy chinn,Jeremy Chinn,0.0,0.75
+Las Vegas Raiders,jalen nailor,Jalen Nailor,0.5,0.0
+Las Vegas Raiders,jeremy chinn,Jeremy Chinn,0.0,1.0
 Las Vegas Raiders,jermod mccoy,Jermod McCoy,0.0,0.065
-Las Vegas Raiders,jj pegues,JJ Pegues,0.0,0.09
-Las Vegas Raiders,jonah laulu,Jonah Laulu,0.0,0.425
-Las Vegas Raiders,kenny pickett,Kenny Pickett,0.045,0.0
-Las Vegas Raiders,kirk cousins,Kirk Cousins,0.75,0.0
-Las Vegas Raiders,kolton miller,Kolton Miller,0.75,0.0
-Las Vegas Raiders,kwity paye,Kwity Paye,0.0,0.428
-Las Vegas Raiders,lonnie johnson,Lonnie Johnson Jr.,0.0,0.222
-Las Vegas Raiders,malcolm koonce,Malcolm Koonce,0.0,0.525
-Las Vegas Raiders,malik benson,Malik Benson,0.073,0.0
-Las Vegas Raiders,maxx crosby,Maxx Crosby,0.0,0.638
-Las Vegas Raiders,michael mayer,Michael Mayer,0.867,0.0
-Las Vegas Raiders,mike washington,Mike Washington Jr.,0.135,0.0
-Las Vegas Raiders,nakobe dean,Nakobe Dean,0.0,0.735
-Las Vegas Raiders,patrick johnson,Patrick Johnson,0.0,0.05
-Las Vegas Raiders,quay walker,Quay Walker,0.0,0.75
-Las Vegas Raiders,shedrick jackson,Shedrick Jackson,0.02,0.0
-Las Vegas Raiders,spencer burford,Spencer Burford,0.75,0.0
-Las Vegas Raiders,stone forsythe,Stone Forsythe,0.11,0.0
-Las Vegas Raiders,taron johnson,Taron Johnson,0.0,0.632
-Las Vegas Raiders,thomas booker,Thomas Booker,0.0,0.432
-Las Vegas Raiders,tommy eichenberg,Tommy Eichenberg,0.0,0.202
-Las Vegas Raiders,tonka hemingway,Tonka Hemingway,0.0,0.565
-Las Vegas Raiders,tre tucker,Tre Tucker,0.712,0.0
-Las Vegas Raiders,trey zuhn,Trey Zuhn,0.025,0.0
-Las Vegas Raiders,treydan stukes,Treydan Stukes,0.0,0.365
-Las Vegas Raiders,tristin mccollum,Tristin McCollum,0.0,0.168
-Las Vegas Raiders,tyler linderbaum,Tyler Linderbaum,0.75,0.0
-Las Vegas Raiders,tyler lockett,Tyler Lockett,0.13,0.0
-Las Vegas Raiders,tyree wilson,Tyree Wilson,0.0,0.165
-Las Vegas Raiders,zamir white,Zamir White,0.008,0.0
+Las Vegas Raiders,jj pegues,JJ Pegues,0.0,0.03
+Las Vegas Raiders,jonah laulu,Jonah Laulu,0.0,0.23
+Las Vegas Raiders,kirk cousins,Kirk Cousins,1.0,0.0
+Las Vegas Raiders,kolton miller,Kolton Miller,1.0,0.0
+Las Vegas Raiders,kwity paye,Kwity Paye,0.0,0.572
+Las Vegas Raiders,malcolm koonce,Malcolm Koonce,0.0,0.455
+Las Vegas Raiders,malik benson,Malik Benson,0.092,0.0
+Las Vegas Raiders,maxx crosby,Maxx Crosby,0.0,0.867
+Las Vegas Raiders,michael mayer,Michael Mayer,0.85,0.0
+Las Vegas Raiders,mike washington,Mike Washington Jr.,0.188,0.0
+Las Vegas Raiders,nakobe dean,Nakobe Dean,0.0,0.985
+Las Vegas Raiders,patrick johnson,Patrick Johnson,0.0,0.062
+Las Vegas Raiders,quay walker,Quay Walker,0.0,1.0
+Las Vegas Raiders,spencer burford,Spencer Burford,1.0,0.0
+Las Vegas Raiders,taron johnson,Taron Johnson,0.0,0.828
+Las Vegas Raiders,thomas booker,Thomas Booker,0.0,0.328
+Las Vegas Raiders,tommy eichenberg,Tommy Eichenberg,0.0,0.188
+Las Vegas Raiders,tonka hemingway,Tonka Hemingway,0.0,0.622
+Las Vegas Raiders,tre tucker,Tre Tucker,0.635,0.0
+Las Vegas Raiders,trey zuhn,Trey Zuhn,0.04,0.0
+Las Vegas Raiders,treydan stukes,Treydan Stukes,0.0,0.615
+Las Vegas Raiders,tyler linderbaum,Tyler Linderbaum,1.0,0.0
 Miami Dolphins,aaron brewer,Aaron Brewer,1.0,0.0
-Miami Dolphins,aj green,A.J. Green,0.0,0.035
-Miami Dolphins,alec ingold,Alec Ingold,0.138,0.0
-Miami Dolphins,ashtyn davis,Ashtyn Davis,0.0,0.172
-Miami Dolphins,austin jackson,Austin Jackson,0.75,0.0
-Miami Dolphins,bradley chubb,Bradley Chubb,0.0,0.158
-Miami Dolphins,caedan wallace,Caedan Wallace,0.03,0.0
+Miami Dolphins,austin jackson,Austin Jackson,1.0,0.0
+Miami Dolphins,caedan wallace,Caedan Wallace,0.038,0.0
 Miami Dolphins,caleb douglas,Caleb Douglas,0.442,0.0
-Miami Dolphins,cameron goode,Cameron Goode,0.0,0.102
-Miami Dolphins,cedrick wilson,Cedrick Wilson Jr.,0.16,0.0
-Miami Dolphins,chop robinson,Chop Robinson,0.0,0.332
-Miami Dolphins,chris bell,Chris Bell,0.41,0.0
-Miami Dolphins,chris johnson,Chris Johnson,0.0,0.702
+Miami Dolphins,chop robinson,Chop Robinson,0.0,0.492
+Miami Dolphins,chris bell,Chris Bell,0.615,0.0
+Miami Dolphins,chris johnson,Chris Johnson,0.0,0.952
 Miami Dolphins,clelin ferrell,Clelin Ferrell,0.0,0.178
-Miami Dolphins,cole strange,Cole Strange,0.25,0.0
-Miami Dolphins,daniel brunskill,Daniel Brunskill,0.058,0.0
-Miami Dolphins,dante trader,Dante Trader,0.0,0.718
-Miami Dolphins,derrick mclendon,Derrick McLendon,0.0,0.08
+Miami Dolphins,dante trader,Dante Trader,0.0,0.728
 Miami Dolphins,devon achane,De'Von Achane,0.418,0.0
-Miami Dolphins,dj herman,DJ Herman,0.232,0.0
-Miami Dolphins,ethan bonner,Ethan Bonner,0.0,0.035
-Miami Dolphins,greg dulcich,Greg Dulcich,0.65,0.0
-Miami Dolphins,ifeatu melifonwu,Ifeatu Melifonwu,0.0,0.172
-Miami Dolphins,jack jones,Jack Jones,0.0,0.202
+Miami Dolphins,dj herman,DJ Herman,0.36,0.0
+Miami Dolphins,greg dulcich,Greg Dulcich,0.648,0.0
 Miami Dolphins,jackson woodard,Jackson Woodard,0.0,0.04
-Miami Dolphins,jacob rodriguez,Jacob Rodriguez,0.0,0.73
-Miami Dolphins,jalen tolbert,Jalen Tolbert,0.04,0.0
-Miami Dolphins,jason marshall,Jason Marshall,0.0,0.742
-Miami Dolphins,jaylen wright,Jaylen Wright,0.145,0.0
-Miami Dolphins,jeff wilson,Jeff Wilson,0.028,0.0
+Miami Dolphins,jacob rodriguez,Jacob Rodriguez,0.0,0.98
+Miami Dolphins,jalen tolbert,Jalen Tolbert,0.078,0.0
+Miami Dolphins,jason marshall,Jason Marshall,0.0,0.83
+Miami Dolphins,jaylen wright,Jaylen Wright,0.108,0.0
 Miami Dolphins,jonah savaiinaea,Jonah Savaiinaea,1.0,0.0
-Miami Dolphins,jordan phillips,Jordan Phillips,0.0,0.628
-Miami Dolphins,jordyn brooks,Jordyn Brooks,0.0,0.88
-Miami Dolphins,joshua uche,Joshua Uche,0.0,0.435
-Miami Dolphins,julian hill,Julian Hill,0.152,0.0
-Miami Dolphins,julius brents,Julius Brents,0.0,0.422
+Miami Dolphins,jordan phillips,Jordan Phillips,0.0,0.615
+Miami Dolphins,jordyn brooks,Jordyn Brooks,0.0,0.96
+Miami Dolphins,joshua uche,Joshua Uche,0.0,0.612
+Miami Dolphins,julius brents,Julius Brents,0.0,0.642
 Miami Dolphins,julius wood,Julius Wood,0.0,0.08
-Miami Dolphins,kadyn proctor,Kadyn Proctor,0.75,0.0
+Miami Dolphins,kadyn proctor,Kadyn Proctor,1.0,0.0
 Miami Dolphins,keith cooper,Keith Cooper Jr.,0.0,0.122
-Miami Dolphins,kenneth grant,Kenneth Grant,0.0,0.172
-Miami Dolphins,kevin coleman,Kevin Coleman,0.342,0.0
-Miami Dolphins,kj britt,K.J. Britt,0.0,0.06
+Miami Dolphins,kevin coleman,Kevin Coleman,0.47,0.0
 Miami Dolphins,kyle louis,Kyle Louis,0.0,0.01
-Miami Dolphins,larry borom,Larry Borom,0.25,0.0
 Miami Dolphins,liam anderson,Liam Anderson,0.0,0.02
-Miami Dolphins,malik herring,Malik Herring,0.0,0.32
-Miami Dolphins,malik washington,Malik Washington,0.818,0.0
-Miami Dolphins,malik willis,Malik Willis,0.75,0.0
-Miami Dolphins,matthew butler,Matthew Butler,0.0,0.078
+Miami Dolphins,malik herring,Malik Herring,0.0,0.41
+Miami Dolphins,malik washington,Malik Washington,0.86,0.0
+Miami Dolphins,malik willis,Malik Willis,1.0,0.0
 Miami Dolphins,max llewellyn,Max Llewellyn,0.0,0.01
-Miami Dolphins,michael taaffe,Michael Taaffe,0.0,0.65
-Miami Dolphins,nick westbrookikhine,Nick Westbrook-Ikhine,0.028,0.0
-Miami Dolphins,ollie gordon,Ollie Gordon,0.365,0.0
+Miami Dolphins,mazi smith,Mazi Smith,0.0,0.03
+Miami Dolphins,michael taaffe,Michael Taaffe,0.0,0.9
+Miami Dolphins,ollie gordon,Ollie Gordon,0.415,0.0
 Miami Dolphins,patrick paul,Patrick Paul,1.0,0.0
-Miami Dolphins,quinn ewers,Quinn Ewers,0.238,0.0
-Miami Dolphins,quinton bell,Quinton Bell,0.0,0.135
-Miami Dolphins,rasul douglas,Rasul Douglas,0.0,0.215
 Miami Dolphins,robert beal,Robert Beal,0.0,0.148
-Miami Dolphins,ryan miller,Ryan Miller,0.085,0.0
-Miami Dolphins,tahj washington,Tahj Washington,0.095,0.0
-Miami Dolphins,theo wease,Theo Wease,0.085,0.0
-Miami Dolphins,tyrel dodson,Tyrel Dodson,0.0,0.19
-Miami Dolphins,will kacmarek,Will Kacmarek,0.282,0.0
-Miami Dolphins,willie gay,Willie Gay Jr.,0.0,0.495
-Miami Dolphins,zach sieler,Zach Sieler,0.0,0.712
-Miami Dolphins,zach wilson,Zach Wilson,0.012,0.0
-Miami Dolphins,zayne anderson,Zayne Anderson,0.0,0.258
-Miami Dolphins,zeek biggers,Zeek Biggers,0.0,0.548
-Minnesota Vikings,aaron jones,Aaron Jones,0.518,0.0
-Minnesota Vikings,andrew van ginkel,Andrew Van Ginkel,0.0,0.8
-Minnesota Vikings,ben sims,Ben Sims,0.085,0.0
-Minnesota Vikings,ben yurosek,Ben Yurosek,0.098,0.0
-Minnesota Vikings,blake brandel,Blake Brandel,0.782,0.0
-Minnesota Vikings,blake cashman,Blake Cashman,0.0,0.925
-Minnesota Vikings,bo richter,Bo Richter,0.0,0.03
-Minnesota Vikings,brian oneill,Brian O'Neill,0.968,0.0
-Minnesota Vikings,byron murphy,Byron Murphy,0.0,0.99
-Minnesota Vikings,caleb banks,Caleb Banks,0.0,0.225
+Miami Dolphins,rodney mcgraw,Rodney McGraw,0.0,0.038
+Miami Dolphins,ryan miller,Ryan Miller,0.11,0.0
+Miami Dolphins,will kacmarek,Will Kacmarek,0.438,0.0
+Miami Dolphins,willie gay,Willie Gay Jr.,0.0,0.502
+Miami Dolphins,zach sieler,Zach Sieler,0.0,0.748
+Miami Dolphins,zayne anderson,Zayne Anderson,0.0,0.35
+Miami Dolphins,zeek biggers,Zeek Biggers,0.0,0.598
+Minnesota Vikings,aaron jones,Aaron Jones,0.7,0.0
+Minnesota Vikings,andrew van ginkel,Andrew Van Ginkel,0.0,0.825
+Minnesota Vikings,blake brandel,Blake Brandel,1.0,0.0
+Minnesota Vikings,blake cashman,Blake Cashman,0.0,0.948
+Minnesota Vikings,brian oneill,Brian O'Neill,1.0,0.0
+Minnesota Vikings,byron murphy,Byron Murphy,0.0,0.952
+Minnesota Vikings,caleb banks,Caleb Banks,0.0,0.295
+Minnesota Vikings,caleb tiernan,Caleb Tiernan,0.025,0.0
 Minnesota Vikings,carson wentz,Carson Wentz,0.458,0.0
 Minnesota Vikings,charles demmings,Charles Demmings,0.0,0.008
-Minnesota Vikings,chaz chambliss,Chaz Chambliss,0.0,0.01
-Minnesota Vikings,christian darrisaw,Christian Darrisaw,0.75,0.0
-Minnesota Vikings,cj ham,C.J. Ham,0.078,0.0
-Minnesota Vikings,dallas turner,Dallas Turner,0.0,0.815
-Minnesota Vikings,deejay dallas,DeeJay Dallas,0.098,0.0
-Minnesota Vikings,demond claiborne,Demond Claiborne,0.022,0.0
-Minnesota Vikings,domonique orange,Domonique Orange,0.0,0.208
-Minnesota Vikings,donovan jackson,Donovan Jackson,1.0,0.0
-Minnesota Vikings,eric wilson,Eric Wilson,0.0,0.93
-Minnesota Vikings,fabian moreau,Fabian Moreau,0.0,0.03
-Minnesota Vikings,gavin bartholomew,Gavin Bartholomew,0.018,0.0
-Minnesota Vikings,harrison smith,Harrison Smith,0.0,0.5
-Minnesota Vikings,isaiah rodgers,Isaiah Rodgers,0.0,0.978
-Minnesota Vikings,ivan pace,Ivan Pace,0.0,0.202
+Minnesota Vikings,christian darrisaw,Christian Darrisaw,0.885,0.0
+Minnesota Vikings,dallas turner,Dallas Turner,0.0,0.845
+Minnesota Vikings,deejay dallas,DeeJay Dallas,0.135,0.0
+Minnesota Vikings,demond claiborne,Demond Claiborne,0.052,0.0
+Minnesota Vikings,domonique orange,Domonique Orange,0.0,0.298
+Minnesota Vikings,donovan jackson,Donovan Jackson,0.772,0.0
+Minnesota Vikings,eric wilson,Eric Wilson,0.0,0.94
+Minnesota Vikings,gavin bartholomew,Gavin Bartholomew,0.073,0.0
+Minnesota Vikings,harrison smith,Harrison Smith,0.0,0.465
+Minnesota Vikings,isaiah rodgers,Isaiah Rodgers,0.0,0.945
+Minnesota Vikings,ivan pace,Ivan Pace,0.0,0.175
 Minnesota Vikings,jacob thomas,Jacob Thomas,0.0,0.068
-Minnesota Vikings,jake golday,Jake Golday,0.0,0.008
-Minnesota Vikings,jalen nailor,Jalen Nailor,0.188,0.0
-Minnesota Vikings,jalen redmond,Jalen Redmond,0.0,0.732
-Minnesota Vikings,james pierre,James Pierre,0.0,0.275
-Minnesota Vikings,jauan jennings,Jauan Jennings,0.32,0.0
-Minnesota Vikings,javon hargrave,Javon Hargrave,0.0,0.128
-Minnesota Vikings,jay ward,Jay Ward,0.0,0.228
-Minnesota Vikings,jj mccarthy,J.J. McCarthy,0.16,0.0
-Minnesota Vikings,jonathan allen,Jonathan Allen,0.0,0.132
-Minnesota Vikings,jordan addison,Jordan Addison,0.905,0.0
-Minnesota Vikings,jordan mason,Jordan Mason,0.213,0.0
-Minnesota Vikings,josh metellus,Josh Metellus,0.0,0.75
-Minnesota Vikings,josh oliver,Josh Oliver,0.53,0.0
-Minnesota Vikings,justin jefferson,Justin Jefferson,0.7,0.0
-Minnesota Vikings,justin skule,Justin Skule,0.25,0.0
-Minnesota Vikings,kyle van noy,Kyle Van Noy,0.0,0.215
-Minnesota Vikings,kyler murray,Kyler Murray,0.292,0.0
-Minnesota Vikings,levi drake rodriguez,Levi Drake Rodriguez,0.0,0.572
-Minnesota Vikings,max bredeson,Max Bredeson,0.218,0.0
-Minnesota Vikings,max brosmer,Max Brosmer,0.09,0.0
-Minnesota Vikings,michael jurgens,Michael Jurgens,0.25,0.0
-Minnesota Vikings,myles price,Myles Price,0.155,0.0
-Minnesota Vikings,tai felton,Tai Felton,0.18,0.0
-Minnesota Vikings,taki taimani,Taki Taimani,0.0,0.092
-Minnesota Vikings,theo jackson,Theo Jackson,0.0,0.652
-Minnesota Vikings,tj hockenson,T.J. Hockenson,0.55,0.0
-Minnesota Vikings,ty chandler,Ty Chandler,0.108,0.0
-Minnesota Vikings,tyler batty,Tyler Batty,0.0,0.035
-Minnesota Vikings,tyrion ingramdawkins,Tyrion Ingram-Dawkins,0.0,0.468
+Minnesota Vikings,jake golday,Jake Golday,0.0,0.04
+Minnesota Vikings,jalen redmond,Jalen Redmond,0.0,0.798
+Minnesota Vikings,james pierre,James Pierre,0.0,0.352
+Minnesota Vikings,jauan jennings,Jauan Jennings,0.558,0.0
+Minnesota Vikings,jay ward,Jay Ward,0.0,0.008
+Minnesota Vikings,jeshaun jones,Jeshaun Jones,0.01,0.0
+Minnesota Vikings,joe huber,Joe Huber,0.228,0.0
+Minnesota Vikings,jordan addison,Jordan Addison,0.912,0.0
+Minnesota Vikings,jordan mason,Jordan Mason,0.112,0.0
+Minnesota Vikings,josh metellus,Josh Metellus,0.0,1.0
+Minnesota Vikings,josh oliver,Josh Oliver,0.415,0.0
+Minnesota Vikings,justin jefferson,Justin Jefferson,0.51,0.0
+Minnesota Vikings,kyle van noy,Kyle Van Noy,0.0,0.35
+Minnesota Vikings,kyler murray,Kyler Murray,0.542,0.0
+Minnesota Vikings,levi drake rodriguez,Levi Drake Rodriguez,0.0,0.558
+Minnesota Vikings,max bredeson,Max Bredeson,0.262,0.0
+Minnesota Vikings,myles price,Myles Price,0.188,0.0
+Minnesota Vikings,ryan van demark,Ryan Van Demark,0.115,0.0
+Minnesota Vikings,tai felton,Tai Felton,0.295,0.0
+Minnesota Vikings,theo jackson,Theo Jackson,0.0,0.62
+Minnesota Vikings,tj hockenson,T.J. Hockenson,0.758,0.0
+Minnesota Vikings,tyrion ingramdawkins,Tyrion Ingram-Dawkins,0.0,0.495
 Minnesota Vikings,will fries,Will Fries,1.0,0.0
-Minnesota Vikings,zavier scott,Zavier Scott,0.022,0.0
+Minnesota Vikings,zemaiah vaughn,Zemaiah Vaughn,0.0,0.02
 New England Patriots,aj brown,A.J. Brown,0.11,0.0
-New England Patriots,alijah veratucker,Alijah Vera-Tucker,0.75,0.0
-New England Patriots,anfernee jennings,Anfernee Jennings,0.0,0.128
-New England Patriots,austin hooper,Austin Hooper,0.11,0.0
-New England Patriots,ben brown,Ben Brown,0.048,0.0
-New England Patriots,caleb lomu,Caleb Lomu,0.12,0.0
-New England Patriots,cameron latu,Cameron Latu,0.098,0.0
-New England Patriots,carlton davis,Carlton Davis,0.0,0.698
-New England Patriots,chad muma,Chad Muma,0.0,0.015
+New England Patriots,alijah veratucker,Alijah Vera-Tucker,1.0,0.0
+New England Patriots,ben brown,Ben Brown,0.298,0.0
+New England Patriots,caleb lomu,Caleb Lomu,0.185,0.0
+New England Patriots,cameron latu,Cameron Latu,0.105,0.0
+New England Patriots,carlton davis,Carlton Davis,0.0,0.712
 New England Patriots,channing canada,Channing Canada,0.0,0.02
-New England Patriots,charles woods,Charles Woods,0.0,0.268
-New England Patriots,christian barmore,Christian Barmore,0.0,0.568
-New England Patriots,christian elliss,Christian Elliss,0.0,0.84
-New England Patriots,christian gonzalez,Christian Gonzalez,0.0,0.95
-New England Patriots,corey kiner,Corey Kiner,0.078,0.0
-New England Patriots,cory durden,Cory Durden,0.0,0.525
-New England Patriots,craig woodson,Craig Woodson,0.0,0.64
-New England Patriots,daquan jones,DaQuan Jones,0.0,0.128
-New England Patriots,darius muasau,Darius Muasau,0.0,0.032
-New England Patriots,dell pettus,Dell Pettus,0.0,0.12
-New England Patriots,demario douglas,DeMario Douglas,0.522,0.0
+New England Patriots,charles woods,Charles Woods,0.0,0.415
+New England Patriots,christian barmore,Christian Barmore,0.0,0.39
+New England Patriots,christian elliss,Christian Elliss,0.0,0.975
+New England Patriots,christian gonzalez,Christian Gonzalez,0.0,0.71
+New England Patriots,corey kiner,Corey Kiner,0.085,0.0
+New England Patriots,cory durden,Cory Durden,0.0,0.538
+New England Patriots,craig woodson,Craig Woodson,0.0,0.665
+New England Patriots,daquan jones,DaQuan Jones,0.0,0.205
+New England Patriots,darius muasau,Darius Muasau,0.0,0.068
+New England Patriots,dell pettus,Dell Pettus,0.0,0.1
+New England Patriots,demario douglas,DeMario Douglas,0.535,0.0
 New England Patriots,drake maye,Drake Maye,0.952,0.0
-New England Patriots,dremont jones,Dre'Mont Jones,0.0,0.275
-New England Patriots,efton chism,Efton Chism,0.108,0.0
-New England Patriots,eli raridon,Eli Raridon,0.185,0.0
-New England Patriots,elijah ponder,Elijah Ponder,0.0,0.665
+New England Patriots,dremont jones,Dre'Mont Jones,0.0,0.462
+New England Patriots,efton chism,Efton Chism,0.22,0.0
+New England Patriots,eli raridon,Eli Raridon,0.33,0.0
+New England Patriots,elijah ponder,Elijah Ponder,0.0,0.765
 New England Patriots,erick hunter,Erick Hunter,0.0,0.012
-New England Patriots,gabe jacas,Gabe Jacas,0.0,0.468
-New England Patriots,garrett bradbury,Garrett Bradbury,0.25,0.0
+New England Patriots,gabe jacas,Gabe Jacas,0.0,0.572
 New England Patriots,greg van roten,Greg Van Roten,0.277,0.0
-New England Patriots,harold landry,Harold Landry,0.0,0.048
-New England Patriots,hunter henry,Hunter Henry,0.772,0.0
-New England Patriots,jack gibbens,Jack Gibbens,0.0,0.108
-New England Patriots,jack westover,Jack Westover,0.018,0.0
-New England Patriots,jahlani tavai,Jahlani Tavai,0.0,0.072
+New England Patriots,hunter henry,Hunter Henry,0.752,0.0
 New England Patriots,jared wilson,Jared Wilson,0.952,0.0
 New England Patriots,jaylen reed,Jaylen Reed,0.0,0.31
-New England Patriots,jaylinn hawkins,Jaylinn Hawkins,0.0,0.248
 New England Patriots,jeremiah pharms,Jeremiah Pharms,0.0,0.052
 New England Patriots,jose ramirez,Jose Ramirez,0.0,0.032
-New England Patriots,joshua farmer,Joshua Farmer,0.0,0.228
+New England Patriots,joshua farmer,Joshua Farmer,0.0,0.295
 New England Patriots,karon prunty,Karon Prunty,0.0,0.012
-New England Patriots,kayshon boutte,Kayshon Boutte,0.182,0.0
-New England Patriots,kevin byard,Kevin Byard,0.0,0.738
-New England Patriots,khyiris tonga,Khyiris Tonga,0.0,0.1
-New England Patriots,klavon chaisson,K'Lavon Chaisson,0.0,0.19
-New England Patriots,kyle williams,Kyle Williams,0.24,0.0
+New England Patriots,kevin byard,Kevin Byard,0.0,0.988
+New England Patriots,kindle vildor,Kindle Vildor,0.0,0.035
+New England Patriots,kyle williams,Kyle Williams,0.242,0.0
 New England Patriots,lan larison,Lan Larison,0.01,0.0
-New England Patriots,leonard taylor,Leonard Taylor,0.0,0.098
-New England Patriots,mack hollins,Mack Hollins,0.722,0.0
-New England Patriots,marcus jones,Marcus Jones,0.0,0.648
-New England Patriots,michael onwenu,Michael Onwenu,0.568,0.0
+New England Patriots,leonard taylor,Leonard Taylor,0.0,0.12
+New England Patriots,mack hollins,Mack Hollins,0.645,0.0
+New England Patriots,marcus jones,Marcus Jones,0.0,0.762
+New England Patriots,michael onwenu,Michael Onwenu,0.318,0.0
 New England Patriots,mike brown,Mike Brown,0.0,0.048
-New England Patriots,milton williams,Milton Williams,0.0,0.66
+New England Patriots,milton williams,Milton Williams,0.0,0.682
 New England Patriots,morgan moses,Morgan Moses,0.903,0.0
 New England Patriots,namdi obiazor,Namdi Obiazor,0.0,0.012
 New England Patriots,quintayvious hutchins,Quintayvious Hutchins,0.0,0.058
-New England Patriots,reggie gilliam,Reggie Gilliam,0.167,0.0
-New England Patriots,rhamondre stevenson,Rhamondre Stevenson,0.59,0.0
+New England Patriots,reggie gilliam,Reggie Gilliam,0.222,0.0
+New England Patriots,rhamondre stevenson,Rhamondre Stevenson,0.598,0.0
 New England Patriots,robert spillane,Robert Spillane,0.0,0.988
-New England Patriots,romeo doubs,Romeo Doubs,0.49,0.0
-New England Patriots,stefon diggs,Stefon Diggs,0.158,0.0
+New England Patriots,romeo doubs,Romeo Doubs,0.65,0.0
 New England Patriots,tanner arkin,Tanner Arkin,0.06,0.0
-New England Patriots,thayer munford,Thayer Munford,0.002,0.0
 New England Patriots,tommy devito,Tommy DeVito,0.048,0.0
-New England Patriots,treveyon henderson,TreVeyon Henderson,0.34,0.0
+New England Patriots,treveyon henderson,TreVeyon Henderson,0.335,0.0
 New England Patriots,walter rouse,Walter Rouse,0.162,0.0
 New England Patriots,will campbell,Will Campbell,1.0,0.0
-New Orleans Saints,alontae taylor,Alontae Taylor,0.0,0.25
-New Orleans Saints,alvin kamara,Alvin Kamara,0.152,0.0
+New Orleans Saints,alvin kamara,Alvin Kamara,0.248,0.0
 New Orleans Saints,anfernee jennings,Anfernee Jennings,0.0,0.195
-New Orleans Saints,asim richards,Asim Richards,0.558,0.0
-New Orleans Saints,audric estime,Audric Estime,0.21,0.0
-New Orleans Saints,barion brown,Barion Brown,0.028,0.0
-New Orleans Saints,bryce lance,Bryce Lance,0.55,0.0
-New Orleans Saints,cameron jordan,Cameron Jordan,0.0,0.408
-New Orleans Saints,carl granderson,Carl Granderson,0.0,0.665
+New Orleans Saints,asim richards,Asim Richards,0.602,0.0
+New Orleans Saints,barion brown,Barion Brown,0.038,0.0
+New Orleans Saints,bryce lance,Bryce Lance,0.762,0.0
+New Orleans Saints,cameron jordan,Cameron Jordan,0.0,0.388
+New Orleans Saints,carl granderson,Carl Granderson,0.0,0.488
 New Orleans Saints,cesar ruiz,Cesar Ruiz,1.0,0.0
-New Orleans Saints,chase young,Chase Young,0.0,0.748
-New Orleans Saints,chris olave,Chris Olave,0.635,0.0
-New Orleans Saints,chris rumph,Chris Rumph,0.0,0.048
+New Orleans Saints,chase young,Chase Young,0.0,0.72
+New Orleans Saints,chris olave,Chris Olave,0.85,0.0
+New Orleans Saints,chris rumph,Chris Rumph,0.0,0.03
 New Orleans Saints,christen miller,Christen Miller,0.0,0.08
-New Orleans Saints,cj donaldson,CJ Donaldson,0.155,0.0
-New Orleans Saints,colby wooden,Colby Wooden,0.0,0.202
-New Orleans Saints,danny stutsman,Danny Stutsman,0.0,0.375
-New Orleans Saints,dante pettis,Dante Pettis,0.19,0.0
-New Orleans Saints,david edwards,David Edwards,0.75,0.0
-New Orleans Saints,davon godchaux,Davon Godchaux,0.0,0.328
-New Orleans Saints,demario davis,Demario Davis,0.0,0.25
-New Orleans Saints,devaughn vele,Devaughn Vele,0.688,0.0
-New Orleans Saints,dillon radunz,Dillon Radunz,0.25,0.0
-New Orleans Saints,erik mccoy,Erik McCoy,0.75,0.0
-New Orleans Saints,evan hull,Evan Hull,0.03,0.0
-New Orleans Saints,fadil diggs,Fadil Diggs,0.0,0.008
-New Orleans Saints,isaac yiadom,Isaac Yiadom,0.0,0.015
-New Orleans Saints,john ridgeway,John Ridgeway,0.0,0.095
-New Orleans Saints,jonah williams,Jonah Williams,0.0,0.175
-New Orleans Saints,jonas sanker,Jonas Sanker,0.0,0.72
-New Orleans Saints,jonathan bullard,Jonathan Bullard,0.0,0.062
-New Orleans Saints,jordan howden,Jordan Howden,0.0,0.02
-New Orleans Saints,julian blackmon,Julian Blackmon,0.0,0.75
+New Orleans Saints,cj donaldson,CJ Donaldson,0.25,0.0
+New Orleans Saints,colby wooden,Colby Wooden,0.0,0.3
+New Orleans Saints,danny stutsman,Danny Stutsman,0.0,0.502
+New Orleans Saints,david edwards,David Edwards,1.0,0.0
+New Orleans Saints,davon godchaux,Davon Godchaux,0.0,0.408
+New Orleans Saints,devaughn vele,Devaughn Vele,0.91,0.0
+New Orleans Saints,erik mccoy,Erik McCoy,1.0,0.0
+New Orleans Saints,fadil diggs,Fadil Diggs,0.0,0.08
+New Orleans Saints,john ridgeway,John Ridgeway,0.0,0.048
+New Orleans Saints,jonas sanker,Jonas Sanker,0.0,0.63
+New Orleans Saints,jordan howden,Jordan Howden,0.0,0.012
+New Orleans Saints,julian blackmon,Julian Blackmon,0.0,1.0
 New Orleans Saints,justin reid,Justin Reid,0.0,1.0
-New Orleans Saints,juwan johnson,Juwan Johnson,0.685,0.0
+New Orleans Saints,juwan johnson,Juwan Johnson,0.692,0.0
 New Orleans Saints,kaden elliss,Kaden Elliss,0.0,0.75
-New Orleans Saints,kelvin banks,Kelvin Banks,0.45,0.0
-New Orleans Saints,kendre miller,Kendre Miller,0.12,0.0
-New Orleans Saints,kevin austin,Kevin Austin,0.31,0.0
-New Orleans Saints,khristian boyd,Khristian Boyd,0.0,0.27
+New Orleans Saints,kelvin banks,Kelvin Banks,0.397,0.0
+New Orleans Saints,kendre miller,Kendre Miller,0.185,0.0
+New Orleans Saints,kevin austin,Kevin Austin,0.098,0.0
+New Orleans Saints,khristian boyd,Khristian Boyd,0.0,0.288
 New Orleans Saints,koolaid mckinstry,Kool-Aid McKinstry,0.0,1.0
-New Orleans Saints,luke fortner,Luke Fortner,0.25,0.0
 New Orleans Saints,martin emerson,Martin Emerson,0.0,0.06
-New Orleans Saints,moliki matavao,Moliki Matavao,0.088,0.0
-New Orleans Saints,nathan shepherd,Nathan Shepherd,0.0,0.518
+New Orleans Saints,nathan shepherd,Nathan Shepherd,0.0,0.662
 New Orleans Saints,noah fant,Noah Fant,0.355,0.0
-New Orleans Saints,nyheim hines,Nyheim Hines,0.002,0.0
-New Orleans Saints,oscar delp,Oscar Delp,0.08,0.0
-New Orleans Saints,pete werner,Pete Werner,0.0,0.55
-New Orleans Saints,quincy riley,Quincy Riley,0.0,0.912
-New Orleans Saints,ronnie bell,Ronnie Bell,0.132,0.0
-New Orleans Saints,samori toure,Samori Toure,0.038,0.0
+New Orleans Saints,oscar delp,Oscar Delp,0.16,0.0
+New Orleans Saints,pete werner,Pete Werner,0.0,0.622
+New Orleans Saints,quincy riley,Quincy Riley,0.0,0.94
 New Orleans Saints,taliese fuaga,Taliese Fuaga,1.0,0.0
-New Orleans Saints,taysom hill,Taysom Hill,0.085,0.0
-New Orleans Saints,terrell burgess,Terrell Burgess,0.0,0.015
 New Orleans Saints,travis etienne,Travis Etienne,0.378,0.0
-New Orleans Saints,treyton welch,Treyton Welch,0.07,0.0
+New Orleans Saints,treyton welch,Treyton Welch,0.068,0.0
 New Orleans Saints,tyler shough,Tyler Shough,1.0,0.0
-New Orleans Saints,tyree wilson,Tyree Wilson,0.0,0.075
-New Orleans Saints,vernon broughton,Vernon Broughton,0.0,0.455
-New Orleans Saints,william sherman,William Sherman,0.01,0.0
-New York Giants,aaron stinnie,Aaron Stinnie,0.002,0.0
-New York Giants,abdul carter,Abdul Carter,0.0,0.93
-New York Giants,andrew thomas,Andrew Thomas,0.75,0.0
-New York Giants,andru phillips,Andru Phillips,0.0,0.715
+New Orleans Saints,tyree wilson,Tyree Wilson,0.0,0.21
+New Orleans Saints,vernon broughton,Vernon Broughton,0.0,0.588
+New Orleans Saints,william sherman,William Sherman,0.002,0.0
+New York Giants,aaron stinnie,Aaron Stinnie,0.005,0.0
+New York Giants,abdul carter,Abdul Carter,0.0,0.935
+New York Giants,andrew thomas,Andrew Thomas,1.0,0.0
+New York Giants,andru phillips,Andru Phillips,0.0,0.695
 New York Giants,ardarius washington,Ar'Darius Washington,0.0,0.078
-New York Giants,arvell reese,Arvell Reese,0.0,0.738
-New York Giants,austin schlottmann,Austin Schlottmann,0.25,0.0
-New York Giants,bobby okereke,Bobby Okereke,0.0,0.222
-New York Giants,braxton berrios,Braxton Berrios,0.085,0.0
-New York Giants,brian burns,Brian Burns,0.0,0.645
-New York Giants,cam skattebo,Cam Skattebo,0.492,0.0
-New York Giants,casey rogers,Casey Rogers,0.0,0.01
+New York Giants,arvell reese,Arvell Reese,0.0,0.988
+New York Giants,braxton berrios,Braxton Berrios,0.092,0.0
+New York Giants,brian burns,Brian Burns,0.0,0.485
+New York Giants,bryan hudson,Bryan Hudson,0.25,0.0
+New York Giants,cam skattebo,Cam Skattebo,0.652,0.0
+New York Giants,charlie jones,Charlie Jones,0.002,0.0
 New York Giants,chauncey golston,Chauncey Golston,0.0,0.518
-New York Giants,chris manhertz,Chris Manhertz,0.352,0.0
-New York Giants,cj okoye,CJ Okoye,0.0,0.148
+New York Giants,chris manhertz,Chris Manhertz,0.405,0.0
+New York Giants,cj okoye,CJ Okoye,0.0,0.205
 New York Giants,colton hood,Colton Hood,0.0,0.512
-New York Giants,dalen cambre,Dalen Cambre,0.022,0.0
-New York Giants,dane belton,Dane Belton,0.0,0.25
-New York Giants,daniel bellinger,Daniel Bellinger,0.23,0.0
-New York Giants,darius alexander,Darius Alexander,0.0,0.372
-New York Giants,darius muasau,Darius Muasau,0.0,0.122
-New York Giants,darius slayton,Darius Slayton,0.218,0.0
-New York Giants,darnell mooney,Darnell Mooney,0.432,0.0
-New York Giants,demetrius flanniganfowles,Demetrius Flannigan-Fowles,0.0,0.132
-New York Giants,deonte banks,Deonte Banks,0.0,0.34
-New York Giants,devin singletary,Devin Singletary,0.235,0.0
-New York Giants,dexter lawrence,Dexter Lawrence,0.0,0.068
-New York Giants,dj reader,D.J. Reader,0.0,0.375
-New York Giants,elijah chatman,Elijah Chatman,0.0,0.072
-New York Giants,francis mauigoa,Francis Mauigoa,0.75,0.0
-New York Giants,greg newsome,Greg Newsome II,0.0,0.718
-New York Giants,greg van roten,Greg Van Roten,0.25,0.0
-New York Giants,gunner olszewski,Gunner Olszewski,0.21,0.0
-New York Giants,isaiah hodgins,Isaiah Hodgins,0.24,0.0
-New York Giants,isaiah likely,Isaiah Likely,0.505,0.0
-New York Giants,jameis winston,Jameis Winston,0.47,0.0
-New York Giants,james hudson,James Hudson,0.002,0.0
-New York Giants,jarrick bernardconverse,Jarrick Bernard-Converse,0.0,0.005
-New York Giants,jason pinnock,Jason Pinnock,0.0,0.188
-New York Giants,jaxson dart,Jaxson Dart,0.53,0.0
-New York Giants,jermaine eluemunor,Jermaine Eluemunor,0.998,0.0
-New York Giants,jevon holland,Jevon Holland,0.0,0.75
+New York Giants,darius alexander,Darius Alexander,0.0,0.31
+New York Giants,darnell mooney,Darnell Mooney,0.57,0.0
+New York Giants,deonte banks,Deonte Banks,0.0,0.458
+New York Giants,devin singletary,Devin Singletary,0.155,0.0
+New York Giants,dj reader,D.J. Reader,0.0,0.535
+New York Giants,francis mauigoa,Francis Mauigoa,1.0,0.0
+New York Giants,greg newsome,Greg Newsome II,0.0,0.968
+New York Giants,isaiah likely,Isaiah Likely,0.67,0.0
+New York Giants,jameis winston,Jameis Winston,0.72,0.0
+New York Giants,jason pinnock,Jason Pinnock,0.0,0.252
+New York Giants,jaxson dart,Jaxson Dart,0.28,0.0
+New York Giants,jermaine eluemunor,Jermaine Eluemunor,1.0,0.0
+New York Giants,jevon holland,Jevon Holland,0.0,1.0
 New York Giants,john michael schmitz,John Michael Schmitz,0.75,0.0
 New York Giants,jon runyan,Jon Runyan Jr.,1.0,0.0
 New York Giants,josh tupou,Josh Tupou,0.0,0.105
-New York Giants,kayvon thibodeaux,Kayvon Thibodeaux,0.0,0.415
-New York Giants,korie black,Korie Black,0.0,0.005
-New York Giants,malachi fields,Malachi Fields,0.555,0.0
-New York Giants,malik nabers,Malik Nabers,0.51,0.0
-New York Giants,marcus mbow,Marcus Mbow,0.25,0.0
-New York Giants,najee harris,Najee Harris,0.09,0.0
-New York Giants,neville hewitt,Neville Hewitt,0.0,0.028
+New York Giants,kayvon thibodeaux,Kayvon Thibodeaux,0.0,0.652
+New York Giants,malachi fields,Malachi Fields,0.72,0.0
+New York Giants,malik nabers,Malik Nabers,0.7,0.0
+New York Giants,najee harris,Najee Harris,0.135,0.0
 New York Giants,nic jones,Nic Jones,0.0,0.02
 New York Giants,odell beckham,Odell Beckham Jr.,0.075,0.0
-New York Giants,patrick ricard,Patrick Ricard,0.33,0.0
-New York Giants,paulson adebo,Paulson Adebo,0.0,0.288
-New York Giants,raheem layne,Raheem Layne,0.0,0.25
-New York Giants,rico payton,Rico Payton,0.0,0.112
-New York Giants,roy robertsonharris,Roy Robertson-Harris,0.0,0.188
-New York Giants,shelby harris,Shelby Harris,0.0,0.338
-New York Giants,theo johnson,Theo Johnson,0.228,0.0
-New York Giants,tomon fox,Tomon Fox,0.0,0.038
-New York Giants,tremaine edmunds,Tremaine Edmunds,0.0,0.75
-New York Giants,tyler nubin,Tyler Nubin,0.0,0.5
-New York Giants,tyrone tracy,Tyrone Tracy Jr.,0.19,0.0
+New York Giants,patrick ricard,Patrick Ricard,0.445,0.0
+New York Giants,paulson adebo,Paulson Adebo,0.0,0.042
+New York Giants,shelby harris,Shelby Harris,0.0,0.478
+New York Giants,theo johnson,Theo Johnson,0.31,0.0
+New York Giants,trace ford,Trace Ford,0.0,0.012
+New York Giants,tremaine edmunds,Tremaine Edmunds,0.0,1.0
+New York Giants,tyler nubin,Tyler Nubin,0.0,0.692
+New York Giants,tyrone tracy,Tyrone Tracy Jr.,0.062,0.0
 New York Giants,zaire barnes,Zaire Barnes,0.0,0.012
-New York Jets,adonai mitchell,Adonai Mitchell,0.507,0.0
-New York Jets,andre cisco,Andre Cisco,0.0,0.72
-New York Jets,andrew beck,Andrew Beck,0.115,0.0
-New York Jets,arian smith,Arian Smith,0.092,0.0
-New York Jets,armand membou,Armand Membou,1.0,0.0
-New York Jets,azareyeh thomas,Azareye'h Thomas,0.0,0.75
-New York Jets,brady cook,Brady Cook,0.25,0.0
-New York Jets,braelon allen,Braelon Allen,0.308,0.0
-New York Jets,braiden mcgregor,Braiden McGregor,0.0,0.315
-New York Jets,brandon stephens,Brandon Stephens,0.0,0.742
+New York Jets,adonai mitchell,Adonai Mitchell,0.377,0.0
+New York Jets,andre cisco,Andre Cisco,0.0,0.727
+New York Jets,andrew beck,Andrew Beck,0.053,0.0
+New York Jets,arian smith,Arian Smith,0.01,0.0
+New York Jets,armand membou,Armand Membou,0.992,0.0
+New York Jets,azareyeh thomas,Azareye'h Thomas,0.0,1.0
+New York Jets,braelon allen,Braelon Allen,0.542,0.0
+New York Jets,braiden mcgregor,Braiden McGregor,0.0,0.208
+New York Jets,brandon stephens,Brandon Stephens,0.0,0.988
 New York Jets,breece hall,Breece Hall,0.428,0.0
-New York Jets,cam jones,Cam Jones,0.0,0.002
-New York Jets,dane belton,Dane Belton,0.0,0.75
-New York Jets,dangelo ponds,D'Angelo Ponds,0.0,0.008
-New York Jets,darrell jackson,Darrell Jackson Jr.,0.0,0.182
-New York Jets,david bailey,David Bailey,0.0,0.528
+New York Jets,chukwuma okorafor,Chukwuma Okorafor,0.008,0.0
+New York Jets,dane belton,Dane Belton,0.0,1.0
+New York Jets,dangelo ponds,D'Angelo Ponds,0.0,0.055
+New York Jets,darrell jackson,Darrell Jackson Jr.,0.0,0.292
+New York Jets,david bailey,David Bailey,0.0,0.722
 New York Jets,david onyemata,David Onyemata,0.0,0.23
-New York Jets,demario davis,Demario Davis,0.0,0.75
+New York Jets,demario davis,Demario Davis,0.0,1.0
 New York Jets,dylan parham,Dylan Parham,0.645,0.0
-New York Jets,eric watts,Eric Watts,0.0,0.142
-New York Jets,garrett wilson,Garrett Wilson,0.642,0.0
-New York Jets,geno smith,Geno Smith,0.75,0.0
-New York Jets,harrison phillips,Harrison Phillips,0.0,0.61
-New York Jets,isaiah williams,Isaiah Williams,0.708,0.0
-New York Jets,jack heflin,Jack Heflin,0.0,0.03
-New York Jets,jamien sherwood,Jamien Sherwood,0.0,0.96
-New York Jets,jarius monroe,Jarius Monroe,0.0,0.008
-New York Jets,jarvis brownlee,Jarvis Brownlee,0.0,0.492
-New York Jets,jasir taylor,Ja'Sir Taylor,0.0,0.25
-New York Jets,jelani woods,Jelani Woods,0.225,0.0
-New York Jets,jeremy ruckert,Jeremy Ruckert,0.448,0.0
-New York Jets,jermaine johnson,Jermaine Johnson II,0.0,0.172
+New York Jets,garrett wilson,Garrett Wilson,0.892,0.0
+New York Jets,geno smith,Geno Smith,1.0,0.0
+New York Jets,harrison phillips,Harrison Phillips,0.0,0.58
+New York Jets,isaiah davis,Isaiah Davis,0.015,0.0
+New York Jets,isaiah williams,Isaiah Williams,0.812,0.0
+New York Jets,jack heflin,Jack Heflin,0.0,0.073
+New York Jets,jamien sherwood,Jamien Sherwood,0.0,0.945
+New York Jets,jarvis brownlee,Jarvis Brownlee,0.0,0.595
+New York Jets,jelani woods,Jelani Woods,0.32,0.0
+New York Jets,jeremy ruckert,Jeremy Ruckert,0.408,0.0
 New York Jets,joe tippmann,Joe Tippmann,1.0,0.0
-New York Jets,john metchie,John Metchie,0.178,0.0
-New York Jets,john simpson,John Simpson,0.25,0.0
-New York Jets,jordan clark,Jordan Clark,0.0,0.002
-New York Jets,jordan meredith,Jordan Meredith,0.105,0.0
-New York Jets,joseph ossai,Joseph Ossai,0.0,0.108
+New York Jets,jordan meredith,Jordan Meredith,0.355,0.0
+New York Jets,joseph ossai,Joseph Ossai,0.0,0.26
 New York Jets,josh myers,Josh Myers,1.0,0.0
-New York Jets,jowon briggs,Jowon Briggs,0.0,0.54
-New York Jets,keidron smith,Keidron Smith,0.0,0.23
-New York Jets,kene nwangwu,Kene Nwangwu,0.082,0.0
-New York Jets,kenyon sadiq,Kenyon Sadiq,0.34,0.0
-New York Jets,khalen saunders,Khalen Saunders,0.0,0.07
-New York Jets,khalil herbert,Khalil Herbert,0.168,0.0
+New York Jets,jowon briggs,Jowon Briggs,0.0,0.52
+New York Jets,kenyon sadiq,Kenyon Sadiq,0.512,0.0
 New York Jets,kingsley enagbare,Kingsley Enagbare,0.0,0.48
-New York Jets,kingsley jonathan,Kingsley Jonathan,0.0,0.058
-New York Jets,malachi moore,Malachi Moore,0.0,0.282
-New York Jets,malik mcclain,Malik McClain,0.068,0.0
+New York Jets,malachi moore,Malachi Moore,0.0,0.04
+New York Jets,malik mcclain,Malik McClain,0.075,0.0
 New York Jets,marcelino mccraryball,Marcelino McCrary-Ball,0.0,0.025
 New York Jets,mason taylor,Mason Taylor,0.28,0.0
-New York Jets,max mitchell,Max Mitchell,0.038,0.0
-New York Jets,mazi smith,Mazi Smith,0.0,0.048
-New York Jets,minkah fitzpatrick,Minkah Fitzpatrick,0.0,0.03
-New York Jets,mykal walker,Mykal Walker,0.0,0.122
-New York Jets,olu fashanu,Olu Fashanu,0.75,0.0
-New York Jets,olumuyiwa fashanu,Olumuyiwa Fashanu,0.25,0.0
+New York Jets,max mitchell,Max Mitchell,0.008,0.0
+New York Jets,minkah fitzpatrick,Minkah Fitzpatrick,0.0,0.28
+New York Jets,olu fashanu,Olu Fashanu,1.0,0.0
 New York Jets,omar cooper,Omar Cooper,0.018,0.0
-New York Jets,payton page,Payton Page,0.0,0.09
-New York Jets,quentin skinner,Quentin Skinner,0.082,0.0
-New York Jets,quincy williams,Quincy Williams,0.0,0.17
-New York Jets,samuel womack,Samuel Womack,0.0,0.242
-New York Jets,sterling shepard,Sterling Shepard,0.112,0.0
-New York Jets,stone smartt,Stone Smartt,0.155,0.0
-New York Jets,tre brown,Tre Brown,0.0,0.18
-New York Jets,tvondre sweat,T'Vondre Sweat,0.0,0.358
-New York Jets,will mcdonald,Will McDonald,0.0,0.315
-Philadelphia Eagles,adoree jackson,Adoree' Jackson,0.0,0.158
-Philadelphia Eagles,aj brown,A.J. Brown,0.25,0.0
-Philadelphia Eagles,aj epenesa,A.J. Epenesa,0.0,0.08
-Philadelphia Eagles,andrew mukuba,Andrew Mukuba,0.0,0.745
+New York Jets,sterling shepard,Sterling Shepard,0.245,0.0
+New York Jets,tvondre sweat,T'Vondre Sweat,0.0,0.48
+New York Jets,will mcdonald,Will McDonald,0.0,0.492
+Philadelphia Eagles,aj epenesa,A.J. Epenesa,0.0,0.09
+Philadelphia Eagles,andrew mukuba,Andrew Mukuba,0.0,0.995
 Philadelphia Eagles,andy dalton,Andy Dalton,0.02,0.0
-Philadelphia Eagles,arnold ebiketie,Arnold Ebiketie,0.0,0.27
-Philadelphia Eagles,brandon graham,Brandon Graham,0.0,0.03
-Philadelphia Eagles,byron young,Byron Young,0.0,0.232
+Philadelphia Eagles,arnold ebiketie,Arnold Ebiketie,0.0,0.332
+Philadelphia Eagles,byron young,Byron Young,0.0,0.22
 Philadelphia Eagles,cam jurgens,Cam Jurgens,1.0,0.0
-Philadelphia Eagles,cameron latu,Cameron Latu,0.002,0.0
-Philadelphia Eagles,cooper dejean,Cooper DeJean,0.01,1.0
-Philadelphia Eagles,dallas goedert,Dallas Goedert,0.53,0.0
-Philadelphia Eagles,darius cooper,Darius Cooper,0.238,0.0
-Philadelphia Eagles,devonta smith,DeVonta Smith,0.938,0.0
-Philadelphia Eagles,dontayvion wicks,Dontayvion Wicks,0.602,0.0
-Philadelphia Eagles,drew kendall,Drew Kendall,0.5,0.0
-Philadelphia Eagles,ej jenkins,E.J. Jenkins,0.153,0.0
-Philadelphia Eagles,elijah moore,Elijah Moore,0.03,0.0
-Philadelphia Eagles,fred johnson,Fred Johnson,0.248,0.0
-Philadelphia Eagles,grant calcaterra,Grant Calcaterra,0.068,0.0
-Philadelphia Eagles,jaelan phillips,Jaelan Phillips,0.0,0.22
-Philadelphia Eagles,jahan dotson,Jahan Dotson,0.13,0.0
-Philadelphia Eagles,jalen carter,Jalen Carter,0.0,0.85
+Philadelphia Eagles,cooper dejean,Cooper DeJean,0.01,0.99
+Philadelphia Eagles,dallas goedert,Dallas Goedert,0.3,0.0
+Philadelphia Eagles,darius cooper,Darius Cooper,0.39,0.0
+Philadelphia Eagles,devonta smith,DeVonta Smith,0.708,0.0
+Philadelphia Eagles,dontayvion wicks,Dontayvion Wicks,0.832,0.0
+Philadelphia Eagles,drew kendall,Drew Kendall,0.75,0.0
+Philadelphia Eagles,ej jenkins,E.J. Jenkins,0.202,0.0
+Philadelphia Eagles,elijah moore,Elijah Moore,0.07,0.0
+Philadelphia Eagles,jalen carter,Jalen Carter,0.0,0.812
 Philadelphia Eagles,jalen hurts,Jalen Hurts,0.98,0.0
-Philadelphia Eagles,jalyx hunt,Jalyx Hunt,0.0,0.69
-Philadelphia Eagles,jeremiah trotter,Jeremiah Trotter Jr.,0.0,0.02
-Philadelphia Eagles,jihaad campbell,Jihaad Campbell,0.0,0.71
-Philadelphia Eagles,johnny mundt,Johnny Mundt,0.38,0.0
-Philadelphia Eagles,jonathan greenard,Jonathan Greenard,0.0,0.062
-Philadelphia Eagles,jonathan jones,Jonathan Jones,0.0,0.01
-Philadelphia Eagles,jordan davis,Jordan Davis,0.0,0.498
+Philadelphia Eagles,jalyx hunt,Jalyx Hunt,0.0,0.76
+Philadelphia Eagles,jeremiah trotter,Jeremiah Trotter Jr.,0.0,0.27
+Philadelphia Eagles,jihaad campbell,Jihaad Campbell,0.0,0.94
+Philadelphia Eagles,johnny mundt,Johnny Mundt,0.58,0.0
+Philadelphia Eagles,jonathan greenard,Jonathan Greenard,0.0,0.12
+Philadelphia Eagles,jonathan jones,Jonathan Jones,0.0,0.152
+Philadelphia Eagles,jordan davis,Jordan Davis,0.0,0.462
 Philadelphia Eagles,jordan mailata,Jordan Mailata,1.0,0.0
-Philadelphia Eagles,kelee ringo,Kelee Ringo,0.0,0.005
-Philadelphia Eagles,kylen granson,Kylen Granson,0.018,0.0
-Philadelphia Eagles,landon dickerson,Landon Dickerson,0.5,0.0
+Philadelphia Eagles,kenny moore,Kenny Moore,0.0,0.002
+Philadelphia Eagles,landon dickerson,Landon Dickerson,0.25,0.0
 Philadelphia Eagles,lane johnson,Lane Johnson,0.75,0.0
-Philadelphia Eagles,makai lemon,Makai Lemon,0.492,0.0
-Philadelphia Eagles,marcus epps,Marcus Epps,0.0,0.715
-Philadelphia Eagles,markel bell,Markel Bell,0.005,0.0
+Philadelphia Eagles,mac mcwilliams,Mac McWilliams,0.0,0.01
+Philadelphia Eagles,makai lemon,Makai Lemon,0.678,0.0
+Philadelphia Eagles,marcus epps,Marcus Epps,0.0,0.47
+Philadelphia Eagles,markel bell,Markel Bell,0.255,0.0
 Philadelphia Eagles,marquise brown,Marquise Brown,0.055,0.0
-Philadelphia Eagles,matt pryor,Matt Pryor,0.008,0.0
-Philadelphia Eagles,michael carter,Michael Carter II,0.0,0.125
-Philadelphia Eagles,moro ojomo,Moro Ojomo,0.0,0.67
-Philadelphia Eagles,nakobe dean,Nakobe Dean,0.0,0.25
-Philadelphia Eagles,nolan smith,Nolan Smith,0.0,0.635
-Philadelphia Eagles,quinyon mitchell,Quinyon Mitchell,0.0,1.0
-Philadelphia Eagles,reed blankenship,Reed Blankenship,0.0,0.25
-Philadelphia Eagles,riq woolen,Riq Woolen,0.0,0.488
-Philadelphia Eagles,saquon barkley,Saquon Barkley,0.61,0.0
-Philadelphia Eagles,sydney brown,Sydney Brown,0.0,0.005
-Philadelphia Eagles,tank bigsby,Tank Bigsby,0.15,0.0
-Philadelphia Eagles,ty robinson,Ty Robinson,0.0,0.058
-Philadelphia Eagles,tyler steen,Tyler Steen,0.998,0.0
-Philadelphia Eagles,will shipley,Will Shipley,0.248,0.0
-Philadelphia Eagles,zach ertz,Zach Ertz,0.095,0.0
-Philadelphia Eagles,zack baun,Zack Baun,0.0,0.98
+Philadelphia Eagles,micah morris,Micah Morris,0.005,0.0
+Philadelphia Eagles,michael carter,Michael Carter II,0.0,0.338
+Philadelphia Eagles,moro ojomo,Moro Ojomo,0.0,0.688
+Philadelphia Eagles,nolan smith,Nolan Smith,0.0,0.702
+Philadelphia Eagles,quinyon mitchell,Quinyon Mitchell,0.0,0.858
+Philadelphia Eagles,riq woolen,Riq Woolen,0.0,0.738
+Philadelphia Eagles,saquon barkley,Saquon Barkley,0.415,0.0
+Philadelphia Eagles,tank bigsby,Tank Bigsby,0.242,0.0
+Philadelphia Eagles,ty robinson,Ty Robinson,0.0,0.075
+Philadelphia Eagles,tyler steen,Tyler Steen,1.0,0.0
+Philadelphia Eagles,will shipley,Will Shipley,0.358,0.0
+Philadelphia Eagles,willie lampkin,Willie Lampkin,0.008,0.0
+Philadelphia Eagles,zach ertz,Zach Ertz,0.148,0.0
+Philadelphia Eagles,zack baun,Zack Baun,0.0,0.73
 Pittsburgh Steelers,aaron rodgers,Aaron Rodgers,0.99,0.0
 Pittsburgh Steelers,alex highsmith,Alex Highsmith,0.0,0.675
 Pittsburgh Steelers,asante samuel,Asante Samuel Jr.,0.0,0.908
@@ -1632,304 +1246,235 @@ Pittsburgh Steelers,zach frazier,Zach Frazier,1.0,0.0
 Seattle Seahawks,abraham lucas,Abraham Lucas,1.0,0.0
 Seattle Seahawks,aj barner,AJ Barner,0.872,0.0
 Seattle Seahawks,aj finley,AJ Finley,0.0,0.26
-Seattle Seahawks,anthony bradford,Anthony Bradford,0.5,0.0
-Seattle Seahawks,beau stephens,Beau Stephens,0.198,0.0
-Seattle Seahawks,boye mafe,Boye Mafe,0.0,0.085
-Seattle Seahawks,brady russell,Brady Russell,0.24,0.0
+Seattle Seahawks,anthony bradford,Anthony Bradford,0.25,0.0
+Seattle Seahawks,beau stephens,Beau Stephens,0.302,0.0
+Seattle Seahawks,brady russell,Brady Russell,0.295,0.0
 Seattle Seahawks,brandon pili,Brandon Pili,0.0,0.02
-Seattle Seahawks,byron murphy,Byron Murphy,0.0,0.678
+Seattle Seahawks,byron murphy,Byron Murphy,0.0,0.662
 Seattle Seahawks,charles cross,Charles Cross,1.0,0.0
 Seattle Seahawks,chazz surratt,Chazz Surratt,0.0,0.01
-Seattle Seahawks,christian haynes,Christian Haynes,0.302,0.0
-Seattle Seahawks,coby bryant,Coby Bryant,0.0,0.25
-Seattle Seahawks,cooper kupp,Cooper Kupp,0.665,0.0
-Seattle Seahawks,dante fowler,Dante Fowler,0.0,0.155
-Seattle Seahawks,dareke young,Dareke Young,0.015,0.0
-Seattle Seahawks,demarcus lawrence,DeMarcus Lawrence,0.0,0.622
-Seattle Seahawks,derick hall,Derick Hall,0.0,0.55
+Seattle Seahawks,christian haynes,Christian Haynes,0.448,0.0
+Seattle Seahawks,cooper kupp,Cooper Kupp,0.612,0.0
+Seattle Seahawks,dante fowler,Dante Fowler,0.0,0.23
+Seattle Seahawks,demarcus lawrence,DeMarcus Lawrence,0.0,0.607
+Seattle Seahawks,derick hall,Derick Hall,0.0,0.575
 Seattle Seahawks,devon witherspoon,Devon Witherspoon,0.0,0.988
-Seattle Seahawks,drake thomas,Drake Thomas,0.0,0.805
+Seattle Seahawks,drake thomas,Drake Thomas,0.0,0.89
 Seattle Seahawks,drew lock,Drew Lock,0.475,0.0
-Seattle Seahawks,elijah arroyo,Elijah Arroyo,0.24,0.0
-Seattle Seahawks,emanuel wilson,Emanuel Wilson,0.208,0.0
-Seattle Seahawks,eric saubert,Eric Saubert,0.288,0.0
+Seattle Seahawks,elijah arroyo,Elijah Arroyo,0.255,0.0
+Seattle Seahawks,emanuel wilson,Emanuel Wilson,0.358,0.0
+Seattle Seahawks,eric saubert,Eric Saubert,0.252,0.0
 Seattle Seahawks,ernest jones,Ernest Jones,0.0,0.99
-Seattle Seahawks,george holani,George Holani,0.353,0.0
+Seattle Seahawks,george holani,George Holani,0.362,0.0
 Seattle Seahawks,grey zabel,Grey Zabel,1.0,0.0
 Seattle Seahawks,jadarian price,Jadarian Price,0.275,0.0
-Seattle Seahawks,jake bobo,Jake Bobo,0.055,0.0
 Seattle Seahawks,jalen sundell,Jalen Sundell,1.0,0.0
-Seattle Seahawks,jarran reed,Jarran Reed,0.0,0.488
-Seattle Seahawks,jaxon smithnjigba,Jaxon Smith-Njigba,0.782,0.0
-Seattle Seahawks,josh jobe,Josh Jobe,0.0,0.952
-Seattle Seahawks,josh jones,Josh Jones,0.03,0.0
+Seattle Seahawks,jarran reed,Jarran Reed,0.0,0.48
+Seattle Seahawks,jaxon smithnjigba,Jaxon Smith-Njigba,0.83,0.0
+Seattle Seahawks,josh jobe,Josh Jobe,0.0,0.988
+Seattle Seahawks,josh jones,Josh Jones,0.032,0.0
 Seattle Seahawks,julian love,Julian Love,0.0,0.74
 Seattle Seahawks,julian neal,Julian Neal,0.0,0.01
-Seattle Seahawks,kenneth walker,Kenneth Walker III,0.162,0.0
-Seattle Seahawks,leonard williams,Leonard Williams,0.0,0.725
-Seattle Seahawks,mike morris,Mike Morris,0.0,0.018
-Seattle Seahawks,nehemiah pritchett,Nehemiah Pritchett,0.0,0.508
-Seattle Seahawks,nick emmanwori,Nick Emmanwori,0.0,0.422
+Seattle Seahawks,leonard williams,Leonard Williams,0.0,0.695
+Seattle Seahawks,mike morris,Mike Morris,0.0,0.032
+Seattle Seahawks,nehemiah pritchett,Nehemiah Pritchett,0.0,0.578
+Seattle Seahawks,nick emmanwori,Nick Emmanwori,0.0,0.372
 Seattle Seahawks,nick kallerup,Nick Kallerup,0.092,0.0
-Seattle Seahawks,olusegun oluwatimi,Olusegun Oluwatimi,0.015,0.0
+Seattle Seahawks,olusegun oluwatimi,Olusegun Oluwatimi,0.005,0.0
 Seattle Seahawks,patrick oconnell,Patrick O'Connell,0.0,0.012
-Seattle Seahawks,rashid shaheed,Rashid Shaheed,0.562,0.0
-Seattle Seahawks,riq woolen,Riq Woolen,0.0,0.172
-Seattle Seahawks,rodney thomas,Rodney Thomas II,0.0,0.748
-Seattle Seahawks,rylie mills,Rylie Mills,0.0,0.205
+Seattle Seahawks,rashid shaheed,Rashid Shaheed,0.57,0.0
+Seattle Seahawks,rodney thomas,Rodney Thomas II,0.0,0.995
+Seattle Seahawks,rylie mills,Rylie Mills,0.0,0.258
 Seattle Seahawks,sam darnold,Sam Darnold,0.525,0.0
-Seattle Seahawks,tory horton,Tory Horton,0.132,0.0
+Seattle Seahawks,tory horton,Tory Horton,0.175,0.0
+Seattle Seahawks,trevon diggs,Trevon Diggs,0.0,0.032
 Seattle Seahawks,tyrice knight,Tyrice Knight,0.0,0.085
-Seattle Seahawks,uchenna nwosu,Uchenna Nwosu,0.0,0.502
-San Francisco 49ers,alfred collins,Alfred Collins,0.0,0.128
-San Francisco 49ers,austen pleasants,Austen Pleasants,0.012,0.0
-San Francisco 49ers,brayden willis,Brayden Willis,0.072,0.0
-San Francisco 49ers,brian robinson,Brian Robinson Jr.,0.062,0.0
-San Francisco 49ers,brock purdy,Brock Purdy,0.925,0.0
-San Francisco 49ers,bryce huff,Bryce Huff,0.0,0.1
+Seattle Seahawks,uchenna nwosu,Uchenna Nwosu,0.0,0.492
+Seattle Seahawks,velus jones,Velus Jones Jr.,0.008,0.0
+San Francisco 49ers,brandin cooks,Brandin Cooks,0.03,0.0
+San Francisco 49ers,brayden willis,Brayden Willis,0.115,0.0
+San Francisco 49ers,brock purdy,Brock Purdy,0.962,0.0
 San Francisco 49ers,carver willis,Carver Willis,0.03,0.0
-San Francisco 49ers,christian mccaffrey,Christian McCaffrey,0.605,0.0
-San Francisco 49ers,cj west,CJ West,0.0,0.328
-San Francisco 49ers,clelin ferrell,Clelin Ferrell,0.0,0.108
+San Francisco 49ers,christian mccaffrey,Christian McCaffrey,0.66,0.0
+San Francisco 49ers,cj west,CJ West,0.0,0.205
 San Francisco 49ers,colton mckivitz,Colton McKivitz,1.0,0.0
-San Francisco 49ers,connor colby,Connor Colby,0.762,0.0
-San Francisco 49ers,curtis robinson,Curtis Robinson,0.0,0.028
-San Francisco 49ers,darrell luter,Darrell Luter,0.0,0.02
-San Francisco 49ers,dee winters,Dee Winters,0.0,0.212
-San Francisco 49ers,deebo samuel,Deebo Samuel,0.445,0.0
-San Francisco 49ers,demarcus robinson,Demarcus Robinson,0.335,0.0
-San Francisco 49ers,deommodore lenoir,Deommodore Lenoir,0.0,0.945
+San Francisco 49ers,connor colby,Connor Colby,1.0,0.0
+San Francisco 49ers,deebo samuel,Deebo Samuel,0.612,0.0
+San Francisco 49ers,demarcus robinson,Demarcus Robinson,0.235,0.0
+San Francisco 49ers,deommodore lenoir,Deommodore Lenoir,0.0,0.94
 San Francisco 49ers,dezhaun stribling,De'Zhaun Stribling,0.08,0.0
-San Francisco 49ers,dominick puni,Dominick Puni,0.958,0.0
-San Francisco 49ers,dre greenlaw,Dre Greenlaw,0.0,0.515
-San Francisco 49ers,eric kendricks,Eric Kendricks,0.0,0.25
-San Francisco 49ers,fred warner,Fred Warner,0.0,0.675
-San Francisco 49ers,garret wallow,Garret Wallow,0.0,0.318
-San Francisco 49ers,george kittle,George Kittle,0.448,0.0
-San Francisco 49ers,gracen halton,Gracen Halton,0.0,0.348
-San Francisco 49ers,jack jones,Jack Jones,0.0,0.155
-San Francisco 49ers,jacob cowing,Jacob Cowing,0.213,0.0
-San Francisco 49ers,jaden dugger,Jaden Dugger,0.0,0.312
-San Francisco 49ers,jake brendel,Jake Brendel,0.95,0.0
-San Francisco 49ers,jake tonges,Jake Tonges,0.15,0.0
+San Francisco 49ers,dominick puni,Dominick Puni,0.97,0.0
+San Francisco 49ers,dre greenlaw,Dre Greenlaw,0.0,0.728
+San Francisco 49ers,fred warner,Fred Warner,0.0,0.92
+San Francisco 49ers,garret wallow,Garret Wallow,0.0,0.198
+San Francisco 49ers,george kittle,George Kittle,0.675,0.0
+San Francisco 49ers,gracen halton,Gracen Halton,0.0,0.442
+San Francisco 49ers,jack jones,Jack Jones,0.0,0.208
+San Francisco 49ers,jacob cowing,Jacob Cowing,0.292,0.0
+San Francisco 49ers,jaden dugger,Jaden Dugger,0.0,0.37
+San Francisco 49ers,jake brendel,Jake Brendel,0.962,0.0
+San Francisco 49ers,jake tonges,Jake Tonges,0.03,0.0
 San Francisco 49ers,james thompson,James Thompson,0.0,0.175
 San Francisco 49ers,jarrett patterson,Jarrett Patterson,0.038,0.0
-San Francisco 49ers,jason pinnock,Jason Pinnock,0.0,0.005
-San Francisco 49ers,jauan jennings,Jauan Jennings,0.195,0.0
-San Francisco 49ers,jiayir brown,Ji'Ayir Brown,0.0,0.7
-San Francisco 49ers,jordan elliott,Jordan Elliott,0.0,0.118
-San Francisco 49ers,jordan james,Jordan James,0.095,0.0
-San Francisco 49ers,jordan watkins,Jordan Watkins,0.07,0.0
-San Francisco 49ers,kaelon black,Kaelon Black,0.228,0.0
-San Francisco 49ers,kalia davis,Kalia Davis,0.0,0.112
-San Francisco 49ers,keion white,Keion White,0.0,0.548
-San Francisco 49ers,kendrick bourne,Kendrick Bourne,0.1,0.0
+San Francisco 49ers,jiayir brown,Ji'Ayir Brown,0.0,0.942
+San Francisco 49ers,jordan james,Jordan James,0.038,0.0
+San Francisco 49ers,jordan watkins,Jordan Watkins,0.165,0.0
+San Francisco 49ers,kaelon black,Kaelon Black,0.292,0.0
+San Francisco 49ers,keion white,Keion White,0.0,0.615
 San Francisco 49ers,kevin givens,Kevin Givens,0.0,0.06
 San Francisco 49ers,khadarel hodge,KhaDarel Hodge,0.24,0.0
-San Francisco 49ers,khalid kareem,Khalid Kareem,0.0,0.28
-San Francisco 49ers,kyle juszczyk,Kyle Juszczyk,0.508,0.0
-San Francisco 49ers,luke farrell,Luke Farrell,0.538,0.0
+San Francisco 49ers,khalid kareem,Khalid Kareem,0.0,0.352
+San Francisco 49ers,kyle juszczyk,Kyle Juszczyk,0.48,0.0
+San Francisco 49ers,luke farrell,Luke Farrell,0.505,0.0
 San Francisco 49ers,luke gifford,Luke Gifford,0.0,0.005
-San Francisco 49ers,mac jones,Mac Jones,0.075,0.0
-San Francisco 49ers,malik mustapha,Malik Mustapha,0.0,0.342
-San Francisco 49ers,marques sigle,Marques Sigle,0.0,0.958
-San Francisco 49ers,matt hennessy,Matt Hennessy,0.012,0.0
-San Francisco 49ers,mike evans,Mike Evans,0.405,0.0
-San Francisco 49ers,naquan jones,Naquan Jones,0.0,0.052
+San Francisco 49ers,mac jones,Mac Jones,0.038,0.0
+San Francisco 49ers,malik mustapha,Malik Mustapha,0.0,0.172
+San Francisco 49ers,marques sigle,Marques Sigle,0.0,0.878
+San Francisco 49ers,matt judon,Matt Judon,0.0,0.052
+San Francisco 49ers,mike evans,Mike Evans,0.552,0.0
+San Francisco 49ers,naquan jones,Naquan Jones,0.0,0.11
 San Francisco 49ers,nick bosa,Nick Bosa,0.0,0.318
-San Francisco 49ers,ogbonnia okoronkwo,Ogbonnia Okoronkwo,0.0,0.28
-San Francisco 49ers,osa odighizuwa,Osa Odighizuwa,0.0,0.525
-San Francisco 49ers,renardo green,Renardo Green,0.0,0.96
-San Francisco 49ers,ricky pearsall,Ricky Pearsall,0.175,0.0
-San Francisco 49ers,romello height,Romello Height,0.0,0.258
-San Francisco 49ers,sam okuayinonu,Sam Okuayinonu,0.0,0.118
-San Francisco 49ers,sebastian valdez,Sebastian Valdez,0.0,0.092
-San Francisco 49ers,skyy moore,Skyy Moore,0.038,0.0
-San Francisco 49ers,spencer burford,Spencer Burford,0.25,0.0
-San Francisco 49ers,trent williams,Trent Williams,0.847,0.0
-San Francisco 49ers,upton stout,Upton Stout,0.0,0.535
+San Francisco 49ers,ogbonnia okoronkwo,Ogbonnia Okoronkwo,0.0,0.375
+San Francisco 49ers,osa odighizuwa,Osa Odighizuwa,0.0,0.718
+San Francisco 49ers,renardo green,Renardo Green,0.0,0.97
+San Francisco 49ers,romello height,Romello Height,0.0,0.398
+San Francisco 49ers,sebastian valdez,Sebastian Valdez,0.0,0.188
+San Francisco 49ers,trent williams,Trent Williams,0.86,0.0
+San Francisco 49ers,upton stout,Upton Stout,0.0,0.588
 San Francisco 49ers,vederian lowe,Vederian Lowe,0.14,0.0
 San Francisco 49ers,viliami fehoko,Viliami Fehoko,0.0,0.038
-San Francisco 49ers,yetur grossmatos,Yetur Gross-Matos,0.0,0.085
-Tampa Bay Buccaneers,alex anzalone,Alex Anzalone,0.0,0.75
-Tampa Bay Buccaneers,alquadin muhammad,Al-Quadin Muhammad,0.0,0.37
-Tampa Bay Buccaneers,anthony nelson,Anthony Nelson,0.0,0.235
-Tampa Bay Buccaneers,antoine winfield,Antoine Winfield Jr.,0.0,0.992
-Tampa Bay Buccaneers,ashawn robinson,A'Shawn Robinson,0.0,0.385
-Tampa Bay Buccaneers,baker mayfield,Baker Mayfield,0.985,0.0
-Tampa Bay Buccaneers,bauer sharp,Bauer Sharp,0.04,0.0
-Tampa Bay Buccaneers,ben bredeson,Ben Bredeson,0.75,0.0
-Tampa Bay Buccaneers,benjamin morrison,Benjamin Morrison,0.0,0.672
-Tampa Bay Buccaneers,bucky irving,Bucky Irving,0.635,0.0
-Tampa Bay Buccaneers,cade otton,Cade Otton,0.942,0.0
-Tampa Bay Buccaneers,calijah kancey,Calijah Kancey,0.0,0.622
-Tampa Bay Buccaneers,charlie heck,Charlie Heck,0.008,0.0
-Tampa Bay Buccaneers,chris braswell,Chris Braswell,0.0,0.055
-Tampa Bay Buccaneers,chris godwin,Chris Godwin,0.76,0.0
-Tampa Bay Buccaneers,christian izien,Christian Izien,0.0,0.152
-Tampa Bay Buccaneers,christian rozeboom,Christian Rozeboom,0.0,0.128
-Tampa Bay Buccaneers,cody mauch,Cody Mauch,0.75,0.0
-Tampa Bay Buccaneers,dan feeney,Dan Feeney,0.25,0.0
-Tampa Bay Buccaneers,david walker,David Walker,0.0,0.12
-Tampa Bay Buccaneers,elijah roberts,Elijah Roberts,0.0,0.28
-Tampa Bay Buccaneers,elijah simmons,Elijah Simmons,0.0,0.038
-Tampa Bay Buccaneers,emeka egbuka,Emeka Egbuka,0.76,0.0
+Tampa Bay Buccaneers,alex anzalone,Alex Anzalone,0.0,1.0
+Tampa Bay Buccaneers,alquadin muhammad,Al-Quadin Muhammad,0.0,0.502
+Tampa Bay Buccaneers,anthony nelson,Anthony Nelson,0.0,0.352
+Tampa Bay Buccaneers,antoine winfield,Antoine Winfield Jr.,0.0,0.972
+Tampa Bay Buccaneers,ashawn robinson,A'Shawn Robinson,0.0,0.505
+Tampa Bay Buccaneers,baker mayfield,Baker Mayfield,0.735,0.0
+Tampa Bay Buccaneers,bauer sharp,Bauer Sharp,0.055,0.0
+Tampa Bay Buccaneers,ben bredeson,Ben Bredeson,1.0,0.0
+Tampa Bay Buccaneers,benjamin morrison,Benjamin Morrison,0.0,0.422
+Tampa Bay Buccaneers,bucky irving,Bucky Irving,0.625,0.0
+Tampa Bay Buccaneers,cade otton,Cade Otton,0.94,0.0
+Tampa Bay Buccaneers,calijah kancey,Calijah Kancey,0.0,0.628
+Tampa Bay Buccaneers,chris godwin,Chris Godwin,0.808,0.0
+Tampa Bay Buccaneers,christian rozeboom,Christian Rozeboom,0.0,0.158
+Tampa Bay Buccaneers,cody mauch,Cody Mauch,1.0,0.0
+Tampa Bay Buccaneers,david walker,David Walker,0.0,0.22
+Tampa Bay Buccaneers,elijah roberts,Elijah Roberts,0.0,0.262
+Tampa Bay Buccaneers,elijah simmons,Elijah Simmons,0.0,0.08
+Tampa Bay Buccaneers,emeka egbuka,Emeka Egbuka,0.85,0.0
 Tampa Bay Buccaneers,graham barton,Graham Barton,1.0,0.0
-Tampa Bay Buccaneers,greg gaines,Greg Gaines,0.0,0.06
-Tampa Bay Buccaneers,haason reddick,Haason Reddick,0.0,0.195
-Tampa Bay Buccaneers,jacob parrish,Jacob Parrish,0.0,0.578
-Tampa Bay Buccaneers,jalen mcmillan,Jalen McMillan,0.173,0.0
-Tampa Bay Buccaneers,jalon daniels,Jalon Daniels,0.015,0.0
-Tampa Bay Buccaneers,jason pierrepaul,Jason Pierre-Paul,0.0,0.05
-Tampa Bay Buccaneers,josiah trotter,Josiah Trotter,0.0,0.435
-Tampa Bay Buccaneers,kameron johnson,Kameron Johnson,0.025,0.0
-Tampa Bay Buccaneers,keionte scott,Keionte Scott,0.0,0.47
-Tampa Bay Buccaneers,kenneth gainwell,Kenneth Gainwell,0.318,0.0
+Tampa Bay Buccaneers,ifeatu melifonwu,Ifeatu Melifonwu,0.0,0.018
+Tampa Bay Buccaneers,jacob parrish,Jacob Parrish,0.0,0.572
+Tampa Bay Buccaneers,jalen mcmillan,Jalen McMillan,0.035,0.0
+Tampa Bay Buccaneers,jalon daniels,Jalon Daniels,0.265,0.0
+Tampa Bay Buccaneers,josiah trotter,Josiah Trotter,0.0,0.642
+Tampa Bay Buccaneers,kameron johnson,Kameron Johnson,0.045,0.0
+Tampa Bay Buccaneers,keionte scott,Keionte Scott,0.0,0.587
+Tampa Bay Buccaneers,kenneth gainwell,Kenneth Gainwell,0.425,0.0
 Tampa Bay Buccaneers,ko kieft,Ko Kieft,0.012,0.0
-Tampa Bay Buccaneers,lavonte david,Lavonte David,0.0,0.25
-Tampa Bay Buccaneers,logan hall,Logan Hall,0.0,0.138
 Tampa Bay Buccaneers,luke goedeke,Luke Goedeke,1.0,0.0
-Tampa Bay Buccaneers,markees watts,Markees Watts,0.0,0.005
-Tampa Bay Buccaneers,michael jordan,Michael Jordan,0.25,0.0
-Tampa Bay Buccaneers,mike evans,Mike Evans,0.188,0.0
-Tampa Bay Buccaneers,miles killebrew,Miles Killebrew,0.0,0.008
-Tampa Bay Buccaneers,payne durham,Payne Durham,0.25,0.0
-Tampa Bay Buccaneers,rachaad white,Rachaad White,0.082,0.0
-Tampa Bay Buccaneers,rakeem nunezroches,Rakeem Nunez-Roches,0.0,0.152
-Tampa Bay Buccaneers,rashad wisdom,Rashad Wisdom,0.0,0.015
+Tampa Bay Buccaneers,miles killebrew,Miles Killebrew,0.0,0.012
+Tampa Bay Buccaneers,payne durham,Payne Durham,0.202,0.0
+Tampa Bay Buccaneers,rakeem nunezroches,Rakeem Nunez-Roches,0.0,0.232
 Tampa Bay Buccaneers,rueben bain,Rueben Bain,0.0,0.31
-Tampa Bay Buccaneers,sean tucker,Sean Tucker,0.02,0.0
-Tampa Bay Buccaneers,sirvocea dennis,SirVocea Dennis,0.0,0.41
-Tampa Bay Buccaneers,ted hurst,Ted Hurst,0.56,0.0
-Tampa Bay Buccaneers,tez johnson,Tez Johnson,0.22,0.0
+Tampa Bay Buccaneers,sean tucker,Sean Tucker,0.015,0.0
+Tampa Bay Buccaneers,sirvocea dennis,SirVocea Dennis,0.0,0.2
+Tampa Bay Buccaneers,ted hurst,Ted Hurst,0.66,0.0
+Tampa Bay Buccaneers,tez johnson,Tez Johnson,0.328,0.0
 Tampa Bay Buccaneers,tristan wirfs,Tristan Wirfs,1.0,0.0
-Tampa Bay Buccaneers,tykee smith,Tykee Smith,0.0,0.98
-Tampa Bay Buccaneers,vita vea,Vita Vea,0.0,0.72
-Tampa Bay Buccaneers,yaya diaby,YaYa Diaby,0.0,0.68
-Tampa Bay Buccaneers,zyon mccollum,Zyon McCollum,0.0,0.745
-Tennessee Titans,ali gaye,Ali Gaye,0.0,0.078
-Tennessee Titans,alontae taylor,Alontae Taylor,0.0,0.745
-Tennessee Titans,amani hooker,Amani Hooker,0.0,0.742
-Tennessee Titans,anthony hill,Anthony Hill,0.0,0.75
-Tennessee Titans,austin schlottmann,Austin Schlottmann,0.75,0.0
-Tennessee Titans,brandon allen,Brandon Allen,0.228,0.0
-Tennessee Titans,bryce oliver,Bryce Oliver,0.088,0.0
-Tennessee Titans,calvin ridley,Calvin Ridley,0.398,0.0
-Tennessee Titans,cam horsley,Cam Horsley,0.0,0.058
-Tennessee Titans,cam ward,Cam Ward,0.772,0.0
-Tennessee Titans,carnell tate,Carnell Tate,0.628,0.0
-Tennessee Titans,cedric gray,Cedric Gray,0.0,0.458
-Tennessee Titans,chigoziem okonkwo,Chigoziem Okonkwo,0.2,0.0
-Tennessee Titans,chimere dike,Chimere Dike,0.235,0.0
-Tennessee Titans,cj ravenell,C.J. Ravenell,0.0,0.062
-Tennessee Titans,cody barton,Cody Barton,0.0,0.86
-Tennessee Titans,cordale flott,Cordale Flott,0.0,0.498
-Tennessee Titans,corey levin,Corey Levin,0.05,0.0
+Tampa Bay Buccaneers,tykee smith,Tykee Smith,0.0,0.975
+Tampa Bay Buccaneers,vita vea,Vita Vea,0.0,0.722
+Tampa Bay Buccaneers,yaya diaby,YaYa Diaby,0.0,0.635
+Tampa Bay Buccaneers,zyon mccollum,Zyon McCollum,0.0,0.995
+Tennessee Titans,alontae taylor,Alontae Taylor,0.0,0.995
+Tennessee Titans,amani hooker,Amani Hooker,0.0,0.988
+Tennessee Titans,anthony hill,Anthony Hill,0.0,1.0
+Tennessee Titans,atonio mafi,Atonio Mafi,0.25,0.0
+Tennessee Titans,austin schlottmann,Austin Schlottmann,1.0,0.0
+Tennessee Titans,calvin ridley,Calvin Ridley,0.515,0.0
+Tennessee Titans,cam ward,Cam Ward,1.0,0.0
+Tennessee Titans,carnell tate,Carnell Tate,0.838,0.0
+Tennessee Titans,cedric gray,Cedric Gray,0.0,0.332
+Tennessee Titans,chimere dike,Chimere Dike,0.085,0.0
+Tennessee Titans,cody barton,Cody Barton,0.0,0.818
+Tennessee Titans,cordale flott,Cordale Flott,0.0,0.748
 Tennessee Titans,dan moore,Dan Moore,1.0,0.0
-Tennessee Titans,daniel bellinger,Daniel Bellinger,0.283,0.0
-Tennessee Titans,darrell baker,Darrell Baker,0.0,0.25
-Tennessee Titans,david martinrobinson,David Martin-Robinson,0.142,0.0
-Tennessee Titans,elic ayomanor,Elic Ayomanor,0.698,0.0
-Tennessee Titans,erick hallett,Erick Hallett,0.0,0.145
+Tennessee Titans,daniel bellinger,Daniel Bellinger,0.413,0.0
+Tennessee Titans,david martinrobinson,David Martin-Robinson,0.045,0.0
+Tennessee Titans,elic ayomanor,Elic Ayomanor,0.618,0.0
+Tennessee Titans,erick hallett,Erick Hallett,0.0,0.035
 Tennessee Titans,fernando carmona,Fernando Carmona,0.505,0.0
-Tennessee Titans,gunnar helm,Gunnar Helm,0.612,0.0
-Tennessee Titans,jackson slater,Jackson Slater,0.402,0.0
-Tennessee Titans,jacob martin,Jacob Martin,0.0,0.425
+Tennessee Titans,gunnar helm,Gunnar Helm,0.792,0.0
+Tennessee Titans,jackson slater,Jackson Slater,0.245,0.0
+Tennessee Titans,jacob martin,Jacob Martin,0.0,0.57
 Tennessee Titans,james hudson,James Hudson,0.015,0.0
-Tennessee Titans,james lynch,James Lynch,0.0,0.108
-Tennessee Titans,james proche,James Proche,0.12,0.0
-Tennessee Titans,james williams,James Williams,0.0,0.19
-Tennessee Titans,jaylen harrell,Jaylen Harrell,0.0,0.152
+Tennessee Titans,james williams,James Williams,0.0,0.105
 Tennessee Titans,jc latham,JC Latham,1.0,0.0
-Tennessee Titans,jeffery simmons,Jeffery Simmons,0.0,0.798
-Tennessee Titans,jermaine johnson,Jermaine Johnson II,0.0,0.488
-Tennessee Titans,jerrick reed,Jerrick Reed,0.0,0.25
-Tennessee Titans,jihad ward,Jihad Ward,0.0,0.14
-Tennessee Titans,john franklinmyers,John Franklin-Myers,0.0,0.39
-Tennessee Titans,jordan elliott,Jordan Elliott,0.0,0.242
-Tennessee Titans,keldric faulk,Keldric Faulk,0.0,0.23
-Tennessee Titans,kendell brooks,Kendell Brooks,0.0,0.005
-Tennessee Titans,kevin winston,Kevin Winston,0.0,0.75
-Tennessee Titans,kevin zeitler,Kevin Zeitler,0.048,0.0
-Tennessee Titans,lloyd cushenberry,Lloyd Cushenberry III,0.25,0.0
-Tennessee Titans,marcus harris,Marcus Harris,0.0,0.425
-Tennessee Titans,mason kinsey,Mason Kinsey,0.005,0.0
-Tennessee Titans,micah robinson,Micah Robinson,0.0,0.505
-Tennessee Titans,nazir stackhouse,Nazir Stackhouse,0.0,0.208
-Tennessee Titans,nicholas singleton,Nicholas Singleton,0.028,0.0
-Tennessee Titans,oli udoh,Oli Udoh,0.042,0.0
-Tennessee Titans,oluwafemi oladejo,Oluwafemi Oladejo,0.0,0.17
+Tennessee Titans,jeffery simmons,Jeffery Simmons,0.0,0.857
+Tennessee Titans,jermaine johnson,Jermaine Johnson II,0.0,0.608
+Tennessee Titans,john franklinmyers,John Franklin-Myers,0.0,0.538
+Tennessee Titans,jordan elliott,Jordan Elliott,0.0,0.34
+Tennessee Titans,keldric faulk,Keldric Faulk,0.0,0.312
+Tennessee Titans,kevin winston,Kevin Winston,0.0,1.0
+Tennessee Titans,marcus harris,Marcus Harris,0.0,0.558
+Tennessee Titans,micah robinson,Micah Robinson,0.0,0.255
+Tennessee Titans,nazir stackhouse,Nazir Stackhouse,0.0,0.285
+Tennessee Titans,nicholas singleton,Nicholas Singleton,0.057,0.0
+Tennessee Titans,oluwafemi oladejo,Oluwafemi Oladejo,0.0,0.22
 Tennessee Titans,peter skoronski,Peter Skoronski,1.0,0.0
-Tennessee Titans,sanoussi kane,Sanoussi Kane,0.0,0.245
-Tennessee Titans,sebastian josephday,Sebastian Joseph-Day,0.0,0.062
-Tennessee Titans,solomon thomas,Solomon Thomas,0.0,0.195
-Tennessee Titans,tony adams,Tony Adams,0.0,0.062
-Tennessee Titans,tony pollard,Tony Pollard,0.558,0.0
-Tennessee Titans,truman jones,Truman Jones,0.0,0.205
-Tennessee Titans,tvondre sweat,T'Vondre Sweat,0.0,0.108
-Tennessee Titans,tyjae spears,Tyjae Spears,0.448,0.0
-Tennessee Titans,wandale robinson,Wan'Dale Robinson,0.495,0.0
-Washington Commanders,ale kaho,Ale Kaho,0.0,0.008
-Washington Commanders,amik robertson,Amik Robertson,0.0,0.742
-Washington Commanders,andrew wylie,Andrew Wylie,0.298,0.0
-Washington Commanders,antonio williams,Antonio Williams,0.318,0.0
-Washington Commanders,ben sinnott,Ben Sinnott,0.495,0.0
-Washington Commanders,bobby wagner,Bobby Wagner,0.0,0.25
-Washington Commanders,brandon coleman,Brandon Coleman,0.965,0.0
-Washington Commanders,charles omenihu,Charles Omenihu,0.0,0.44
-Washington Commanders,chig okonkwo,Chig Okonkwo,0.14,0.0
-Washington Commanders,chris moore,Chris Moore,0.082,0.0
+Tennessee Titans,solomon thomas,Solomon Thomas,0.0,0.245
+Tennessee Titans,tony adams,Tony Adams,0.0,0.103
+Tennessee Titans,tony pollard,Tony Pollard,0.532,0.0
+Tennessee Titans,truman jones,Truman Jones,0.0,0.08
+Tennessee Titans,tyjae spears,Tyjae Spears,0.422,0.0
+Tennessee Titans,wandale robinson,Wan'Dale Robinson,0.662,0.0
+Washington Commanders,ale kaho,Ale Kaho,0.0,0.012
+Washington Commanders,amik robertson,Amik Robertson,0.0,0.988
+Washington Commanders,andrew wylie,Andrew Wylie,0.053,0.0
+Washington Commanders,antonio williams,Antonio Williams,0.49,0.0
+Washington Commanders,athan kaliakmanis,Athan Kaliakmanis,0.21,0.0
+Washington Commanders,austin ekeler,Austin Ekeler,0.068,0.0
+Washington Commanders,ben sinnott,Ben Sinnott,0.452,0.0
+Washington Commanders,brandon coleman,Brandon Coleman,0.96,0.0
+Washington Commanders,charles omenihu,Charles Omenihu,0.0,0.46
+Washington Commanders,chig okonkwo,Chig Okonkwo,0.285,0.0
 Washington Commanders,chris paul,Chris Paul,1.0,0.0
-Washington Commanders,chris rodriguez,Chris Rodriguez,0.105,0.0
-Washington Commanders,colson yankoff,Colson Yankoff,0.245,0.0
-Washington Commanders,daron payne,Daron Payne,0.0,0.668
-Washington Commanders,deebo samuel,Deebo Samuel,0.178,0.0
-Washington Commanders,dorance armstrong,Dorance Armstrong Jr.,0.0,0.232
-Washington Commanders,drake jackson,Drake Jackson,0.0,0.05
-Washington Commanders,dyami brown,Dyami Brown,0.345,0.0
-Washington Commanders,fabian moreau,Fabian Moreau,0.0,0.075
-Washington Commanders,frankie luvu,Frankie Luvu,0.0,0.382
-Washington Commanders,jacob martin,Jacob Martin,0.0,0.192
-Washington Commanders,jacory croskeymerritt,Jacory Croskey-Merritt,0.448,0.0
-Washington Commanders,javon kinlaw,Javon Kinlaw,0.0,0.61
+Washington Commanders,colson yankoff,Colson Yankoff,0.225,0.0
+Washington Commanders,craig reynolds,Craig Reynolds,0.022,0.0
+Washington Commanders,daron payne,Daron Payne,0.0,0.718
+Washington Commanders,dorance armstrong,Dorance Armstrong Jr.,0.0,0.338
+Washington Commanders,dyami brown,Dyami Brown,0.485,0.0
+Washington Commanders,fabian moreau,Fabian Moreau,0.0,0.172
+Washington Commanders,frankie luvu,Frankie Luvu,0.0,0.37
+Washington Commanders,jacory croskeymerritt,Jacory Croskey-Merritt,0.47,0.0
+Washington Commanders,javon kinlaw,Javon Kinlaw,0.0,0.635
 Washington Commanders,javontae jeanbaptiste,Javontae Jean-Baptiste,0.0,0.1
 Washington Commanders,jayden daniels,Jayden Daniels,0.388,0.0
-Washington Commanders,jaylin lane,Jaylin Lane,0.12,0.0
-Washington Commanders,jeremy mcnichols,Jeremy McNichols,0.055,0.0
-Washington Commanders,jeremy reaves,Jeremy Reaves,0.0,0.962
-Washington Commanders,jerzhan newton,Jer'Zhan Newton,0.0,0.148
-Washington Commanders,john bates,John Bates,0.482,0.0
-Washington Commanders,jonathan jones,Jonathan Jones,0.0,0.245
-Washington Commanders,jordan magee,Jordan Magee,0.0,0.15
+Washington Commanders,jaylin lane,Jaylin Lane,0.125,0.0
+Washington Commanders,jeremy reaves,Jeremy Reaves,0.0,0.912
+Washington Commanders,john bates,John Bates,0.44,0.0
+Washington Commanders,jordan magee,Jordan Magee,0.0,0.04
 Washington Commanders,josh conerly,Josh Conerly,1.0,0.0
-Washington Commanders,josh johnson,Josh Johnson,0.25,0.0
-Washington Commanders,joshua josephs,Joshua Josephs,0.0,0.148
-Washington Commanders,kain medrano,Kain Medrano,0.0,0.165
-Washington Commanders,kaytron allen,Kaytron Allen,0.045,0.0
-Washington Commanders,klavon chaisson,K'Lavon Chaisson,0.0,0.52
+Washington Commanders,joshua josephs,Joshua Josephs,0.0,0.215
+Washington Commanders,kain medrano,Kain Medrano,0.0,0.245
+Washington Commanders,kaytron allen,Kaytron Allen,0.092,0.0
+Washington Commanders,klavon chaisson,K'Lavon Chaisson,0.0,0.69
 Washington Commanders,leo chenal,Leo Chenal,0.0,0.37
-Washington Commanders,lucas patrick,Lucas Patrick,0.235,0.0
-Washington Commanders,marcus mariota,Marcus Mariota,0.362,0.0
-Washington Commanders,matt gulbin,Matt Gulbin,0.03,0.0
-Washington Commanders,mike sainristil,Mike Sainristil,0.0,0.792
-Washington Commanders,nick allegretti,Nick Allegretti,1.0,0.0
+Washington Commanders,lucas patrick,Lucas Patrick,0.485,0.0
+Washington Commanders,marcus mariota,Marcus Mariota,0.402,0.0
+Washington Commanders,matt gulbin,Matt Gulbin,0.28,0.0
+Washington Commanders,mike sainristil,Mike Sainristil,0.0,0.568
+Washington Commanders,nick allegretti,Nick Allegretti,0.75,0.0
 Washington Commanders,nick cross,Nick Cross,0.0,0.495
-Washington Commanders,noah igbinoghene,Noah Igbinoghene,0.0,0.14
-Washington Commanders,odafe oweh,Odafe Oweh,0.0,0.53
-Washington Commanders,percy butler,Percy Butler,0.0,0.048
-Washington Commanders,preston smith,Preston Smith,0.0,0.048
-Washington Commanders,quan martin,Quan Martin,0.0,0.473
+Washington Commanders,odafe oweh,Odafe Oweh,0.0,0.69
+Washington Commanders,percy butler,Percy Butler,0.0,0.12
+Washington Commanders,quan martin,Quan Martin,0.0,0.672
 Washington Commanders,rachaad white,Rachaad White,0.34,0.0
-Washington Commanders,rasul douglas,Rasul Douglas,0.0,0.355
-Washington Commanders,ricky barber,Ricky Barber,0.0,0.068
-Washington Commanders,river cracraft,River Cracraft,0.025,0.0
+Washington Commanders,rasul douglas,Rasul Douglas,0.0,0.568
 Washington Commanders,samuel cosmi,Samuel Cosmi,0.49,0.0
-Washington Commanders,shy tuttle,Shy Tuttle,0.0,0.278
-Washington Commanders,sonny styles,Sonny Styles,0.0,0.718
-Washington Commanders,stefon diggs,Stefon Diggs,0.432,0.0
-Washington Commanders,terry mclaurin,Terry McLaurin,0.755,0.0
-Washington Commanders,tim settle,Tim Settle,0.0,0.255
-Washington Commanders,trenton scott,Trenton Scott,0.035,0.0
-Washington Commanders,treylon burks,Treylon Burks,0.335,0.0
-Washington Commanders,von miller,Von Miller,0.0,0.098
-Washington Commanders,will harris,Will Harris,0.0,0.25
+Washington Commanders,shy tuttle,Shy Tuttle,0.0,0.355
+Washington Commanders,sonny styles,Sonny Styles,0.0,0.903
+Washington Commanders,stefon diggs,Stefon Diggs,0.598,0.0
+Washington Commanders,terry mclaurin,Terry McLaurin,0.58,0.0
+Washington Commanders,tim settle,Tim Settle,0.0,0.365
+Washington Commanders,treylon burks,Treylon Burks,0.312,0.0
