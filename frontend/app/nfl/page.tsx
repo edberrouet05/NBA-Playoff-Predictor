@@ -426,7 +426,7 @@ export default function NFLPage() {
         </div>
 
         {/* ── Right: insight panels — stay in view while the games list scrolls (wide screens) ── */}
-        <div data-sidebar className="flex flex-col gap-4 xl:sticky xl:top-16 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:pb-1">
+        <div data-sidebar className="flex flex-col gap-4 xl:sticky xl:top-16 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto no-scrollbar xl:pb-1">
           <PredictionsLog log={predLog} loading={logLoading} />
           <ConfidencePicks games={games} loading={loading} />
         </div>

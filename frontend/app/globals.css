@@ -21,3 +21,11 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
 }
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
