@@ -20,7 +20,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-ODDS_API_KEY = os.getenv("ODDS_API_KEY", "09bb7105d888c7ad840a18fdc316b0c8")
+# The Odds API key — environment only (Render: service env vars). Without it, odds are skipped.
+ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
 
 ROOT                = Path(__file__).parent.parent
 MODEL_PATH          = ROOT / "models" / "logistic_regression.pkl"
