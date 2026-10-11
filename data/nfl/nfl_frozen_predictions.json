@@ -732,38 +732,38 @@
  },
  "401872991": {
   "away_team": "Detroit Lions",
-  "away_win_prob": 67.2,
-  "frozen_at": "2026-10-11T14:22:43Z",
+  "away_win_prob": 68.3,
+  "frozen_at": "2026-10-11T20:15:02Z",
   "home_team": "Arizona Cardinals",
-  "home_win_prob": 32.8,
+  "home_win_prob": 31.7,
   "kickoff": "2026-10-11T20:25Z",
   "predicted_winner": "Detroit Lions"
  },
  "401872992": {
   "away_team": "San Francisco 49ers",
-  "away_win_prob": 45.9,
-  "frozen_at": "2026-10-11T14:22:43Z",
+  "away_win_prob": 48.3,
+  "frozen_at": "2026-10-11T20:15:02Z",
   "home_team": "Seattle Seahawks",
-  "home_win_prob": 54.1,
+  "home_win_prob": 51.7,
   "kickoff": "2026-10-11T20:25Z",
   "predicted_winner": "Seattle Seahawks"
  },
  "401872993": {
   "away_team": "Baltimore Ravens",
-  "away_win_prob": 45.5,
-  "frozen_at": "2026-10-11T14:34:50Z",
+  "away_win_prob": 41.0,
+  "frozen_at": "2026-10-11T20:15:02Z",
   "home_team": "Atlanta Falcons",
-  "home_win_prob": 54.5,
+  "home_win_prob": 59.0,
   "kickoff": "2026-10-12T00:20Z",
   "predicted_winner": "Atlanta Falcons"
  },
  "401872994": {
   "away_team": "Buffalo Bills",
-  "away_win_prob": 53.5,
-  "frozen_at": "2026-10-11T14:22:43Z",
+  "away_win_prob": 49.1,
+  "frozen_at": "2026-10-11T20:15:02Z",
   "home_team": "Los Angeles Rams",
-  "home_win_prob": 46.5,
+  "home_win_prob": 50.9,
   "kickoff": "2026-10-13T00:15Z",
-  "predicted_winner": "Buffalo Bills"
+  "predicted_winner": "Los Angeles Rams"
  }
 }
