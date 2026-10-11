@@ -690,6 +690,7 @@ def _parse_espn_nba_event(ev: dict) -> dict | None:
         "game_id":     str(ev.get("id")),
         "date":        et.date().isoformat() if et else ev.get("date", "")[:10],
         "time_et":     (et.strftime("%I:%M %p").lstrip("0") + " ET") if et else "",
+        "start_utc":   ev.get("date", ""),
         "season_type": int((ev.get("season") or {}).get("type") or 2),   # 2 regular, 3 playoffs, 5 play-in
         "round":       _nba_round_from_note(note),
         "home_team":   home.get("team", {}).get("displayName", ""),
@@ -937,7 +938,7 @@ def _fetch_day(
                     injury_factors[name] = factor
                     injury_players[name] = players
 
-    nba_odds = _fetch_odds_today("basketball_nba")
+    nba_odds = _fetch_odds_today("basketball_nba", [g.get("start_utc", "") for g in games if g["state"] == "pre"])
     results = []
     for g in games:
         home_name = g["home_team"]
@@ -1194,7 +1195,16 @@ def get_predictions_log(n: int = 5):
 
 _odds_cache:      dict[str, dict] = {}
 _odds_cache_time: dict[str, float] = {}
-_ODDS_TTL = 1800.0  # 30 minutes
+# The Odds API free plan is 500 credits / month and each call costs one credit per region,
+# so: one region, refresh every 2 h — every 15 min once a game is within the hour (closing
+# line) — never call for a sport with no game left to start, and back off when nearly out.
+_ODDS_TTL = 2 * 3600.0
+_ODDS_TTL_NEAR_START = 15 * 60.0
+_ODDS_NEAR_START = 3600.0
+_ODDS_REGIONS = "eu"            # includes Pinnacle, the sharpest book in _BOOKMAKER_PRIORITY
+_ODDS_MIN_REMAINING = 5         # credits kept in reserve; below this, pause until the pause ends
+_ODDS_PAUSE = 6 * 3600.0
+_odds_paused_until: float = 0.0
 
 _PREGAME_ODDS_FILE = ROOT / "data" / "pregame_odds.json"
 
@@ -1253,27 +1263,45 @@ _BOOKMAKER_PRIORITY = [
 ]
 
 
-def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
+def _fetch_odds_today(sport_key: str, starts: list[str] | None = None) -> dict[str, dict]:
     """Return {away_team|home_team: {away_odds, home_odds}} using the sharpest available bookmaker.
 
+    `starts`: ISO start times of the caller's games that have not started. Empty = nothing left
+    to price, so no API call (finished games read the stored line via _game_odds_for).
     For games not yet started: returns current market odds and caches them in _pregame_odds.
     For games already in progress: returns the pre-game odds stored before tip-off/first pitch.
     Falls back to empty dict silently on any error or missing key.
     """
     import json, time as _t, urllib.request
     from datetime import datetime, timezone
+    global _odds_paused_until
 
     if not ODDS_API_KEY:
         return {}
 
     now = _t.time()
-    if sport_key in _odds_cache and (now - _odds_cache_time.get(sport_key, 0)) < _ODDS_TTL:
-        return _odds_cache[sport_key]
+    cached = _odds_cache.get(sport_key)
+    if starts is not None and not starts:
+        return cached or {}
+    # Closer to the start, refresh more often so the stored line is the closing line
+    ttl = _ODDS_TTL
+    for s in starts or []:
+        try:
+            until = datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() - now
+        except ValueError:
+            continue
+        if 0 < until < _ODDS_NEAR_START:
+            ttl = _ODDS_TTL_NEAR_START
+            break
+    if cached is not None and (now - _odds_cache_time.get(sport_key, 0)) < ttl:
+        return cached
+    if now < _odds_paused_until:
+        return cached or {}
 
     url = (
         f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds/"
         f"?apiKey={ODDS_API_KEY}"
-        f"&regions=us,eu,uk"
+        f"&regions={_ODDS_REGIONS}"
         f"&markets=h2h"
         f"&oddsFormat=decimal"
     )
@@ -1281,6 +1309,9 @@ def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
         req = urllib.request.Request(url, headers={"User-Agent": "CourtEdge/1.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             games = json.loads(resp.read())
+            remaining = resp.headers.get("x-requests-remaining")
+        if remaining is not None and float(remaining) < _ODDS_MIN_REMAINING:
+            _odds_paused_until = now + _ODDS_PAUSE   # keep the last credits; retry later
 
         now_dt = datetime.now(timezone.utc)
         result: dict[str, dict] = {}
@@ -1334,8 +1365,12 @@ def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
         _odds_cache[sport_key]      = result
         _odds_cache_time[sport_key] = now
         return result
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 429):                     # bad key or quota used up: stop asking
+            _odds_paused_until = now + _ODDS_PAUSE
+        return cached or {}
     except Exception:
-        return {}
+        return cached or {}
 
 
 VALUE_EDGE_MIN = 5.0  # model must beat the no-vig market probability by ≥ 5 points
@@ -1588,7 +1623,9 @@ def _fetch_mlb_today() -> dict:
                 pitcher_ids.append(pid)
     starter_eras: dict[int, float] = _fetch_pitcher_eras_batch(list(set(pitcher_ids)))
 
-    mlb_odds = _fetch_odds_today("baseball_mlb")
+    mlb_odds = _fetch_odds_today("baseball_mlb", [
+        g.get("gameDate", "") for g in all_games
+        if (g.get("status") or {}).get("abstractGameState") == "Preview"])
     results = []
     for g in all_games:
             teams     = g.get("teams", {})
@@ -2637,7 +2674,9 @@ def _fetch_nfl_week() -> dict:
     data  = _fetch_nfl_scoreboard()
     model = _load_nfl_model()
     stats = _load_nfl_stats()
-    nfl_odds = _fetch_odds_today("americanfootball_nfl")
+    nfl_odds = _fetch_odds_today("americanfootball_nfl", [
+        ev.get("date", "") for ev in data.get("events", [])
+        if ((ev.get("competitions") or [{}])[0].get("status") or {}).get("type", {}).get("state") == "pre"])
 
     season = data.get("season", {}).get("year", NFL_CURRENT_SEASON)
     week   = data.get("week", {}).get("number", 1)
@@ -2749,7 +2788,6 @@ def get_nfl_predictions_log(n: int = 500):
     try:
         model = _load_nfl_model()
         stats = _load_nfl_stats()
-        nfl_odds = _fetch_odds_today("americanfootball_nfl")  # noqa: F841 (kept for parity/debug)
 
         log: list[dict] = []
         for week in range(1, 19):
