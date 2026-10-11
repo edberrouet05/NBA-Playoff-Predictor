@@ -967,13 +967,9 @@ def _fetch_day(
         away_impact = round((_adjust_for_injuries(p_raw, inj_away, 1.0) - p_raw) * 100, 1) if inj_away != 1.0 else 0.0
         home_impact = round((p_raw - _adjust_for_injuries(p_raw, 1.0, inj_home)) * 100, 1) if inj_home != 1.0 else 0.0
 
-        game_odds    = _get_game_odds(nba_odds, away_name, home_name)
         nba_status   = STATUS.get(g["state"], "Scheduled")
-
-        # For finished games, only show confirmed pre-game odds
-        nba_game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
-        if nba_status == "Final" and nba_game_key not in _pregame_odds:
-            game_odds = {}
+        # Finished games only show the stored pre-game line
+        game_odds    = _game_odds_for(nba_odds, away_name, home_name, g["date"], nba_status == "Final")
 
         results.append({
             "game_id":             g["game_id"],
@@ -1210,16 +1206,39 @@ def _load_pregame_odds() -> dict[str, dict]:
         return {}
 
 
+def _merge_pregame_odds(into: dict[str, dict], other: dict[str, dict]) -> None:
+    """Add `other`'s lines to `into`; for a game in both, the later save (closer to the start) wins.
+    Keys without a date are from the old format, which mixed up the games of a series: dropped."""
+    for key, entry in other.items():
+        if key.count("|") != 2:
+            continue
+        mine = into.get(key)
+        if not mine or entry.get("saved_at", "") > mine.get("saved_at", ""):
+            into[key] = entry
+
+
 def _save_pregame_odds(data: dict) -> None:
+    """Write the stored lines, first merging in whatever is on disk (seed, pulled commit…)."""
     import json as _json
     try:
+        _merge_pregame_odds(data, _load_pregame_odds())
+        for key in [k for k in data if k.count("|") != 2]:
+            del data[key]
         _PREGAME_ODDS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _PREGAME_ODDS_FILE.write_text(_json.dumps(data, indent=2), encoding="utf-8")
+        _PREGAME_ODDS_FILE.write_text(_json.dumps(data, indent=1, sort_keys=True), encoding="utf-8")
     except Exception:
         pass
 
 
-_pregame_odds: dict[str, dict] = _load_pregame_odds()
+_pregame_odds: dict[str, dict] = {}
+_merge_pregame_odds(_pregame_odds, _load_pregame_odds())
+
+
+@app.get("/api/pregame_odds")
+def get_pregame_odds() -> dict[str, dict]:
+    """Every stored pre-game line (read by the workflows so a redeploy loses none)."""
+    _merge_pregame_odds(_pregame_odds, _load_pregame_odds())
+    return _pregame_odds
 
 
 def _normalize_team(name: str) -> str:
@@ -1275,10 +1294,11 @@ def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
                 game_started = commence_dt <= now_dt
             except Exception:
                 game_started = False
+            stored_key = _pregame_odds_key(away, home, g.get("commence_time", ""))
 
-            # If we have cached pre-game odds, always prefer them
-            if game_key in _pregame_odds:
-                result[game_key] = _pregame_odds[game_key]
+            # Started: keep showing the last pre-game line we stored (live lines are distorted)
+            if game_started and stored_key in _pregame_odds:
+                result[game_key] = {k: _pregame_odds[stored_key][k] for k in ("away_odds", "home_odds")}
                 continue
 
             # Extract odds from best available bookmaker
@@ -1303,8 +1323,9 @@ def _fetch_odds_today(sport_key: str) -> dict[str, dict]:
                 if a_odds and h_odds:
                     odds_data = {"away_odds": round(a_odds, 2), "home_odds": round(h_odds, 2)}
                     if not game_started:
-                        # Only persist pre-game odds, not live or post-game
-                        _pregame_odds[game_key] = odds_data
+                        # Only persist pre-game odds, refreshed up to the start (closing line)
+                        _pregame_odds[stored_key] = {
+                            **odds_data, "saved_at": _time_mod.strftime("%Y-%m-%dT%H:%M:%SZ", _time_mod.gmtime())}
                     result[game_key] = odds_data
                 break
 
@@ -1346,6 +1367,29 @@ def _get_game_odds(odds: dict, away: str, home: str) -> dict:
     """Look up odds for a game, trying normalized team names."""
     key = f"{_normalize_team(away)}|{_normalize_team(home)}"
     return odds.get(key, {})
+
+
+def _pregame_odds_key(away: str, home: str, start: str) -> str:
+    """'away|home|YYYY-MM-DD' (Eastern date) — the date tells apart the games of a series.
+    `start` is an ISO datetime (UTC) or an already-Eastern 'YYYY-MM-DD'."""
+    import datetime, zoneinfo
+    day = (start or "")[:10]
+    if len(start or "") > 10:
+        try:
+            day = datetime.datetime.fromisoformat(start.replace("Z", "+00:00")) \
+                .astimezone(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+        except ValueError:
+            pass
+    return f"{_normalize_team(away)}|{_normalize_team(home)}|{day}"
+
+
+def _game_odds_for(odds: dict, away: str, home: str, start: str, finished: bool) -> dict:
+    """Odds to show for a game: the last pre-game line we stored, else the current market line
+    for a game not finished yet (never a live / post-game line for a finished game)."""
+    stored = _pregame_odds.get(_pregame_odds_key(away, home, start))
+    if stored:
+        return stored
+    return {} if finished else _get_game_odds(odds, away, home)
 
 
 #  MLB endpoints
@@ -1588,14 +1632,9 @@ def _fetch_mlb_today() -> dict:
             except Exception:
                 p_away = 0.5
 
-            game_odds = _get_game_odds(mlb_odds, away_name, home_name)
-
-            # For finished games, only show odds if they're confirmed pre-game (not distorted post-game odds)
+            # Finished games only show the stored pre-game line (not distorted post-game odds)
             is_done = status in ("Final", "Game Over", "Completed")
-            game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
-            has_pregame = game_key in _pregame_odds
-            if is_done and not has_pregame:
-                game_odds = {}
+            game_odds = _game_odds_for(mlb_odds, away_name, home_name, game_time, is_done)
 
             away_wp     = round(p_away * 100, 1)
             home_wp     = round((1 - p_away) * 100, 1)
@@ -2263,6 +2302,67 @@ _NFL_STANDINGS_TTL = 300.0  # 5 minutes
 
 _nfl_game_pred_cache: dict[str, dict] = {}  # str(event_id) → {away_win_prob, home_win_prob, predicted_winner}
 
+# Pre-game predictions written down before kickoff, so a played game is never re-predicted with
+# later data (today's injury report, refreshed features). Refreshed while the game is upcoming,
+# frozen once it starts. Committed to the repo by the freeze workflow so redeploys keep it.
+NFL_FROZEN_PREDS_PATH = ROOT / "data" / "nfl" / "nfl_frozen_predictions.json"
+
+
+def _load_nfl_frozen_preds() -> dict[str, dict]:
+    import json as _json
+    try:
+        return _json.loads(NFL_FROZEN_PREDS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _merge_nfl_frozen_preds(into: dict[str, dict], other: dict[str, dict]) -> None:
+    """Add `other`'s entries to `into`; for a game in both, the later freeze wins."""
+    for gid, entry in other.items():
+        mine = into.get(gid)
+        if not mine or entry.get("frozen_at", "") > mine.get("frozen_at", ""):
+            into[gid] = entry
+
+
+def _save_nfl_frozen_preds() -> None:
+    """Write the frozen predictions, first merging in whatever is on disk (another process or a
+    seed may have written entries this one never loaded)."""
+    import json as _json
+    try:
+        _merge_nfl_frozen_preds(_nfl_frozen_preds, _load_nfl_frozen_preds())
+        NFL_FROZEN_PREDS_PATH.write_text(_json.dumps(_nfl_frozen_preds, indent=1, sort_keys=True), encoding="utf-8")
+    except Exception:
+        pass
+
+
+_nfl_frozen_preds: dict[str, dict] = _load_nfl_frozen_preds()
+_nfl_frozen_mtime: float = 0.0
+
+
+def _refresh_nfl_frozen_preds() -> None:
+    """Pick up entries written to the file by someone else (a seed, a pulled commit)."""
+    global _nfl_frozen_mtime
+    try:
+        mtime = NFL_FROZEN_PREDS_PATH.stat().st_mtime
+    except OSError:
+        return
+    if mtime != _nfl_frozen_mtime:
+        _nfl_frozen_mtime = mtime
+        _merge_nfl_frozen_preds(_nfl_frozen_preds, _load_nfl_frozen_preds())
+
+
+def _nfl_known_pred(game_id) -> dict | None:
+    """The pre-game prediction we showed for this game: frozen copy first, then this process's cache."""
+    _refresh_nfl_frozen_preds()
+    return _nfl_frozen_preds.get(str(game_id)) or _nfl_game_pred_cache.get(str(game_id))
+
+
+@app.get("/api/nfl/frozen_predictions")
+def get_nfl_frozen_predictions() -> dict[str, dict]:
+    """Every frozen pre-game prediction (read by the freeze workflow so a redeploy loses none)."""
+    _refresh_nfl_frozen_preds()
+    return _nfl_frozen_preds
+
 
 def _load_nfl_model():
     global _nfl_model_cache
@@ -2331,6 +2431,9 @@ def _load_nfl_roles() -> dict[str, dict[str, float]]:
     return _nfl_roles_cache[1]
 
 
+_nfl_injury_status_by_id: dict[str, str] = {}   # ESPN athlete id → injury status (all positions)
+
+
 def _fetch_nfl_injury_report() -> dict[str, list[tuple[str, str]]] | None:
     """{team: [(player key, status)]} for non-QBs listed Out / Doubtful / Questionable on ESPN.
     None when ESPN is unreachable (callers then keep the pipeline's value)."""
@@ -2346,11 +2449,15 @@ def _fetch_nfl_injury_report() -> dict[str, list[tuple[str, str]]] | None:
     except Exception:
         return _nfl_injury_report_cache
     out: dict[str, list[tuple[str, str]]] = {}
+    _nfl_injury_status_by_id.clear()
     for team in data.get("injuries", []):
         rows = []
         for inj in team.get("injuries", []):
             ath = inj.get("athlete", {})
             status = str(inj.get("status", "")).title()
+            aid = _espn_athlete_id(ath)
+            if aid:
+                _nfl_injury_status_by_id[aid] = status
             if status in NFL_INJURY_WEIGHT and (ath.get("position") or {}).get("abbreviation") != "QB":
                 rows.append((_nfl_player_key(ath.get("displayName", "")), status))
         out[team.get("displayName", "")] = rows
@@ -2525,6 +2632,7 @@ def _predict_nfl_game(model, stats: pd.DataFrame, away_name: str, home_name: str
 
 def _fetch_nfl_week() -> dict:
     """Fetch the current NFL week's games with win probabilities and odds."""
+    _refresh_nfl_frozen_preds()
     data  = _fetch_nfl_scoreboard()
     model = _load_nfl_model()
     stats = _load_nfl_stats()
@@ -2554,24 +2662,30 @@ def _fetch_nfl_week() -> dict:
             except (TypeError, ValueError):
                 return None
 
-        pred = _predict_nfl_game(model, stats, away_name, home_name, game_id)
-        if pred is None:
-            continue
-        away_wp, home_wp, pred_winner = pred
+        gid_str = str(game_id)
+        frozen  = _nfl_frozen_preds.get(gid_str)
+        if status.get("state", "pre") != "pre" and frozen:
+            # Started or played: show what we predicted before kickoff, never a re-prediction
+            away_wp, home_wp, pred_winner = frozen["away_win_prob"], frozen["home_win_prob"], frozen["predicted_winner"]
+        else:
+            pred = _predict_nfl_game(model, stats, away_name, home_name, game_id)
+            if pred is None:
+                continue
+            away_wp, home_wp, pred_winner = pred
+            if status.get("state", "pre") == "pre":
+                entry = {"away_team": away_name, "home_team": home_name, "kickoff": ev.get("date", ""),
+                         "away_win_prob": away_wp, "home_win_prob": home_wp, "predicted_winner": pred_winner}
+                if not frozen or any(frozen.get(k) != v for k, v in entry.items()):
+                    _nfl_frozen_preds[gid_str] = {**entry, "frozen_at": _time_mod.strftime("%Y-%m-%dT%H:%M:%SZ", _time_mod.gmtime())}
+                    _save_nfl_frozen_preds()
 
-        game_odds = _get_game_odds(nfl_odds, away_name, home_name)
         status_desc = status.get("description", "Scheduled")
         is_done = bool(status.get("completed", False))
-        game_key = f"{_normalize_team(away_name)}|{_normalize_team(home_name)}"
-        has_pregame = game_key in _pregame_odds
-        if is_done and not has_pregame:
-            game_odds = {}
+        game_odds = _game_odds_for(nfl_odds, away_name, home_name, ev.get("date", ""), is_done)
 
-        gid_str = str(game_id)
-        if gid_str not in _nfl_game_pred_cache:
-            _nfl_game_pred_cache[gid_str] = {
-                "away_win_prob": away_wp, "home_win_prob": home_wp, "predicted_winner": pred_winner,
-            }
+        _nfl_game_pred_cache[gid_str] = {
+            "away_win_prob": away_wp, "home_win_prob": home_wp, "predicted_winner": pred_winner,
+        }
 
         results.append({
             "game_id":          game_id,
@@ -2664,7 +2778,7 @@ def get_nfl_predictions_log(n: int = 500):
 
                 game_id = ev.get("id")
                 gid_str = str(game_id)
-                cached  = _nfl_game_pred_cache.get(gid_str)
+                cached  = _nfl_known_pred(gid_str)
                 if cached:
                     away_win_prob    = cached["away_win_prob"]
                     home_win_prob    = cached["home_win_prob"]
@@ -3306,8 +3420,17 @@ def get_nfl_game_detail(game_id: str):
     try:
         url = f"{NFL_BASE}/summary?event={game_id}"
         req = urllib.request.Request(url, headers=NFL_UA)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
+        # ESPN's TLS handshake sometimes times out on a cold start (while /week fires
+        # its own batch of requests) — retry before giving up.
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read())
+                break
+            except (urllib.error.URLError, TimeoutError):
+                if attempt == 2:
+                    raise
+                _time_mod.sleep(0.5 * (attempt + 1))
 
         header = data.get("header", {})
         comp   = header.get("competitions", [{}])[0]
@@ -3338,7 +3461,7 @@ def get_nfl_game_detail(game_id: str):
 
         # Pre-game win probability — prefer the cached value from /api/nfl/week
         # so the detail page matches what the schedule card showed.
-        cached_pred = _nfl_game_pred_cache.get(str(game_id))
+        cached_pred = _nfl_known_pred(game_id)
         if cached_pred:
             away_wp = cached_pred["away_win_prob"]
             home_wp = cached_pred["home_win_prob"]
@@ -4022,7 +4145,7 @@ def _team_next_game_prob(league: str, game: dict, team_name: str) -> float | Non
     if league != "nfl":
         return None
     try:
-        cached = _nfl_game_pred_cache.get(str(game["game_id"]))
+        cached = _nfl_known_pred(game["game_id"])
         if cached:
             away_wp, home_wp = cached["away_win_prob"], cached["home_win_prob"]
         else:
@@ -4148,8 +4271,9 @@ _PLAYER_STAT_LABELS = {
     "strikeouts": "K", "earnedRuns": "ER", "walks": "BB", "points": "PTS", "totalRebounds": "REB",
     "assists": "AST", "threePointFieldGoalsMade-threePointFieldGoalsAttempted": "3PM",
 }
-_player_cache: dict[tuple[str, str], tuple[float, dict]] = {}
+_player_cache: dict[tuple[str, str], tuple[float, dict, float]] = {}
 _PLAYER_TTL = 900.0
+_PLAYER_LIVE_TTL = 60.0
 
 
 def _player_kind(league: str, names: list[str]) -> str:
@@ -4197,6 +4321,343 @@ def _espn_athlete_id(ath: dict) -> str | None:
     return None
 
 
+# Opponent defense column that moves each projected NFL stat (higher EPA allowed = more yards)
+_NFL_PROJ_DEF_COL = {"passingYards": "def_pass_epa", "receivingYards": "def_pass_epa", "rushingYards": "def_epa"}
+_PROJ_DECAY = 0.85      # weight of each older game relative to the next one
+_PROJ_PRIOR_GAMES = 4   # this many games of this season = as much weight as last season (per-game stats)
+# Stat = volume × efficiency: (volume stat, volume label, efficiency label, league-average
+# efficiency, volume worth of league average used to shrink efficiency, games of this season
+# worth as much as last season's volume, game-script sensitivity of volume to our win prob)
+_PROJ_VOLUME = {
+    ("nfl", "receivingYards"): ("receivingTargets", "Targets",  "Y/Tgt",   7.6,  30,  2, -0.20),
+    ("nfl", "rushingYards"):   ("rushingAttempts",  "Carries",  "YPC",     4.3,  80,  2,  0.30),
+    ("nfl", "passingYards"):   ("passingAttempts",  "Attempts", "Y/A",     6.9,  150, 2, -0.20),
+    ("nba", "points"):         ("minutes",          "Min",      "Pts/min", 0.47, 300, 3,  0.0),
+}
+_PROJ_OUT_STATUSES = {"Out", "Injured Reserve", "Suspended", "Physically Unable To Perform"}
+_NBA_B2B_HOURS = 30       # next game this soon after the last one = second night of a back-to-back
+_NBA_B2B_ADJ = -0.04      # minutes lost on the second night
+
+
+def _recency_avg(vals: list[float]) -> float:
+    n = len(vals)
+    weights = [_PROJ_DECAY ** (n - 1 - i) for i in range(n)]
+    return sum(w * v for w, v in zip(weights, vals)) / sum(weights)
+
+
+def _last_season_totals(career_cats: list[dict], stats: list[str], current_season: str) -> tuple[dict, str] | None:
+    """({stat: total, 'gamesPlayed': n}, season label) for the latest season before the current one.
+    Reads totals ('points') or per-game averages ('avgPoints' × games played)."""
+    def column(names: list[str], stat: str) -> tuple[int, bool] | None:
+        avg = "avg" + stat[0].upper() + stat[1:]
+        if stat in names:
+            return names.index(stat), False
+        return (names.index(avg), True) if avg in names else None
+
+    cat = next((c for c in career_cats if "gamesPlayed" in (c.get("names") or [])
+                and all(column(c["names"], s) for s in stats)), None)
+    if not cat:
+        return None
+    names = cat["names"]
+    cols = {s: column(names, s) for s in stats}
+    for s in reversed(cat.get("statistics") or []):
+        label = (s.get("season") or {}).get("displayName", "")
+        row = s.get("stats") or []
+        if label == current_season or len(row) < len(names):
+            continue
+        gp = _stat_num(row[names.index("gamesPlayed")])
+        out: dict = {"gamesPlayed": gp}
+        for stat, (i, is_avg) in cols.items():
+            v = _stat_num(row[i])
+            out[stat] = None if v is None or gp is None else v * gp if is_avg else v
+        if gp and all(out[k] is not None for k in stats):
+            return out, label
+    return None
+
+
+def _nba_matchup_adj(team: str, opponent: str) -> tuple[float, float]:
+    """(pace, defense) scales for an NBA game: expected possessions vs league average, and
+    points per possession the opponent allows (def rating z-score, ±8% max)."""
+    stats = _load_stats_by_name()
+    if team not in stats.index or opponent not in stats.index:
+        return 0.0, 0.0
+    pace, drtg = stats["pace"].astype(float), stats["def_rtg"].astype(float)
+    game_pace = (float(pace[team]) + float(pace[opponent])) / 2
+    z = (float(drtg[opponent]) - drtg.mean()) / (drtg.std() or 1.0)
+    return float(game_pace / pace.mean() - 1), float(max(-0.08, min(0.08, 0.03 * z)))
+
+
+NFL_PLAYER_WEEK_URL = ("https://github.com/nflverse/nflverse-data/releases/download/"
+                       f"stats_player/stats_player_week_{NFL_CURRENT_SEASON}.csv")
+_NFL_PLAYER_WEEK_TTL = 3 * 3600.0
+_nfl_player_week_cache: pd.DataFrame | None = None
+_nfl_player_week_time: float = 0.0
+_NFL_PLAYER_WEEK_COLS = ["player_id", "player_display_name", "position_group", "week", "team", "opponent_team",
+                         "attempts", "passing_yards", "carries", "rushing_yards", "targets", "receiving_yards"]
+# Per chart stat: (volume column, yards column, prior volume used to shrink what a defense allows)
+_NFL_DEF_VS_POS = {"receivingYards": ("targets", "receiving_yards", 40),
+                   "rushingYards":   ("carries", "rushing_yards", 60),
+                   "passingYards":   ("attempts", "passing_yards", 100)}
+_NFL_VACATED_PASS_ON = 0.7   # share of an injured teammate's volume that reaches the remaining players
+# How readily an injured player's volume flows to a teammate, by (teammate, injured) position group
+_NFL_VOLUME_AFFINITY = {
+    "targets": {("WR", "WR"): 1.0, ("TE", "TE"): 1.0, ("RB", "RB"): 1.0,
+                ("WR", "TE"): 0.6, ("TE", "WR"): 0.6, ("RB", "WR"): 0.3, ("RB", "TE"): 0.4,
+                ("WR", "RB"): 0.3, ("TE", "RB"): 0.4},
+    "carries": {("RB", "RB"): 1.0, ("QB", "RB"): 0.15, ("WR", "RB"): 0.1},
+}
+# Yards per play per point of QB EPA/dropback, and the cap: receivers lean on the QB directly,
+# runners only through lighter boxes
+_NFL_QB_EFF = {"receivingYards": (1.5, 0.2), "rushingYards": (0.5, 0.08)}
+
+
+def _load_nfl_player_weeks() -> pd.DataFrame | None:
+    """nflverse weekly player stats for the current regular season (cached; last good copy on failure)."""
+    import io, urllib.request
+    global _nfl_player_week_cache, _nfl_player_week_time
+    now = _time_mod.time()
+    if _nfl_player_week_cache is not None and now - _nfl_player_week_time < _NFL_PLAYER_WEEK_TTL:
+        return _nfl_player_week_cache
+    try:
+        req = urllib.request.Request(NFL_PLAYER_WEEK_URL, headers=NFL_UA)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            df = pd.read_csv(io.BytesIO(resp.read()), low_memory=False)
+        df = df[df["season_type"] == "REG"][_NFL_PLAYER_WEEK_COLS].copy()
+        df[_NFL_PLAYER_WEEK_COLS[6:]] = df[_NFL_PLAYER_WEEK_COLS[6:]].fillna(0).astype(float)
+        df["key"] = df["player_display_name"].map(_nfl_player_key)
+        _nfl_player_week_cache = df
+    except Exception:
+        pass
+    _nfl_player_week_time = now
+    return _nfl_player_week_cache
+
+
+def _nfl_player_context(chart_stat: str, player_name: str, team: str, opponent: str, event_id: str) -> dict:
+    """Matchup context from nflverse weekly stats:
+    def_adj   — yards per play the opponent allows to the player's position group vs league
+    vacated   — volume boost from injured teammates (Out / Doubtful…) who were playing recently,
+                split by current share and position affinity
+    qb_adj    — receivers and runners: projected starting QB vs the QBs he played with this season."""
+    ctx: dict = {"def_adj": None, "position": None, "vacated": 0.0, "vacated_names": [],
+                 "qb_adj": 0.0, "qb_from": None, "qb_to": None}
+    w = _load_nfl_player_weeks()
+    stats = _load_nfl_stats()
+    spec = _NFL_DEF_VS_POS.get(chart_stat)
+    if w is None or spec is None or team not in stats.index or opponent not in stats.index:
+        return ctx
+    abbr, opp_abbr = stats.at[team, "abbr"], stats.at[opponent, "abbr"]
+    vol_col, yds_col, k = spec
+    team_rows = w[w["team"] == abbr]
+    me = team_rows[team_rows["key"] == _nfl_player_key(player_name)]
+    if me.empty:
+        return ctx
+    pos = me["position_group"].mode().iat[0]
+    ctx["position"] = pos
+
+    # Defense vs position: shrink what the opponent allowed toward the league rate
+    pos_rows = w[(w["position_group"] == pos) & (w[vol_col] > 0)]
+    lg_vol, lg_yds = pos_rows[vol_col].sum(), pos_rows[yds_col].sum()
+    if lg_vol > 0:
+        lg_rate = lg_yds / lg_vol
+        allowed = pos_rows[pos_rows["opponent_team"] == opp_abbr]
+        rate = (allowed[yds_col].sum() + k * lg_rate) / (allowed[vol_col].sum() + k)
+        ctx["def_adj"] = float(max(-0.2, min(0.2, rate / lg_rate - 1)))
+
+    # Vacated volume: injured teammates who played the team's latest game leave their usual share.
+    # It flows to the healthy teammates in proportion to share × position affinity.
+    affinity = _NFL_VOLUME_AFFINITY.get(vol_col)
+    if affinity:
+        report = dict((_k, _s) for _k, _s in (_fetch_nfl_injury_report() or {}).get(team, []))
+        last_week = team_rows["week"].max()
+        team_vol_by_week = team_rows.groupby("week")[vol_col].sum()
+        used = team_rows[team_rows[vol_col] > 0]
+        shares = {}   # key → (position group, share of team volume in the weeks he played, played last week)
+        for key, g in used.groupby("key"):
+            shares[key] = (g["position_group"].mode().iat[0],
+                           g[vol_col].sum() / team_vol_by_week.loc[g["week"]].sum(),
+                           last_week in set(g["week"]), g["player_display_name"].iat[0])
+        my_key = _nfl_player_key(player_name)
+        healthy = {k: v for k, v in shares.items() if NFL_INJURY_WEIGHT.get(report.get(k, ""), 0.0) < 0.8}
+        boost = 0.0
+        for key, status in report.items():
+            if key == my_key or key not in shares:
+                continue
+            m_pos, m_share, recent, m_name = shares[key]
+            weight = NFL_INJURY_WEIGHT.get(status, 0.0)
+            mine = affinity.get((pos, m_pos), 0.0)
+            if not recent or m_share < 0.05 or not weight or not mine:
+                continue
+            pool = sum(s * affinity.get((p, m_pos), 0.0) for k, (p, s, _, _) in healthy.items() if k != key)
+            if pool > 0:
+                boost += weight * m_share * _NFL_VACATED_PASS_ON * mine / pool
+                ctx["vacated_names"].append(f"{m_name} ({status})")
+        ctx["vacated"] = float(min(0.5, boost))
+
+    # QB change: attempts-weighted QB quality in the games he played vs the projected starter
+    if chart_stat in _NFL_QB_EFF:
+        qb_k, qb_cap = _NFL_QB_EFF[chart_stat]
+        ratings = _load_nfl_qb_ratings()
+        starter = _fetch_nfl_live_qbs().get(str(event_id), {}).get(abbr)
+        qbs = team_rows[(team_rows["position_group"] == "QB") & (team_rows["attempts"] > 0)
+                        & team_rows["week"].isin(me["week"])]
+        if starter and not qbs.empty:
+            epa = qbs["player_id"].map(lambda q: ratings.get(q, NFL_QB_REPLACEMENT))
+            season_epa = float((epa * qbs["attempts"]).sum() / qbs["attempts"].sum())
+            new_epa = ratings.get(starter, NFL_QB_REPLACEMENT)
+            ctx["qb_adj"] = float(max(-qb_cap, min(qb_cap, qb_k * (new_epa - season_epa))))
+            by_qb = qbs.groupby("player_display_name")["attempts"].sum().sort_values(ascending=False)
+            ctx["qb_from"] = " / ".join(by_qb.index[:3])
+            named = w[w["player_id"] == starter]["player_display_name"]
+            ctx["qb_to"] = named.iat[0] if not named.empty else None
+    return ctx
+
+
+def _nfl_matchup_adj(chart_stat: str, opponent: str) -> float:
+    """Scale on yards per play from how much the opponent's defense allows (±15% max)."""
+    def_col = _NFL_PROJ_DEF_COL.get(chart_stat)
+    stats = _load_nfl_stats()
+    if not def_col or opponent not in stats.index or def_col not in stats.columns:
+        return 0.0
+    col = stats[def_col].astype(float)
+    z = (float(stats.at[opponent, def_col]) - col.mean()) / (col.std() or 1.0)
+    return float(max(-0.15, min(0.15, 0.06 * z)))
+
+
+def _player_projection(league: str, chart_stat: str, chart: list[dict], career_cats: list[dict],
+                       current_season: str, next_game: dict | None, games: list[dict], names: list[str],
+                       athlete_id: str, team_name: str, player_name: str = "") -> dict | None:
+    """Projection of the chart stat for the player's next game.
+
+    Volume × efficiency where we have both (NFL yards: targets / carries / attempts; NBA points:
+    minutes). Volume trusts this season quickly; efficiency is noisy, so it is shrunk hard toward
+    last season and the league average. Adjustments: opponent defense (efficiency), NFL game
+    script from our win probability and NBA game pace / back-to-backs (volume). Other stats:
+    recency-weighted average shrunk toward last season's per-game average."""
+    from datetime import datetime
+    if not next_game or next_game.get("preseason") or len(chart) < 2:
+        return None
+    status = _nfl_injury_status_by_id.get(athlete_id) if league == "nfl" else None
+    if status in _PROJ_OUT_STATUSES:
+        return None
+    vals = [p["value"] for p in chart]
+    n = len(vals)
+    out: dict = {"opp": next_game["opponent"], "at_vs": "vs" if next_game["home"] else "@",
+                 "date": next_game["date"], "live": bool(next_game.get("live")), "status": status, "opp_adj_pct": 0, "script_adj_pct": 0,
+                 "pace_adj_pct": 0, "rest_adj_pct": 0, "def_position": None, "qb_adj_pct": 0,
+                 "qb_from": None, "qb_to": None, "vacated_adj_pct": 0, "vacated_names": [],
+                 "method": "average", "recent": round(_recency_avg(vals), 1), "prior": None, "prior_label": None}
+
+    vol_spec = _PROJ_VOLUME.get((league, chart_stat))
+    vi, yi = (names.index(vol_spec[0]) if vol_spec and vol_spec[0] in names else None,
+              names.index(chart_stat) if chart_stat in names else None)
+    pairs = []
+    if vi is not None and yi is not None:
+        for g in games:
+            st = g["stats"]
+            v = _stat_num(st[vi]) if vi < len(st) else None
+            y = _stat_num(st[yi]) if yi < len(st) else None
+            if v is not None and y is not None:
+                pairs.append((v, y))
+
+    if vol_spec and len(pairs) >= 2:
+        vol_stat, vol_label, eff_label, league_eff, k_eff, vol_prior_games, script_k = vol_spec
+        last = _last_season_totals(career_cats, [vol_stat, chart_stat], current_season)
+        vols = [v for v, _ in pairs]
+
+        volume = _recency_avg(vols)
+        prior_eff = league_eff
+        if last:
+            tot, out["prior_label"] = last
+            m = len(vols)
+            volume = (m * volume + vol_prior_games * tot[vol_stat] / tot["gamesPlayed"]) / (m + vol_prior_games)
+            prior_eff = (tot[chart_stat] + k_eff * league_eff) / (tot[vol_stat] + k_eff)
+        season_vol, season_yds = sum(vols), sum(y for _, y in pairs)
+        eff = (season_yds + k_eff * prior_eff) / (season_vol + k_eff)
+
+        script = pace = rest = opp = qb = vacated = 0.0
+        if script_k and next_game.get("win_prob") is not None:
+            script = max(-0.1, min(0.1, script_k * (next_game["win_prob"] / 100 - 0.5)))
+        if league == "nfl":
+            ctx = _nfl_player_context(chart_stat, player_name, team_name, next_game["opponent"],
+                                      next_game.get("game_id", ""))
+            # Defense vs his position when nflverse has it, else overall defensive EPA
+            opp = ctx["def_adj"] if ctx["def_adj"] is not None else _nfl_matchup_adj(chart_stat, next_game["opponent"])
+            qb, vacated = ctx["qb_adj"], ctx["vacated"]
+            out.update({"def_position": ctx["position"] if ctx["def_adj"] is not None else None,
+                        "qb_adj_pct": round(qb * 100), "qb_from": ctx["qb_from"], "qb_to": ctx["qb_to"],
+                        "vacated_adj_pct": round(vacated * 100), "vacated_names": ctx["vacated_names"]})
+        elif league == "nba":
+            pace, opp = _nba_matchup_adj(team_name, next_game["opponent"])
+            try:
+                gap = (datetime.fromisoformat(next_game["date"].replace("Z", "+00:00"))
+                       - datetime.fromisoformat(games[-1]["date"].replace("Z", "+00:00"))).total_seconds() / 3600
+                if 0 < gap < _NBA_B2B_HOURS:
+                    rest = _NBA_B2B_ADJ
+            except (ValueError, KeyError, IndexError):
+                pass
+        vol_scale = (1 + script) * (1 + rest) * (1 + vacated)
+        eff_scale = (1 + opp) * (1 + qb)
+        value = volume * vol_scale * eff * eff_scale * (1 + pace)
+        eff_digits = 2 if league_eff < 2 else 1
+        out.update({"method": "volume", "volume": round(volume * vol_scale, 1), "volume_label": vol_label,
+                    "efficiency": round(eff * eff_scale, eff_digits), "efficiency_label": eff_label,
+                    "season_efficiency": round(season_yds / season_vol, eff_digits) if season_vol else None,
+                    "prior_efficiency": round(prior_eff, eff_digits),
+                    "opp_adj_pct": round(opp * 100), "script_adj_pct": round(script * 100),
+                    "pace_adj_pct": round(pace * 100), "rest_adj_pct": round(rest * 100)})
+    else:
+        last = _last_season_totals(career_cats, [chart_stat], current_season)
+        base = _recency_avg(vals)
+        if last:
+            tot, out["prior_label"] = last
+            prior = tot[chart_stat] / tot["gamesPlayed"]
+            out["prior"] = round(prior, 1)
+            base = (n * base + _PROJ_PRIOR_GAMES * prior) / (n + _PROJ_PRIOR_GAMES)
+        opp = _nfl_matchup_adj(chart_stat, next_game["opponent"]) if league == "nfl" else 0.0
+        value = base * (1 + opp)
+        out["opp_adj_pct"] = round(opp * 100)
+    value = max(0.0, value)
+
+    # Middle-50% band: game-to-game spread, never narrower than a share of the projection
+    # (NFL yardage swings far more, relative to its size, than NBA scoring)
+    mean = sum(vals) / n
+    sd = (sum((v - mean) ** 2 for v in vals) / (n - 1)) ** 0.5
+    half = 0.67 * max(sd, (0.35 if league == "nfl" else 0.2) * value)
+    if status in ("Questionable", "Doubtful"):
+        half *= 1.25
+    digits = 1 if value < 10 else 0
+    out.update({"value": round(value, digits), "low": round(max(0.0, value - half), digits),
+                "high": round(value + half, digits)})
+    return out
+
+
+def _live_player_stat(sport: str, league: str, event_id: str, athlete_id: str, stat: str) -> dict | None:
+    """{'value', 'clock'} for one player's stat in a game in progress, from ESPN's live boxscore.
+    0 when he has not recorded it yet; None when the boxscore cannot be read."""
+    url = f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/summary?event={event_id}"
+    data = None
+    for attempt in range(2):   # ESPN's TLS handshake sometimes stalls once — retry
+        try:
+            data = _espn_json(url, timeout=12)
+            break
+        except Exception:
+            if attempt == 1:
+                return None
+    clock = (((data.get("header") or {}).get("competitions") or [{}])[0].get("status") or {}) \
+        .get("type", {}).get("shortDetail", "")
+    for team in (data.get("boxscore") or {}).get("players", []):
+        for cat in team.get("statistics", []):
+            keys = cat.get("keys") or []
+            if stat not in keys:
+                continue
+            for a in cat.get("athletes", []):
+                if str((a.get("athlete") or {}).get("id")) == athlete_id:
+                    st = a.get("stats") or []
+                    v = _stat_num(st[keys.index(stat)]) if keys.index(stat) < len(st) else None
+                    return {"value": v or 0.0, "clock": clock}
+    return {"value": 0.0, "clock": clock}
+
+
 @app.get("/api/player/{league}/{athlete_id}")
 def get_player_page(league: str, athlete_id: str):
     """Bio, season / career stats, game log with trend, splits, awards and news for one player."""
@@ -4207,7 +4668,7 @@ def get_player_page(league: str, athlete_id: str):
         raise HTTPException(status_code=404, detail="Unknown player")
     key = (league, athlete_id)
     hit = _player_cache.get(key)
-    if hit and _time_mod.time() - hit[0] < _PLAYER_TTL:
+    if hit and _time_mod.time() - hit[0] < hit[2]:
         return hit[1]
 
     sport = _TEAM_LEAGUES[league]["sport"]
@@ -4344,19 +4805,32 @@ def get_player_page(league: str, athlete_id: str):
     next_game = None
     team_name = (ath.get("team") or {}).get("displayName", "")
     nxt = (((overview.get("nextGame") or {}).get("league") or {}).get("events") or [None])[0]
-    if nxt and nxt.get("status") == "pre" and " at " in nxt.get("name", "") and team_name:
+    # A game in progress still counts, so its projection stays up while it is played
+    if nxt and nxt.get("status") in ("pre", "in") and " at " in nxt.get("name", "") and team_name:
         away_t, home_t = nxt["name"].split(" at ", 1)
         is_home = home_t == team_name
         next_game = {
             "game_id": str(nxt.get("id")), "date": nxt.get("date", ""), "home": is_home,
             "opponent": away_t if is_home else home_t, "label": nxt.get("weekText", ""),
             "location": nxt.get("location", ""), "broadcast": nxt.get("broadcast", ""),
-            "win_prob": None,
+            "win_prob": None, "preseason": nxt.get("seasonType") == 1, "live": nxt.get("status") == "in",
         }
         if league == "nfl":
             next_game["win_prob"] = _team_next_game_prob(
                 "nfl", {"game_id": next_game["game_id"], "home": is_home, "opponent": next_game["opponent"]},
                 team_name)
+
+    projection = None
+    if chart_kind == "bar":
+        current_season = st.get("displayName", "").replace(" Regular Season", "").strip()
+        if league == "nfl":
+            _fetch_nfl_injury_report()   # cached; fills the per-player status lookup
+        projection = _player_projection(league, chart_stat, chart, cats, current_season, next_game,
+                                        games, names, athlete_id, team_name, ath.get("displayName", ""))
+        if projection and projection["live"]:
+            live = _live_player_stat(sport, league, next_game["game_id"], athlete_id, chart_stat)
+            projection["live_value"] = live["value"] if live else None
+            projection["live_clock"] = live["clock"] if live else None
 
     ov_stats = overview.get("statistics") or {}
     team = ath.get("team") or {}
@@ -4390,6 +4864,7 @@ def get_player_page(league: str, athlete_id: str):
         "chart": {"label": _PLAYER_STAT_LABELS.get(chart_stat) or (labels[ci] if ci is not None and ci < len(labels) else chart_stat),
                   "kind": chart_kind, "points": chart},
         "best_game": best,
+        "projection": projection,
         "last_game": last_game,
         "next_game": next_game,
         "game_log": {"title": st.get("displayName", ""), "labels": labels, "games": list(reversed(games))},
@@ -4404,7 +4879,9 @@ def get_player_page(league: str, athlete_id: str):
                   "url": ((n.get("links") or {}).get("web") or {}).get("href")}
                  for n in (overview.get("news") or [])[:4]],
     }
-    _player_cache[key] = (_time_mod.time(), result)
+    # Around game time (live, or the next game not yet listed) the page changes fast
+    ttl = _PLAYER_LIVE_TTL if next_game is None or next_game.get("live") else _PLAYER_TTL
+    _player_cache[key] = (_time_mod.time(), result, ttl)
     return result
 
 

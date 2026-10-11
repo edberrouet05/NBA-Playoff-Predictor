@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  BarChart, Bar, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
+  BarChart, Bar, Cell, LabelList, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { teamHref } from "./teamLinks";
 import type { League } from "./TeamPage";
@@ -31,13 +31,26 @@ interface PlayerData {
   form: { label: string; season: number; last5: number | null }[];
   chart: { label: string; kind: "bar" | "line"; points: ChartPoint[] };
   best_game: (ChartPoint & { label: string }) | null;
+  projection: {
+    value: number; low: number; high: number; opp: string; at_vs: string; date: string;
+    live: boolean; live_value?: number | null; live_clock?: string | null;
+    status: string | null; method: "volume" | "average";
+    opp_adj_pct: number; script_adj_pct: number; pace_adj_pct: number; rest_adj_pct: number;
+    // NFL context: defense vs his position group, QB change, volume freed by injured teammates
+    def_position: string | null; qb_adj_pct: number; qb_from: string | null; qb_to: string | null;
+    vacated_adj_pct: number; vacated_names: string[];
+    recent: number; prior: number | null; prior_label: string | null;
+    // method === "volume" (NFL yards): projected volume × projected efficiency
+    volume?: number; volume_label?: string; efficiency?: number; efficiency_label?: string;
+    season_efficiency?: number | null; prior_efficiency?: number;
+  } | null;
   last_game: {
     game_id: string; date: string; at_vs: string; opponent: string; opponent_abbr: string;
     opponent_logo: string | null; result: string | null; score: string; line: { label: string; value: string }[];
   } | null;
   next_game: {
     game_id: string; date: string; home: boolean; opponent: string; label: string;
-    location: string; broadcast: string; win_prob: number | null;
+    location: string; broadcast: string; win_prob: number | null; live?: boolean;
   } | null;
   game_log: { title: string; labels: string[]; games: LogGame[] };
   splits: { labels: string[]; tables: { title: string; rows: { label: string; stats: string[] }[] }[] };
@@ -187,10 +200,73 @@ function TrendCard({ d }: { d: PlayerData }) {
   const pts = d.chart.points;
   if (pts.length < 2) return null;
   const color = d.team?.color ?? "#555";
-  const data = pts.map((p, i) => ({ ...p, i: i + 1 }));
+  const proj = d.chart.kind === "bar" ? d.projection : null;
   const avg = pts.reduce((s, p) => s + p.value, 0) / pts.length;
+  const short = (team: string) => team.split(" ").pop() ?? team;
+  const pct = (v: number) => `${v > 0 ? "+" : ""}${v}%`;
+  const statusFlag = proj?.status === "Questionable" || proj?.status === "Doubtful";
+  const adjustments = proj ? [
+    proj.opp_adj_pct ? `${proj.def_position ? `Defense vs ${proj.def_position}` : "Matchup"} ${pct(proj.opp_adj_pct)}` : null,
+    proj.qb_adj_pct && proj.qb_to ? `QB ${proj.qb_to} ${pct(proj.qb_adj_pct)}` : null,
+    proj.vacated_adj_pct ? `Injured teammates ${pct(proj.vacated_adj_pct)} volume` : null,
+    proj.pace_adj_pct ? `Pace ${pct(proj.pace_adj_pct)}` : null,
+    proj.script_adj_pct ? `Game script ${pct(proj.script_adj_pct)} volume` : null,
+    proj.rest_adj_pct ? `Back-to-back ${pct(proj.rest_adj_pct)} min` : null,
+  ].filter((s): s is string => s !== null) : [];
+  // Bars are a stack: `solid` (a game's value; for the next game, what he has so far live)
+  // under `ghost` (the dashed rest of the way to the projection)
+  type Row = ChartPoint & { i: number; solid: number; ghost: number; proj?: boolean; projLabel?: string };
+  const data: Row[] = pts.map((p, i) => ({ ...p, i: i + 1, solid: p.value, ghost: 0 }));
+  const liveNow = proj?.live ? proj.live_value : null;
+  if (proj) {
+    const solid = liveNow ?? 0;
+    data.push({
+      date: proj.date, opp: short(proj.opp), at_vs: proj.at_vs, value: proj.value, result: null, score: "",
+      i: data.length + 1, proj: true, solid, ghost: Math.max(proj.value - solid, 0),
+      projLabel: liveNow != null ? `${liveNow} / Proj. ${proj.value}` : `Proj. ${proj.value}`,
+    });
+  }
   const tip = ({ active, payload }: { active?: boolean; payload?: readonly { payload?: unknown }[] }) => {
-    const p = active && payload?.length ? (payload[0].payload as ChartPoint) : null;
+    const p = active && payload?.length ? (payload[0].payload as Row) : null;
+    if (p?.proj && proj) return (
+      <div className="rounded-lg bg-white dark:bg-gray-800 shadow px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 max-w-[15rem]">
+        <p className="font-bold">
+          Projection: {proj.value} {d.chart.label}
+          {proj.live && <span className="ml-1.5 text-[10px] font-bold text-red-500">● LIVE</span>}
+        </p>
+        <p className="text-gray-400">{fmtDate(proj.date)} {proj.at_vs} {short(proj.opp)}</p>
+        {liveNow != null && (
+          <p className="mt-1 font-semibold text-gray-900 dark:text-white">
+            Now: {liveNow} {d.chart.label}{proj.live_clock ? <span className="font-normal text-gray-400"> · {proj.live_clock}</span> : null}
+          </p>
+        )}
+        {proj.method === "volume" ? (
+          <>
+            <p className="mt-1 text-gray-600 dark:text-gray-300">
+              {proj.volume} {proj.volume_label?.toLowerCase()} × {proj.efficiency} {proj.efficiency_label}
+            </p>
+            <p className="text-gray-400">
+              {proj.efficiency_label} this season {proj.season_efficiency}, regressed toward {proj.prior_efficiency}
+            </p>
+          </>
+        ) : (
+          <p className="mt-1 text-gray-400">
+            Recent form {proj.recent}
+            {proj.prior != null && <> · {proj.prior_label} avg {proj.prior}</>}
+          </p>
+        )}
+        {adjustments.length > 0 && (
+          <ul className="mt-1 text-gray-400">{adjustments.map(a => <li key={a}>{a}</li>)}</ul>
+        )}
+        {proj.qb_adj_pct !== 0 && proj.qb_from && (
+          <p className="text-[11px] text-gray-400">Season QBs: {proj.qb_from}</p>
+        )}
+        {proj.vacated_names.length > 0 && (
+          <p className="text-[11px] text-gray-400">Out: {proj.vacated_names.join(", ")}</p>
+        )}
+        {statusFlag && <p className="mt-1 font-semibold text-amber-600 dark:text-amber-400">Listed {proj.status}</p>}
+      </div>
+    );
     return p ? (
       <div className="rounded-lg bg-white dark:bg-gray-800 shadow px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200">
         <p className="font-bold">{p.value} {d.chart.label}</p>
@@ -213,13 +289,19 @@ function TrendCard({ d }: { d: PlayerData }) {
             <Line dataKey="value" stroke={color} strokeWidth={2} dot={false} />
           </LineChart>
         ) : (
-          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
+          <BarChart data={data} margin={{ top: proj ? 16 : 4, right: 4, bottom: 0, left: -16 }}>
             <XAxis dataKey="i" hide />
             <YAxis tick={{ fill: "var(--chart-tick)", fontSize: 10 }} axisLine={false} tickLine={false} />
             <ReferenceLine y={avg} stroke="var(--chart-tick)" strokeDasharray="4 4" />
             <Tooltip cursor={{ fill: "rgba(127,127,127,0.08)" }} content={tip} />
-            <Bar dataKey="value" radius={[2, 2, 0, 0]}>
-              {data.map(x => <Cell key={x.i} fill={x.value >= avg ? color : `${color}66`} />)}
+            <Bar dataKey="solid" stackId="g" radius={[2, 2, 0, 0]}>
+              {data.map(x => <Cell key={x.i} fill={x.proj || x.value >= avg ? color : `${color}66`} />)}
+            </Bar>
+            <Bar dataKey="ghost" stackId="g" radius={[2, 2, 0, 0]}>
+              {data.map(x => x.proj
+                ? <Cell key={x.i} fill={`${color}14`} stroke={color} strokeWidth={1.5} strokeDasharray="4 3" />
+                : <Cell key={x.i} fill="transparent" />)}
+              {proj && <LabelList dataKey="projLabel" position="top" fill={color} fontSize={10} fontWeight={700} />}
             </Bar>
           </BarChart>
         )}
@@ -229,6 +311,21 @@ function TrendCard({ d }: { d: PlayerData }) {
           Best game: <span className="font-bold text-gray-900 dark:text-white">{d.best_game.value} {d.best_game.label}</span>{" "}
           {d.best_game.at_vs} {d.best_game.opp}, {fmtDate(d.best_game.date, true)}
           {d.chart.kind === "bar" && <span className="text-gray-400"> · dashed line = season average ({avg.toFixed(1)})</span>}
+        </p>
+      )}
+      {proj && (
+        <p className="mt-1 text-xs text-gray-500">
+          {proj.live && <span className="mr-1.5 text-[10px] font-bold text-red-500">● LIVE</span>}
+          Projection {proj.at_vs} {short(proj.opp)}: <span className="font-bold text-gray-900 dark:text-white">{proj.value} {d.chart.label}</span>
+          {proj.method === "volume" && (
+            <span className="text-gray-400"> ({proj.volume} {proj.volume_label?.toLowerCase()} × {proj.efficiency} {proj.efficiency_label})</span>
+          )}
+          {liveNow != null && (
+            <span> · now <span className="font-bold text-gray-900 dark:text-white">{liveNow}</span>
+              {proj.live_clock && <span className="text-gray-400"> ({proj.live_clock})</span>}
+            </span>
+          )}
+          {statusFlag && <span className="ml-1.5 font-semibold text-amber-600 dark:text-amber-400">{proj.status}</span>}
         </p>
       )}
     </div>
@@ -280,7 +377,9 @@ function GamesCard({ d }: { d: PlayerData }) {
 
   const nextBody = next && (
     <div>
-      <p className={`${cardTitle} mb-2`}>Next game</p>
+      <p className={`${cardTitle} mb-2`}>
+        {next.live ? <span className="text-red-500">● Live now</span> : "Next game"}
+      </p>
       <p className="text-sm font-bold text-gray-900 dark:text-white">{next.home ? "vs" : "@"} {next.opponent}</p>
       <p className="text-xs text-gray-400">
         {when(next.date)}{next.label ? ` · ${next.label}` : ""}{next.broadcast ? ` · ${next.broadcast}` : ""}
@@ -442,6 +541,19 @@ export default function PlayerPage({ league, id }: { league: League; id: string 
       .catch(() => { if (active) setError(true); });
     return () => { active = false; };
   }, [league, id]);
+
+  // While his game is live, refresh every minute (the API caches live pages for 60s)
+  const isLive = !!data?.next_game?.live;
+  useEffect(() => {
+    if (!isLive) return;
+    const timer = setInterval(() => {
+      fetch(`${API}/api/player/${league}/${encodeURIComponent(id)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then((d: PlayerData | null) => { if (d) setData(d); })
+        .catch(() => {});
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [isLive, league, id]);
 
   const back = data?.team ? teamHref(league, data.team.name) : `/${league === "nba" ? "" : league}`;
 

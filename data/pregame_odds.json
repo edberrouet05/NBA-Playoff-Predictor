@@ -1,782 +1,127 @@
 {
-  "chicago cubs|st. louis cardinals": {
-    "away_odds": 2.0,
-    "home_odds": 1.93
-  },
-  "detroit tigers|tampa bay rays": {
-    "away_odds": 2.47,
-    "home_odds": 1.61
-  },
-  "miami marlins|washington nationals": {
-    "away_odds": 2.27,
-    "home_odds": 1.71
-  },
-  "kansas city royals|cincinnati reds": {
-    "away_odds": 2.49,
-    "home_odds": 1.61
-  },
-  "chicago white sox|minnesota twins": {
-    "away_odds": 2.48,
-    "home_odds": 1.61
-  },
-  "san francisco giants|milwaukee brewers": {
-    "away_odds": 2.24,
-    "home_odds": 1.73
-  },
-  "texas rangers|st. louis cardinals": {
-    "away_odds": 1.84,
-    "home_odds": 2.08
-  },
-  "colorado rockies|los angeles angels": {
-    "away_odds": 2.74,
-    "home_odds": 1.51
-  },
-  "los angeles dodgers|arizona diamondbacks": {
-    "away_odds": 1.68,
-    "home_odds": 2.33
-  },
-  "new york mets|seattle mariners": {
-    "away_odds": 2.1,
-    "home_odds": 1.77
-  },
-  "new york knicks|san antonio spurs": {
-    "away_odds": 2.67,
-    "home_odds": 1.52
-  },
-  "san diego padres|philadelphia phillies": {
-    "away_odds": 2.1,
-    "home_odds": 1.77
-  },
-  "baltimore orioles|boston red sox": {
-    "away_odds": 2.1,
-    "home_odds": 1.77
-  },
-  "cleveland guardians|new york yankees": {
-    "away_odds": 2.8,
-    "home_odds": 1.47
-  },
-  "toronto blue jays|atlanta braves": {
-    "away_odds": 2.04,
-    "home_odds": 1.82
-  },
-  "athletics|chicago cubs": {
-    "away_odds": 2.0,
-    "home_odds": 1.85
-  },
-  "pittsburgh pirates|houston astros": {
-    "away_odds": 1.98,
-    "home_odds": 1.86
-  },
-  "kansas city royals|minnesota twins": {
-    "away_odds": 1.89,
-    "home_odds": 1.96
-  },
-  "chicago white sox|philadelphia phillies": {
-    "away_odds": 2.64,
-    "home_odds": 1.51
-  },
-  "seattle mariners|detroit tigers": {
-    "away_odds": 1.77,
-    "home_odds": 2.1
-  },
-  "tampa bay rays|miami marlins": {
-    "away_odds": 1.72,
-    "home_odds": 2.18
-  },
-  "cincinnati reds|st. louis cardinals": {
-    "away_odds": 2.16,
-    "home_odds": 1.75
-  },
-  "cleveland guardians|texas rangers": {
-    "away_odds": 1.69,
-    "home_odds": 2.22
-  },
-  "milwaukee brewers|colorado rockies": {
-    "away_odds": 1.69,
-    "home_odds": 2.22
-  },
-  "washington nationals|arizona diamondbacks": {
-    "away_odds": 2.16,
-    "home_odds": 1.75
-  },
-  "new york mets|san diego padres": {
-    "away_odds": 2.06,
-    "home_odds": 1.81
-  },
-  "boston red sox|new york yankees": {
-    "away_odds": 2.28,
-    "home_odds": 1.72
-  },
-  "baltimore orioles|toronto blue jays": {
-    "away_odds": 2.27,
-    "home_odds": 1.72
-  },
-  "pittsburgh pirates|atlanta braves": {
-    "away_odds": 2.32,
-    "home_odds": 1.7
-  },
-  "athletics|houston astros": {
-    "away_odds": 1.96,
-    "home_odds": 1.96
-  },
-  "los angeles angels|los angeles dodgers": {
-    "away_odds": 2.73,
-    "home_odds": 1.53
-  },
-  "san francisco giants|chicago cubs": {
-    "away_odds": 2.19,
-    "home_odds": 1.7
-  },
-  "san antonio spurs|new york knicks": {
-    "away_odds": 2.07,
-    "home_odds": 1.83
-  },
-  "seattle mariners|baltimore orioles": {
-    "away_odds": 1.83,
-    "home_odds": 2.12
-  },
-  "boston red sox|tampa bay rays": {
-    "away_odds": 1.92,
-    "home_odds": 2.0
-  },
-  "new york yankees|cleveland guardians": {
-    "away_odds": 2.16,
-    "home_odds": 1.8
-  },
-  "philadelphia phillies|toronto blue jays": {
-    "away_odds": 1.6,
-    "home_odds": 2.52
-  },
-  "houston astros|los angeles angels": {
-    "away_odds": 1.81,
-    "home_odds": 2.14
-  },
-  "cincinnati reds|san diego padres": {
-    "away_odds": 2.19,
-    "home_odds": 1.78
-  },
-  "washington nationals|san francisco giants": {
-    "away_odds": 2.28,
-    "home_odds": 1.72
-  },
-  "milwaukee brewers|athletics": {
-    "away_odds": 1.72,
-    "home_odds": 2.28
-  },
-  "baltimore orioles|seattle mariners": {
-    "away_odds": 2.25,
-    "home_odds": 1.74
-  },
-  "new york mets|philadelphia phillies": {
-    "away_odds": 2.05,
-    "home_odds": 1.88
-  },
-  "chicago white sox|new york yankees": {
-    "away_odds": 2.45,
-    "home_odds": 1.63
-  },
-  "st. louis cardinals|kansas city royals": {
-    "away_odds": 2.01,
-    "home_odds": 1.91
-  },
-  "los angeles angels|athletics": {
-    "away_odds": 2.39,
-    "home_odds": 1.66
-  },
-  "chicago white sox|detroit tigers": {
-    "away_odds": 2.98,
-    "home_odds": 1.42
-  },
-  "washington nationals|tampa bay rays": {
-    "away_odds": 2.02,
-    "home_odds": 1.83
-  },
-  "san diego padres|texas rangers": {
-    "away_odds": 2.34,
-    "home_odds": 1.63
-  },
-  "cleveland guardians|houston astros": {
-    "away_odds": 2.02,
-    "home_odds": 1.83
-  },
-  "pittsburgh pirates|colorado rockies": {
-    "away_odds": 1.77,
-    "home_odds": 2.1
-  },
-  "minnesota twins|arizona diamondbacks": {
-    "away_odds": 2.44,
-    "home_odds": 1.58
-  },
-  "baltimore orioles|los angeles dodgers": {
-    "away_odds": 2.54,
-    "home_odds": 1.54
-  },
-  "boston red sox|seattle mariners": {
-    "away_odds": 2.0,
-    "home_odds": 1.85
-  },
-  "washington nationals|baltimore orioles": {
-    "away_odds": 2.69,
-    "home_odds": 1.54
-  },
-  "cincinnati reds|pittsburgh pirates": {
-    "away_odds": 2.17,
-    "home_odds": 1.79
-  },
-  "texas rangers|toronto blue jays": {
-    "away_odds": 2.17,
-    "home_odds": 1.79
-  },
-  "arizona diamondbacks|tampa bay rays": {
-    "away_odds": 2.67,
-    "home_odds": 1.55
-  },
-  "seattle mariners|cleveland guardians": {
-    "away_odds": 2.0,
-    "home_odds": 1.92
-  },
-  "houston astros|detroit tigers": {
-    "away_odds": 1.76,
-    "home_odds": 2.2
-  },
-  "philadelphia phillies|new york mets": {
-    "away_odds": 1.71,
-    "home_odds": 2.27
-  },
-  "colorado rockies|minnesota twins": {
-    "away_odds": 2.3,
-    "home_odds": 1.69
-  },
-  "chicago cubs|milwaukee brewers": {
-    "away_odds": 2.66,
-    "home_odds": 1.54
-  },
-  "kansas city royals|chicago white sox": {
-    "away_odds": 2.23,
-    "home_odds": 1.75
-  },
-  "miami marlins|st. louis cardinals": {
-    "away_odds": 2.14,
-    "home_odds": 1.79
-  },
-  "athletics|los angeles angels": {
-    "away_odds": 1.88,
-    "home_odds": 2.04
-  },
-  "atlanta braves|san francisco giants": {
-    "away_odds": 1.64,
-    "home_odds": 2.43
-  },
-  "los angeles dodgers|san diego padres": {
-    "away_odds": 1.76,
-    "home_odds": 2.22
-  },
-  "new york yankees|boston red sox": {
-    "away_odds": 2.01,
-    "home_odds": 1.92
-  },
-  "chicago white sox|baltimore orioles": {
-    "away_odds": 2.2,
-    "home_odds": 1.77
-  },
-  "pittsburgh pirates|philadelphia phillies": {
-    "away_odds": 1.99,
-    "home_odds": 1.93
-  },
-  "detroit tigers|new york yankees": {
-    "away_odds": 2.17,
-    "home_odds": 1.79
-  },
-  "new york mets|toronto blue jays": {
-    "away_odds": 2.12,
-    "home_odds": 1.82
-  },
-  "washington nationals|boston red sox": {
-    "away_odds": 2.53,
-    "home_odds": 1.6
-  },
-  "texas rangers|cleveland guardians": {
-    "away_odds": 2.33,
-    "home_odds": 1.69
-  },
-  "cincinnati reds|milwaukee brewers": {
-    "away_odds": 2.24,
-    "home_odds": 1.74
-  },
-  "san diego padres|chicago cubs": {
-    "away_odds": 2.38,
-    "home_odds": 1.67
-  },
-  "minnesota twins|houston astros": {
-    "away_odds": 2.24,
-    "home_odds": 1.74
-  },
-  "miami marlins|colorado rockies": {
-    "away_odds": 1.73,
-    "home_odds": 2.26
-  },
-  "san francisco giants|arizona diamondbacks": {
-    "away_odds": 2.2,
-    "home_odds": 1.77
-  },
-  "los angeles dodgers|athletics": {
-    "away_odds": 1.93,
-    "home_odds": 1.99
-  },
-  "los angeles angels|seattle mariners": {
-    "away_odds": 2.78,
-    "home_odds": 1.51
-  },
-  "st. louis cardinals|atlanta braves": {
-    "away_odds": 2.35,
-    "home_odds": 1.61
-  },
-  "tampa bay rays|kansas city royals": {
-    "away_odds": 1.82,
-    "home_odds": 2.02
-  },
-  "detroit lions|buffalo bills": {
-    "away_odds": 2.89,
-    "home_odds": 1.46
-  },
-  "carolina panthers|atlanta falcons": {
-    "away_odds": 1.7,
-    "home_odds": 2.26
-  },
-  "new orleans saints|baltimore ravens": {
-    "away_odds": 4.31,
-    "home_odds": 1.24
-  },
-  "minnesota vikings|chicago bears": {
-    "away_odds": 3.08,
-    "home_odds": 1.41
-  },
-  "cincinnati bengals|houston texans": {
-    "away_odds": 2.32,
-    "home_odds": 1.67
-  },
-  "cleveland browns|tampa bay buccaneers": {
-    "away_odds": 4.3,
-    "home_odds": 1.24
-  },
-  "green bay packers|new york jets": {
-    "away_odds": 1.53,
-    "home_odds": 2.66
-  },
-  "pittsburgh steelers|new england patriots": {
-    "away_odds": 3.03,
-    "home_odds": 1.42
-  },
-  "philadelphia eagles|tennessee titans": {
-    "away_odds": 1.3,
-    "home_odds": 3.76
-  },
-  "jacksonville jaguars|denver broncos": {
-    "away_odds": 2.34,
-    "home_odds": 1.66
-  },
-  "las vegas raiders|los angeles chargers": {
-    "away_odds": 3.56,
-    "home_odds": 1.33
-  },
-  "seattle seahawks|arizona cardinals": {
-    "away_odds": 1.49,
-    "home_odds": 2.79
-  },
-  "washington commanders|dallas cowboys": {
-    "away_odds": 2.77,
-    "home_odds": 1.49
-  },
-  "miami dolphins|san francisco 49ers": {
-    "away_odds": 7.8,
-    "home_odds": 1.1
-  },
-  "indianapolis colts|kansas city chiefs": {
-    "away_odds": 3.48,
-    "home_odds": 1.34
-  },
-  "new york giants|los angeles rams": {
-    "away_odds": 3.75,
-    "home_odds": 1.31
-  },
-  "atlanta falcons|green bay packers": {
-    "away_odds": 3.5,
-    "home_odds": 1.32
-  },
-  "los angeles chargers|buffalo bills": {
-    "away_odds": 2.8,
-    "home_odds": 1.46
-  },
-  "carolina panthers|cleveland browns": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "cincinnati bengals|pittsburgh steelers": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "new york jets|detroit lions": {
-    "away_odds": 3.7,
-    "home_odds": 1.29
-  },
-  "houston texans|indianapolis colts": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "new england patriots|jacksonville jaguars": {
-    "away_odds": 2.14,
-    "home_odds": 1.74
-  },
-  "kansas city chiefs|miami dolphins": {
-    "away_odds": 1.22,
-    "home_odds": 4.5
-  },
-  "tennessee titans|new york giants": {
-    "away_odds": 3.0,
-    "home_odds": 1.41
-  },
-  "seattle seahawks|washington commanders": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "arizona cardinals|san francisco 49ers": {
-    "away_odds": 4.6,
-    "home_odds": 1.21
-  },
-  "minnesota vikings|tampa bay buccaneers": {
-    "away_odds": 2.05,
-    "home_odds": 1.8
-  },
-  "baltimore ravens|dallas cowboys": {
-    "away_odds": 1.65,
-    "home_odds": 2.3
-  },
-  "las vegas raiders|new orleans saints": {
-    "away_odds": 2.36,
-    "home_odds": 1.62
-  },
-  "los angeles rams|denver broncos": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "philadelphia eagles|chicago bears": {
-    "away_odds": 1.98,
-    "home_odds": 1.85
-  },
-  "pittsburgh steelers|cleveland browns": {
-    "away_odds": 1.68,
-    "home_odds": 2.32
-  },
-  "indianapolis colts|washington commanders": {
-    "away_odds": 1.49,
-    "home_odds": 2.72
-  },
-  "arizona cardinals|new york giants": {
-    "away_odds": 1.71,
-    "home_odds": 2.22
-  },
-  "tennessee titans|baltimore ravens": {
-    "away_odds": 5.89,
-    "home_odds": 1.14
-  },
-  "new england patriots|buffalo bills": {
-    "away_odds": 3.53,
-    "home_odds": 1.32
-  },
-  "new york jets|chicago bears": {
-    "away_odds": 2.57,
-    "home_odds": 1.56
-  },
-  "jacksonville jaguars|cincinnati bengals": {
-    "away_odds": 2.3,
-    "home_odds": 1.67
-  },
-  "dallas cowboys|houston texans": {
-    "away_odds": 2.39,
-    "home_odds": 1.62
-  },
-  "green bay packers|tampa bay buccaneers": {
-    "away_odds": 1.53,
-    "home_odds": 2.61
-  },
-  "los angeles rams|philadelphia eagles": {
-    "away_odds": 1.57,
-    "home_odds": 2.49
-  },
-  "miami dolphins|minnesota vikings": {
-    "away_odds": 5.33,
-    "home_odds": 1.17
-  },
-  "denver broncos|san francisco 49ers": {
-    "away_odds": 2.23,
-    "home_odds": 1.71
-  },
-  "kansas city chiefs|las vegas raiders": {
-    "away_odds": 1.48,
-    "home_odds": 2.76
-  },
-  "los angeles chargers|seattle seahawks": {
-    "away_odds": 3.72,
-    "home_odds": 1.29
-  },
-  "detroit lions|carolina panthers": {
-    "away_odds": 1.52,
-    "home_odds": 2.65
-  },
-  "atlanta falcons|new orleans saints": {
-    "away_odds": 2.24,
-    "home_odds": 1.71
-  },
-  "tampa bay buccaneers|dallas cowboys": {
-    "away_odds": 4.9,
-    "home_odds": 1.19
-  },
-  "philadelphia eagles|jacksonville jaguars": {
-    "away_odds": 2.24,
-    "home_odds": 1.68
-  },
-  "chicago bears|green bay packers": {
-    "away_odds": 2.14,
-    "home_odds": 1.74
-  },
-  "cincinnati bengals|miami dolphins": {
-    "away_odds": 1.22,
-    "home_odds": 4.5
-  },
-  "cleveland browns|new york jets": {
-    "away_odds": 2.2,
-    "home_odds": 1.7
-  },
-  "houston texans|tennessee titans": {
-    "away_odds": 1.34,
-    "home_odds": 3.4
-  },
-  "indianapolis colts|pittsburgh steelers": {
-    "away_odds": 2.14,
-    "home_odds": 1.74
-  },
-  "las vegas raiders|new england patriots": {
-    "away_odds": 2.6,
-    "home_odds": 1.52
-  },
-  "minnesota vikings|new orleans saints": {
-    "away_odds": 1.7,
-    "home_odds": 2.2
-  },
-  "new york giants|washington commanders": {
-    "away_odds": 2.2,
-    "home_odds": 1.7
-  },
-  "denver broncos|los angeles chargers": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "detroit lions|arizona cardinals": {
-    "away_odds": 1.41,
-    "home_odds": 3.0
-  },
-  "san francisco 49ers|seattle seahawks": {
-    "away_odds": 2.5,
-    "home_odds": 1.56
-  },
-  "baltimore ravens|atlanta falcons": {
-    "away_odds": 1.36,
-    "home_odds": 3.25
-  },
-  "buffalo bills|los angeles rams": {
-    "away_odds": 2.1,
-    "home_odds": 1.77
-  },
-  "boston celtics|detroit pistons": {
-    "away_odds": 2.12,
-    "home_odds": 1.79
-  },
-  "philadelphia 76ers|new york knicks": {
-    "away_odds": 2.77,
-    "home_odds": 1.49
-  },
-  "oklahoma city thunder|san antonio spurs": {
-    "away_odds": 2.19,
-    "home_odds": 1.75
-  },
-  "atlanta hawks|orlando magic": {
-    "away_odds": 2.21,
-    "home_odds": 1.73
-  },
-  "milwaukee bucks|washington wizards": {
-    "away_odds": 2.87,
-    "home_odds": 1.46
-  },
-  "charlotte hornets|brooklyn nets": {
-    "away_odds": 1.57,
-    "home_odds": 2.54
-  },
-  "minnesota timberwolves|miami heat": {
-    "away_odds": 2.03,
-    "home_odds": 1.86
-  },
-  "indiana pacers|new orleans pelicans": {
-    "away_odds": 1.6,
-    "home_odds": 2.48
-  },
-  "utah jazz|memphis grizzlies": {
-    "away_odds": 1.69,
-    "home_odds": 2.28
-  },
-  "dallas mavericks|houston rockets": {
-    "away_odds": 3.73,
-    "home_odds": 1.3
-  },
-  "golden state warriors|los angeles lakers": {
-    "away_odds": 2.75,
-    "home_odds": 1.5
-  },
-  "phoenix suns|portland trail blazers": {
-    "away_odds": 2.42,
-    "home_odds": 1.62
-  },
-  "cleveland cavaliers|philadelphia 76ers": {
-    "away_odds": 2.4,
-    "home_odds": 1.6
-  },
-  "denver nuggets|oklahoma city thunder": {
-    "away_odds": 3.25,
-    "home_odds": 1.36
-  },
-  "new york knicks|boston celtics": {
-    "away_odds": 2.1,
-    "home_odds": 1.77
-  },
-  "houston rockets|san antonio spurs": {
-    "away_odds": 2.8,
-    "home_odds": 1.46
-  },
-  "charlotte hornets|washington wizards": {
-    "away_odds": 1.87,
-    "home_odds": 1.95
-  },
-  "chicago bulls|boston celtics": {
-    "away_odds": 5.25,
-    "home_odds": 1.17
-  },
-  "detroit pistons|brooklyn nets": {
-    "away_odds": 1.32,
-    "home_odds": 3.5
-  },
-  "new york knicks|philadelphia 76ers": {
-    "away_odds": 2.05,
-    "home_odds": 1.8
-  },
-  "orlando magic|toronto raptors": {
-    "away_odds": 2.3,
-    "home_odds": 1.65
-  },
-  "houston rockets|dallas mavericks": {
-    "away_odds": 1.57,
-    "home_odds": 2.45
-  },
-  "indiana pacers|miami heat": {
-    "away_odds": 2.24,
-    "home_odds": 1.68
-  },
-  "los angeles clippers|minnesota timberwolves": {
-    "away_odds": 3.5,
-    "home_odds": 1.32
-  },
-  "denver nuggets|phoenix suns": {
-    "away_odds": 1.74,
-    "home_odds": 2.14
-  },
-  "los angeles lakers|golden state warriors": {
-    "away_odds": 1.91,
-    "home_odds": 1.91
-  },
-  "philadelphia 76ers|cleveland cavaliers": {
-    "away_odds": 2.0,
-    "home_odds": 1.83
-  },
-  "portland trail blazers|los angeles lakers": {
-    "away_odds": 2.3,
-    "home_odds": 1.65
-  },
-  "new york knicks|indiana pacers": {
-    "away_odds": 1.8,
-    "home_odds": 2.05
-  },
-  "golden state warriors|san antonio spurs": {
-    "away_odds": 4.9,
-    "home_odds": 1.19
-  },
-  "toronto raptors|detroit pistons": {
-    "away_odds": 1.95,
-    "home_odds": 1.87
-  },
-  "houston rockets|denver nuggets": {
-    "away_odds": 2.24,
-    "home_odds": 1.68
-  },
-  "boston celtics|washington wizards": {
-    "away_odds": 1.56,
-    "home_odds": 2.5
-  },
-  "dallas mavericks|denver nuggets": {
-    "away_odds": 3.75,
-    "home_odds": 1.29
-  },
-  "miami heat|philadelphia 76ers": {
-    "away_odds": 2.3,
-    "home_odds": 1.65
-  },
-  "minnesota timberwolves|oklahoma city thunder": {
-    "away_odds": 3.95,
-    "home_odds": 1.27
-  },
-  "san antonio spurs|portland trail blazers": {
-    "away_odds": 1.59,
-    "home_odds": 2.42
-  },
-  "miami heat|new york knicks": {
-    "away_odds": 2.54,
-    "home_odds": 1.54
-  },
-  "los angeles lakers|san antonio spurs": {
-    "away_odds": 3.05,
-    "home_odds": 1.4
-  },
-  "miami heat|boston celtics": {
-    "away_odds": 2.54,
-    "home_odds": 1.54
-  },
-  "philadelphia 76ers|los angeles lakers": {
-    "away_odds": 1.95,
-    "home_odds": 1.87
-  },
-  "oklahoma city thunder|minnesota timberwolves": {
-    "away_odds": 1.65,
-    "home_odds": 2.3
-  },
-  "denver nuggets|golden state warriors": {
-    "away_odds": 1.77,
-    "home_odds": 2.1
-  },
-  "philadelphia phillies|atlanta braves": {
-    "away_odds": 1.93,
-    "home_odds": 1.99
-  },
-  "chicago white sox|cleveland guardians": {
-    "away_odds": 2.36,
-    "home_odds": 1.66
-  },
-  "new york yankees|tampa bay rays": {
-    "away_odds": 2.18,
-    "home_odds": 1.77
-  },
-  "san diego padres|milwaukee brewers": {
-    "away_odds": 2.96,
-    "home_odds": 1.45
-  },
-  "atlanta braves|los angeles dodgers": {
-    "away_odds": 2.87,
-    "home_odds": 1.47
-  }
+ "arizona cardinals|los angeles rams|2026-10-18": {
+  "away_odds": 5.7,
+  "home_odds": 1.15,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "baltimore ravens|atlanta falcons|2026-10-11": {
+  "away_odds": 2.53,
+  "home_odds": 1.58,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "baltimore ravens|cleveland browns|2026-10-18": {
+  "away_odds": 1.54,
+  "home_odds": 2.54,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "buffalo bills|las vegas raiders|2026-10-18": {
+  "away_odds": 1.43,
+  "home_odds": 2.9,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "buffalo bills|los angeles rams|2026-10-12": {
+  "away_odds": 2.53,
+  "home_odds": 1.57,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "chicago bears|atlanta falcons|2026-10-18": {
+  "away_odds": 1.82,
+  "home_odds": 2.02,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "chicago bears|green bay packers|2026-10-11": {
+  "away_odds": 1.84,
+  "home_odds": 2.06,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "cincinnati bengals|miami dolphins|2026-10-11": {
+  "away_odds": 1.27,
+  "home_odds": 4.03,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "cleveland browns|new york jets|2026-10-11": {
+  "away_odds": 2.24,
+  "home_odds": 1.71,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "cleveland guardians|tampa bay rays|2026-10-12": {
+  "away_odds": 2.5,
+  "home_odds": 1.6,
+  "saved_at": "2026-10-11T14:40:27Z"
+ },
+ "denver broncos|los angeles chargers|2026-10-11": {
+  "away_odds": 1.54,
+  "home_odds": 2.61,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "detroit lions|arizona cardinals|2026-10-11": {
+  "away_odds": 1.41,
+  "home_odds": 3.06,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "houston texans|tennessee titans|2026-10-11": {
+  "away_odds": 1.31,
+  "home_odds": 3.66,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "indianapolis colts|pittsburgh steelers|2026-10-11": {
+  "away_odds": 2.4,
+  "home_odds": 1.65,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "las vegas raiders|new england patriots|2026-10-11": {
+  "away_odds": 2.63,
+  "home_odds": 1.54,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "los angeles chargers|kansas city chiefs|2026-10-18": {
+  "away_odds": 4.1,
+  "home_odds": 1.25,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "los angeles dodgers|milwaukee brewers|2026-10-11": {
+  "away_odds": 2.01,
+  "home_odds": 1.92,
+  "saved_at": "2026-10-11T14:40:27Z"
+ },
+ "minnesota vikings|new orleans saints|2026-10-11": {
+  "away_odds": 1.78,
+  "home_odds": 2.15,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "new orleans saints|new york giants|2026-10-18": {
+  "away_odds": 1.85,
+  "home_odds": 1.98,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "new york giants|washington commanders|2026-10-11": {
+  "away_odds": 2.61,
+  "home_odds": 1.54,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "new york jets|new england patriots|2026-10-18": {
+  "away_odds": 3.6,
+  "home_odds": 1.31,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "san francisco 49ers|seattle seahawks|2026-10-11": {
+  "away_odds": 2.53,
+  "home_odds": 1.57,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "seattle seahawks|denver broncos|2026-10-15": {
+  "away_odds": 1.82,
+  "home_odds": 2.02,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "tennessee titans|indianapolis colts|2026-10-18": {
+  "away_odds": 3.35,
+  "home_odds": 1.34,
+  "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "washington commanders|san francisco 49ers|2026-10-19": {
+  "away_odds": 4.3,
+  "home_odds": 1.24,
+  "saved_at": "2026-10-11T14:43:06Z"
+ }
 }
