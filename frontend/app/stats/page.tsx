@@ -1,137 +1,262 @@
 "use client";
 import { useEffect, useState } from "react";
+import { CalibrationChart, ProbabilityQuality, type CalibrationBin } from "../components/ModelQuality";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface ModelStats {
-  accuracy: number;
-  n_games: number;
-  n_seasons: number;
-  features: string[];
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface NBAModelStats {
+  accuracy:     number;
+  cv_std:       number;
+  cv_folds:     number[];
+  n_rows:       number;
+  seasons:      number[];
+  features:     string[];
   coefficients: number[];
+  log_loss:     number | null;
+  brier:        number | null;
+  calibration:  CalibrationBin[];
+  xgboost:      { accuracy: number | null; log_loss: number | null; brier: number | null };
 }
 
-const LABELS: Record<string, string> = {
-  off_rtg:      "Offensive Rating",
-  def_rtg:      "Defensive Rating",
-  net_rtg:      "Net Rating",
-  pace:         "Pace",
-  rest_days:    "Rest Days",
-  ts_pct:       "True Shooting %",
-  tov_pct:      "Turnover %",
-  oreb_pct:     "Off. Rebound %",
-  home:         "Home / Away",
-  win_streak:   "Win Streak",
-  srs:          "SRS",
-  point_diff:   "Point Differential",
-  fg3_rate:     "3PT Rate",
-  ftr:          "Free Throw Rate",
-  back_to_back:    "Back-to-Back",
-  travel_km:       "Travel Distance (km)",
-  prev_margin:     "Previous Game Margin",
-  playoff_net_rtg: "Prev Season Playoff Net Rtg",
+// ── Feature labels ─────────────────────────────────────────────────────────────
+
+const FEATURE_LABELS: Record<string, { label: string; group: string; desc: string }> = {
+  home:            { label: "Home Court",              group: "Context", desc: "Whether the team is playing at home. Home teams win ~56-57% of NBA games. Neutral sites (the 2020 bubble, international games) count as away for both teams." },
+  elo_diff:        { label: "Elo Rating Gap",          group: "Team",    desc: "Gap between the two teams' Elo ratings. Elo updates after every game (bigger wins move it more) and carries over between seasons, pulled 1/4 toward average, so it knows who's good from opening night." },
+  margin_ewm_diff: { label: "Recent Point Margin",     group: "Form",    desc: "Gap in points scored minus points allowed per game, weighted toward recent games (about a 10-game half-life) and pulled toward 0 early in the season." },
+  rest_diff:       { label: "Rest Advantage",          group: "Context", desc: "Days of rest for this team minus the opponent's, capped at 4 (opening night counts as fully rested)." },
+  b2b:             { label: "Back-to-Back",            group: "Context", desc: "This team played the day before. Tired legs: it lowers the win probability." },
+  opp_b2b:         { label: "Opponent on Back-to-Back", group: "Context", desc: "The opponent played the day before — an edge for this team." },
 };
 
-export default function StatsPage() {
-  const [data,  setData]  = useState<ModelStats | null>(null);
+const GROUP_COLORS: Record<string, string> = {
+  Team:    "bg-red-500",
+  Form:    "bg-orange-500",
+  Context: "bg-green-500",
+};
+
+const GROUP_TEXT: Record<string, string> = {
+  Team:    "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10",
+  Form:    "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10",
+  Context: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10",
+};
+
+// ── Tooltip ────────────────────────────────────────────────────────────────────
+
+function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <div className="relative group/tip inline-flex items-center">
+      {children}
+      <div className="
+        pointer-events-none absolute bottom-full left-0 mb-2 z-50
+        w-72 px-3 py-2.5 rounded-xl shadow-lg
+        bg-gray-900 dark:bg-gray-800 text-white text-xs leading-relaxed
+        opacity-0 group-hover/tip:opacity-100
+        translate-y-1 group-hover/tip:translate-y-0
+        transition-all duration-150
+      ">
+        {text}
+        <div className="absolute top-full left-4 -mt-px border-4 border-transparent border-t-gray-900 dark:border-t-gray-800" />
+      </div>
+    </div>
+  );
+}
+
+// ── Metric card ────────────────────────────────────────────────────────────────
+
+function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center">
+      <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-2">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Season fold bars ───────────────────────────────────────────────────────────
+
+function FoldBars({ folds, avg, seasons }: { folds: number[]; avg: number; seasons: number[] }) {
+  if (!folds.length) return null;
+  const max    = Math.max(...folds);
+  const min    = Math.min(...folds);
+  const range  = max - min || 1;
+  // Scale so shortest bar = 40% height, tallest = 100%
+  const height = (v: number) => 40 + ((v - min) / range) * 60;
+  // Season year 2026 = the 2025-26 season
+  const label = (i: number) => seasons.length === folds.length
+    ? `'${String(seasons[i] - 1).slice(2)}-${String(seasons[i]).slice(2)}` : `Fold ${i + 1}`;
+
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
+      <div className="flex items-start justify-between mb-5 gap-6">
+        <div>
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Accuracy by season</h2>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Each bar shows how accurate the model was on one season when trained only on the other seasons.
+          </p>
+        </div>
+        <span className="text-xs text-gray-400 flex-shrink-0">avg <span className="font-bold text-gray-700 dark:text-gray-200">{avg.toFixed(2)}%</span></span>
+      </div>
+
+      <div className="flex gap-2 mb-1">
+        {folds.map((acc, i) => (
+          <div key={i} className="flex-1 text-center">
+            <span className={`text-[10px] font-bold ${acc === max ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}>
+              {acc.toFixed(1)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-end gap-2" style={{ height: 64 }}>
+        {folds.map((acc, i) => (
+          <div key={i} className="flex-1 rounded-t-md" style={{ height: `${height(acc)}%`, background: acc === max ? "#ef4444" : "#e5e7eb" }} />
+        ))}
+      </div>
+
+      <div className="flex gap-2 mt-1.5">
+        {folds.map((_, i) => (
+          <div key={i} className="flex-1 text-center" title={`Held-out season ${label(i)}`}>
+            <span className="text-[9px] text-gray-400">{label(i)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────────
+
+export default function NBAStatsPage() {
+  const [data,  setData]  = useState<NBAModelStats | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/stats`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setError("Could not load model stats."));
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(d => setData(d))
+      .catch(e => setError(`Could not load model stats. (${e.message})`));
   }, []);
 
   if (error) return (
-    <main className="max-w-2xl mx-auto px-4 py-10">
-      <p className="text-red-600 text-sm">{error}</p>
+    <main className="px-4 md:px-6 py-6 md:py-8">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">
+        {error}
+      </div>
     </main>
   );
+
   if (!data) return (
-    <main className="max-w-2xl mx-auto px-4 py-10">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center text-gray-400 text-sm shadow-sm">
+    <main className="px-4 md:px-6 py-6 md:py-8">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 text-sm">
         Loading…
       </div>
     </main>
   );
 
-  const importance = data.features
+  const ranked = data.features
     .map((f, i) => ({ feature: f, coef: data.coefficients[i] ?? 0 }))
     .sort((a, b) => Math.abs(b.coef) - Math.abs(a.coef));
 
-  const maxAbs = Math.max(...importance.map((x) => Math.abs(x.coef)), 0.001);
+  const maxAbs = Math.max(...ranked.map(x => Math.abs(x.coef)), 0.001);
+  const first = data.seasons[0], last = data.seasons[data.seasons.length - 1];
+  const xgbAcc = data.xgboost?.accuracy;
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Model Dashboard</h1>
+    <main className="px-4 md:px-6 py-6 md:py-8">
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Model Stats</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Logistic regression · {data.n_seasons} seasons · {data.n_games.toLocaleString()} playoff games
+          How well the NBA prediction model performs · trained on the {first - 1}-{String(first).slice(2)} to {last - 1}-{String(last).slice(2)} seasons
         </p>
       </div>
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
-        <Metric label="Accuracy"  value={`${data.accuracy}%`} />
-        <Metric label="Games"     value={data.n_games.toLocaleString()} />
-        <Metric label="Seasons"   value={String(data.n_seasons)} />
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <Metric label="Prediction Accuracy" value={`${data.accuracy}%`} sub="on seasons it hadn't seen" />
+        <Metric label="Games analyzed"      value={Math.round(data.n_rows / 2).toLocaleString()} sub={`across ${data.seasons.length} seasons`} />
+        <Metric label="vs XGBoost"          value={xgbAcc != null ? `${(xgbAcc * 100).toFixed(2)}%` : "—"} sub="the simpler model wins" />
       </div>
 
-      {/* Feature importance */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm dark:shadow-none mb-5">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-5">
-          Feature Importance
+      {data.cv_folds.length > 0 && (
+        <div className="mb-5">
+          <FoldBars folds={data.cv_folds} avg={data.accuracy} seasons={data.seasons} />
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-5 mb-5">
+        <CalibrationChart bins={data.calibration ?? []} />
+        <ProbabilityQuality logLoss={data.log_loss} brier={data.brier} />
+      </div>
+
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6 mb-5">
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">
+          Feature Importance — coefficient magnitude
         </h2>
         <div className="flex flex-col gap-3.5">
-          {importance.map(({ feature, coef }) => {
+          {ranked.map(({ feature, coef }) => {
+            const meta  = FEATURE_LABELS[feature];
+            const label = meta?.label ?? feature;
+            const group = meta?.group ?? "Other";
+            const desc  = meta?.desc  ?? "";
+            const bar   = GROUP_COLORS[group] ?? "bg-gray-400";
+            const badge = GROUP_TEXT[group]   ?? "text-gray-500 bg-gray-100";
             const width = (Math.abs(coef) / maxAbs) * 100;
             const pos   = coef >= 0;
             return (
               <div key={feature}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600 dark:text-gray-400 font-medium">{LABELS[feature] ?? feature}</span>
-                  <span className={`font-mono font-semibold tabular-nums ${pos ? "text-red-600" : "text-blue-500"}`}>
-                    {coef > 0 ? "+" : ""}{coef.toFixed(3)}
+                <div className="flex items-center justify-between text-xs mb-1.5 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Tooltip text={desc}>
+                      <span className="text-gray-700 dark:text-gray-300 font-medium cursor-help underline decoration-dotted decoration-gray-400 underline-offset-2">
+                        {label}
+                      </span>
+                    </Tooltip>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0 ${badge}`}>
+                      {group}
+                    </span>
+                  </div>
+                  <span className={`font-mono font-bold tabular-nums flex-shrink-0 ${
+                    pos ? "text-red-600 dark:text-red-400" : "text-blue-500 dark:text-blue-400"
+                  }`}>
+                    {coef > 0 ? "+" : ""}{coef.toFixed(4)}
                   </span>
                 </div>
-                <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${pos ? "bg-red-500" : "bg-blue-400"}`}
-                    style={{ width: `${width}%` }}
-                  />
+                <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${bar}`} style={{ width: `${width}%` }} />
                 </div>
               </div>
             );
           })}
         </div>
-        <p className="mt-5 text-xs text-gray-400 leading-relaxed">
-          <span className="text-red-500 font-medium">Red</span> = higher value increases win probability.{" "}
-          <span className="text-blue-500 font-medium">Blue</span> = higher value decreases win probability.
+
+        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-3">
+          {Object.entries(GROUP_TEXT).map(([group, cls]) => (
+            <span key={group} className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${cls}`}>{group}</span>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-gray-400">
+          <span className="text-red-500 font-medium">+</span> increases win probability ·{" "}
+          <span className="text-blue-500 font-medium">−</span> decreases win probability
         </p>
       </div>
 
-      {/* Model details */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm dark:shadow-none">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">About the Model</h2>
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">About the Model</h2>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic regression with L2 regularization + StandardScaler</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on individual playoff games (game-level, not series-level)</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Stratified 5-fold cross-validation</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Prediction: normalized head-to-head logistic scores</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Series simulation: 10 000 Monte Carlo runs · 2-2-1-1-1 format</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Contextual features computed live: back-to-back, travel distance</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic Regression with L2 regularization + StandardScaler (beat XGBoost in testing)</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on every regular-season, play-in and playoff game from {first - 1}-{String(first).slice(2)} to {last - 1}-{String(last).slice(2)} (2 rows per game)</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Leave-one-season-out cross-validation, balanced class weights</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, recent point margin, rest and back-to-backs, home court</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Every feature is computed from games before the one being predicted — no future information leaks into training</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Today&apos;s injury report adjusts the probability of games that haven&apos;t started; predictions are frozen before tip-off</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Probability normalized head-to-head: away prob / (away + home prob)</li>
         </ul>
       </div>
-    </main>
-  );
-}
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm dark:shadow-none text-center">
-      <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-2">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-    </div>
+    </main>
   );
 }

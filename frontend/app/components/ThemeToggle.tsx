@@ -1,16 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+// The theme lives on <html class="dark"> (set before paint by the script in layout.tsx)
+function subscribe(onChange: () => void) {
+  const obs = new MutationObserver(onChange);
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => obs.disconnect();
+}
+const isDark = () => document.documentElement.classList.contains("dark");
 
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const dark = useSyncExternalStore(subscribe, isDark, () => false);
 
   function toggle() {
     const next = !dark;
-    setDark(next);
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
   }

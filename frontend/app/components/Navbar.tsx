@@ -104,6 +104,12 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       isActive: (p) => p === "/bracket" || p.startsWith("/team"),
     },
     {
+      href: "/nba/power",
+      Icon: IconPower,
+      label: "Power",
+      isActive: (p) => p === "/nba/power",
+    },
+    {
       href: "/stats",
       Icon: IconStats,
       label: "Stats",

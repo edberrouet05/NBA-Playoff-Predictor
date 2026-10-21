@@ -92,19 +92,22 @@ function GroupTable({ league, name, players, color, showGroup }: {
 }
 
 export default function RosterPage({ league, team }: { league: League; team: string }) {
-  const [data, setData] = useState<RosterData | null>(null);
-  const [error, setError] = useState(false);
+  // A result belongs to the team it was fetched for, so switching teams shows "Loading" again
+  const key = `${league}/${team}`;
+  const [result, setResult] = useState<{ key: string; data: RosterData | null } | null>(null);
   const [group, setGroup] = useState<string>("All");
 
   useEffect(() => {
     let active = true;
-    setData(null); setError(false);
     fetch(`${API}/api/team/${league}/${encodeURIComponent(team)}/roster`)
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then((d: RosterData) => { if (active) setData(d); })
-      .catch(() => { if (active) setError(true); });
+      .then((d: RosterData) => { if (active) setResult({ key, data: d }); })
+      .catch(() => { if (active) setResult({ key, data: null }); });
     return () => { active = false; };
-  }, [league, team]);
+  }, [league, team, key]);
+
+  const data = result?.key === key ? result.data : null;
+  const error = result?.key === key && !result.data;
 
   const total = data?.groups.reduce((n, g) => n + g.players.length, 0) ?? 0;
   const shown = data ? (group === "All" ? data.groups : data.groups.filter(g => g.name === group)) : [];

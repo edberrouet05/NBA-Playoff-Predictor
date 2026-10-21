@@ -1,7 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { teamHref } from "../../components/teamLinks";
+import { useEffect, useState } from "react";
+import { Glossary, PctCell, Rank, SortTable, signed, useUrlTab, type Col } from "../../components/PowerTable";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -59,14 +58,6 @@ function TeamLogo({ team }: { team: string }) {
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 
-const signed = (v: number, d = 1) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(d)}`;
-
-function fmtPct(v: number): string {
-  if (v >= 99.95) return ">99%";
-  if (v > 0 && v < 0.5) return "<1%";
-  return `${Math.round(v)}%`;
-}
-
 function Trend({ v }: { v: number | null }) {
   if (v === null || v === 0) return <span className="text-gray-400">–</span>;
   const up = v > 0;
@@ -75,112 +66,6 @@ function Trend({ v }: { v: number | null }) {
       title={`${up ? "Up" : "Down"} ${Math.abs(v)} spot${Math.abs(v) === 1 ? "" : "s"}`}>
       {up ? "↑" : "↓"}{Math.abs(v)}
     </span>
-  );
-}
-
-function PctCell({ v }: { v: number }) {
-  // Magnitude as a single-hue fill behind the number; the number stays in text ink
-  const alpha = 0.06 + (v / 100) * 0.34;
-  return (
-    <span className="inline-block min-w-[3.25rem] px-1.5 py-0.5 rounded-md text-xs font-semibold tabular-nums text-gray-800 dark:text-gray-100"
-      style={{ background: `rgba(59, 130, 246, ${alpha})` }}>
-      {fmtPct(v)}
-    </span>
-  );
-}
-
-function Rank({ r }: { r: number }) {
-  return <span className="ml-1 text-[10px] text-gray-400 tabular-nums">#{r}</span>;
-}
-
-// ── Sortable table ─────────────────────────────────────────────────────────────
-
-interface Col<T> {
-  key: string;
-  label: string;
-  title: string;                // header tooltip / glossary text
-  value: (r: T) => number | string | null;
-  render: (r: T) => React.ReactNode;
-  lowerIsBetter?: boolean;      // default sort direction
-  group?: string;
-  highlight?: boolean;
-}
-
-function SortTable<T extends { team: string }>({ rows, cols, initial }: {
-  rows: T[]; cols: Col<T>[]; initial: string;
-}) {
-  const [sortKey, setSortKey] = useState(initial);
-  const [asc, setAsc] = useState(!!cols.find(c => c.key === initial)?.lowerIsBetter);
-  const col = cols.find(c => c.key === sortKey) ?? cols[0];
-  const sorted = useMemo(() => [...rows].sort((a, b) => {
-    const va = col.value(a), vb = col.value(b);
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    const cmp = typeof va === "string" ? va.localeCompare(String(vb)) : (va as number) - (vb as number);
-    return asc ? cmp : -cmp;
-  }), [rows, col, asc]);
-
-  const groups: { name: string; span: number }[] = [];
-  cols.forEach(c => {
-    const g = c.group ?? "";
-    if (groups.length && groups[groups.length - 1].name === g) groups[groups.length - 1].span++;
-    else groups.push({ name: g, span: 1 });
-  });
-  const hasGroups = groups.some(g => g.name);
-
-  const onSort = (c: Col<T>) => {
-    if (c.key === sortKey) setAsc(a => !a);
-    else { setSortKey(c.key); setAsc(!!c.lowerIsBetter); }
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          {hasGroups && (
-            <tr>
-              <th className="sticky left-0 bg-white dark:bg-gray-900" />
-              {groups.map((g, i) => (
-                <th key={i} colSpan={g.span}
-                  className={`px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 text-center ${g.name ? "border-b border-gray-100 dark:border-gray-800" : ""}`}>
-                  {g.name}
-                </th>
-              ))}
-            </tr>
-          )}
-          <tr className="border-b border-gray-100 dark:border-gray-800">
-            <th className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-2 text-left text-xs font-semibold text-gray-400">Team</th>
-            {cols.map(c => (
-              <th key={c.key} title={c.title}
-                className={`px-2 py-2 text-right text-xs font-semibold whitespace-nowrap cursor-pointer select-none ${
-                  c.key === sortKey ? "text-gray-900 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                } ${c.highlight ? "bg-blue-50/70 dark:bg-blue-500/10" : ""}`}
-                onClick={() => onSort(c)}>
-                <span className="underline decoration-dotted decoration-gray-300 underline-offset-2">{c.label}</span>
-                {c.key === sortKey && <span className="ml-0.5">{asc ? "▲" : "▼"}</span>}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map(r => (
-            <tr key={r.team} className="border-b last:border-0 border-gray-50 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-              <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 px-4 py-2.5">
-                <div className="flex items-center gap-2.5 min-w-[11rem]">
-                  <TeamLogo team={r.team} />
-                  <Link href={teamHref("nfl", r.team)} className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap inline-block transition-transform hover:scale-105 origin-left">{r.team}</Link>
-                </div>
-              </td>
-              {cols.map(c => (
-                <td key={c.key} className={`px-2 py-2.5 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap ${c.highlight ? "bg-blue-50/70 dark:bg-blue-500/10 font-semibold text-gray-900 dark:text-white" : ""}`}>
-                  {c.render(r)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
@@ -257,22 +142,11 @@ const EFF_COLS: Col<PowerTeam>[] = [
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function NFLPowerPage() {
-  const [tab, setTab] = useState<Tab>("power");
+  // ?tab=projections|efficiencies opens a tab directly (shareable links)
+  const [tab, selectTab] = useUrlTab<Tab>(["power", "projections", "efficiencies"], "power");
   const [power, setPower] = useState<PowerData | null>(null);
   const [proj, setProj] = useState<ProjData | null>(null);
   const [error, setError] = useState("");
-
-  // ?tab=projections|efficiencies opens a tab directly (shareable links)
-  useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "projections" || t === "efficiencies") setTab(t);
-  }, []);
-  const selectTab = (t: Tab) => {
-    setTab(t);
-    const url = new URL(window.location.href);
-    if (t === "power") url.searchParams.delete("tab"); else url.searchParams.set("tab", t);
-    window.history.replaceState(null, "", url);
-  };
 
   useEffect(() => {
     fetch(`${API}/api/nfl/power`)
@@ -316,10 +190,11 @@ export default function NFLPowerPage() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden">
         {tab === "projections" ? (
-          proj ? <SortTable rows={proj.teams} cols={PROJ_COLS} initial="sb_win_pct" />
+          proj ? <SortTable rows={proj.teams} cols={PROJ_COLS} initial="sb_win_pct" league="nfl" logo={r => <TeamLogo team={r.team} />} />
                : <p className="p-8 text-center text-sm text-gray-400">Running season simulations…</p>
         ) : power ? (
-          <SortTable rows={power.teams} cols={tab === "power" ? POWER_COLS : EFF_COLS} initial={tab === "power" ? "power" : "off_epa"} />
+          <SortTable rows={power.teams} cols={tab === "power" ? POWER_COLS : EFF_COLS} initial={tab === "power" ? "power" : "off_epa"}
+            league="nfl" logo={r => <TeamLogo team={r.team} />} />
         ) : !error && (
           <p className="p-8 text-center text-sm text-gray-400">Loading…</p>
         )}
@@ -340,14 +215,7 @@ export default function NFLPowerPage() {
             standings are broken at random, not by official NFL tiebreakers.
           </p>
         )}
-        <div>
-          <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-700 dark:text-gray-300 mb-2">Glossary</h2>
-          <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-1.5">
-            {activeCols.map(c => (
-              <div key={c.key}><dt className="inline font-semibold text-gray-700 dark:text-gray-300">{c.label}: </dt><dd className="inline">{c.title}</dd></div>
-            ))}
-          </dl>
-        </div>
+        <Glossary cols={activeCols} />
       </div>
     </main>
   );

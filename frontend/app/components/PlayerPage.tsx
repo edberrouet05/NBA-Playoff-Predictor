@@ -550,18 +550,21 @@ function CareerCard({ d }: { d: PlayerData }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function PlayerPage({ league, id }: { league: League; id: string }) {
-  const [data, setData] = useState<PlayerData | null>(null);
-  const [error, setError] = useState(false);
+  // A result belongs to the player it was fetched for, so switching players shows "Loading" again
+  const key = `${league}/${id}`;
+  const [result, setResult] = useState<{ key: string; data: PlayerData | null } | null>(null);
 
   useEffect(() => {
     let active = true;
-    setData(null); setError(false);
     fetch(`${API}/api/player/${league}/${encodeURIComponent(id)}`)
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then((d: PlayerData) => { if (active) setData(d); })
-      .catch(() => { if (active) setError(true); });
+      .then((d: PlayerData) => { if (active) setResult({ key, data: d }); })
+      .catch(() => { if (active) setResult({ key, data: null }); });
     return () => { active = false; };
-  }, [league, id]);
+  }, [league, id, key]);
+
+  const data = result?.key === key ? result.data : null;
+  const error = result?.key === key && !result.data;
 
   // While his game is live, refresh every minute (the API caches live pages for 60s)
   const isLive = !!data?.next_game?.live;
@@ -570,11 +573,11 @@ export default function PlayerPage({ league, id }: { league: League; id: string 
     const timer = setInterval(() => {
       fetch(`${API}/api/player/${league}/${encodeURIComponent(id)}`)
         .then(r => (r.ok ? r.json() : null))
-        .then((d: PlayerData | null) => { if (d) setData(d); })
+        .then((d: PlayerData | null) => { if (d) setResult({ key, data: d }); })
         .catch(() => {});
     }, 60_000);
     return () => clearInterval(timer);
-  }, [isLive, league, id]);
+  }, [isLive, league, id, key]);
 
   const back = data?.team ? teamHref(league, data.team.name) : `/${league === "nba" ? "" : league}`;
 

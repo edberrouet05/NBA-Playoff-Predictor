@@ -35,8 +35,8 @@ interface ModelBlock {
   qb_name?: string; qb_rank?: number; sos_rank?: number; rem_sos_rank?: number;
   projected_wins?: number; playoff_pct?: number; division_pct?: number;
   top_seed_pct?: number; conf_pct?: number; sb_win_pct?: number;
-  // NBA: top 6 = no play-in; title = NBA championship; the season of the stats behind the ratings
-  top6_pct?: number; title_pct?: number; ratings_season?: string;
+  // NBA: top 6 = no play-in; title = NBA championship
+  top6_pct?: number; title_pct?: number;
 }
 interface TeamPageData {
   league: League;
@@ -238,9 +238,9 @@ function ModelCard({ d }: { d: TeamPageData }) {
       {m.rem_sos_rank != null && (
         <p className="mt-2 text-[10px] text-gray-400">Green = good for the team (an easy schedule left is good).</p>
       )}
-      {m.ratings_season && (
+      {m.title_pct != null && (
         <p className="mt-1 text-[10px] text-gray-400">
-          Ratings use {m.ratings_season} team stats; the rest of the season is simulated 10,000 times.
+          The rest of the season, the play-in and the playoffs are simulated 10,000 times.
         </p>
       )}
     </div>
@@ -477,18 +477,21 @@ function PostseasonCard({ d }: { d: TeamPageData }) {
 export default function TeamPage({ league, team, backHref, backLabel }: {
   league: League; team: string; backHref: string; backLabel: string;
 }) {
-  const [data, setData] = useState<TeamPageData | null>(null);
-  const [error, setError] = useState(false);
+  // A result belongs to the team it was fetched for, so switching teams shows "Loading" again
+  const key = `${league}/${team}`;
+  const [result, setResult] = useState<{ key: string; data: TeamPageData | null } | null>(null);
 
   useEffect(() => {
     let active = true;
-    setData(null); setError(false);
     fetch(`${API}/api/team/${league}/${encodeURIComponent(team)}`)
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then((d: TeamPageData) => { if (active) setData(d); })
-      .catch(() => { if (active) setError(true); });
+      .then((d: TeamPageData) => { if (active) setResult({ key, data: d }); })
+      .catch(() => { if (active) setResult({ key, data: null }); });
     return () => { active = false; };
-  }, [league, team]);
+  }, [league, team, key]);
+
+  const data = result?.key === key ? result.data : null;
+  const error = result?.key === key && !result.data;
 
   return (
     <main className="px-4 lg:px-8 pt-4 lg:pt-5 pb-8 flex flex-col gap-3">
