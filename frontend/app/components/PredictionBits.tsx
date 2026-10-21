@@ -1,5 +1,11 @@
 // Shared bits for NBA / MLB / NFL game cards.
 
+/** "2026–27": the NBA season under way (a new one from August), as nba/pipeline.py counts it. */
+export function nbaSeasonLabel(d = new Date()): string {
+  const end = d.getMonth() >= 7 ? d.getFullYear() + 1 : d.getFullYear();
+  return `${end - 1}–${String(end).slice(2)}`;
+}
+
 /** Color for a team's win-probability label: green for the model's pick,
  *  red once the game is final and that pick lost, gray for the other side. */
 export function probClass(isPredicted: boolean, pickLost: boolean): string {

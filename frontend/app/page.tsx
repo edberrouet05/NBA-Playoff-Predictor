@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useFitRows } from "./components/useFitRows";
+import { useWakeHint, WAKE_HINT } from "./components/useWakeHint";
 import Link from "next/link";
-import { probClass, ValueBadge, type ValueFields } from "./components/PredictionBits";
+import { nbaSeasonLabel, probClass, ValueBadge, type ValueFields } from "./components/PredictionBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -115,12 +116,31 @@ function gameUrl(g: TodayGame): string {
   return `/game/${g.game_id}?${p.toString()}`;
 }
 
+// The predictions log is cached in the browser so it shows at once while the API wakes up
+const LOG_CACHE_KEY = "nba_pred_log_v2";   // v1 held last season's log
+const LOG_CACHE_TTL = 2 * 3600 * 1000;
+const noSubscribe = () => () => {};
+/** The cached log as a string (stable between renders) while it is fresh, else null. */
+function readLogCache(): string | null {
+  try {
+    const raw = localStorage.getItem(LOG_CACHE_KEY);
+    return raw && Date.now() - JSON.parse(raw).ts < LOG_CACHE_TTL ? raw : null;
+  } catch { return null; }
+}
+
 export default function GamesPage() {
   const [schedule,   setSchedule]   = useState<{ date: string; games: TodayGame[] }[]>([]);
-  const [predLog,    setPredLog]    = useState<PredictionEntry[]>([]);
+  const [fetchedLog, setFetchedLog] = useState<PredictionEntry[] | null>(null);
   const [loading,    setLoading]    = useState(true);
-  const [logLoading, setLogLoading] = useState(true);
+  const [logFetching, setLogFetching] = useState(true);
   const [error,      setError]      = useState("");
+
+  // Fresh log once fetched; until then the browser's cached copy, if any
+  const cachedRaw = useSyncExternalStore(noSubscribe, readLogCache, () => null);
+  const cachedLog = useMemo<PredictionEntry[] | null>(() => (cachedRaw ? JSON.parse(cachedRaw).log : null), [cachedRaw]);
+  const predLog = fetchedLog ?? cachedLog ?? [];
+  const logLoading = logFetching && !cachedLog;
+  const waking = useWakeHint(loading || logLoading);
 
   useEffect(() => {
     fetch(`${API}/api/schedule?days=1`)
@@ -129,27 +149,15 @@ export default function GamesPage() {
       .catch(() => setError("Could not load schedule. Make sure the backend is running."))
       .finally(() => setLoading(false));
 
-    // Show cached predictions immediately, fetch fresh in background
-    try {
-      const raw = localStorage.getItem("nba_pred_log_v1");
-      if (raw) {
-        const { log, ts } = JSON.parse(raw);
-        if (Date.now() - ts < 2 * 3600 * 1000) {
-          setPredLog(log);
-          setLogLoading(false);
-        }
-      }
-    } catch {}
-
     fetch(`${API}/api/predictions_log?n=500`, { cache: "no-store" })
       .then(r => r.json())
       .then(d => {
         const log = d.log ?? [];
-        setPredLog(log);
-        try { localStorage.setItem("nba_pred_log_v1", JSON.stringify({ log, ts: Date.now() })); } catch {}
+        setFetchedLog(log);
+        try { localStorage.setItem(LOG_CACHE_KEY, JSON.stringify({ log, ts: Date.now() })); } catch {}
       })
       .catch(() => {})
-      .finally(() => setLogLoading(false));
+      .finally(() => setLogFetching(false));
 
     // Wake up Render backend so game pages load without delay
     fetch("https://nba-playoff-predictor-u8bj.onrender.com/api/health").catch(() => {});
@@ -184,7 +192,7 @@ export default function GamesPage() {
           {/* Loading: no data yet from either fetch */}
           {!error && (loading || logLoading) && predLog.length === 0 && schedule.length === 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
-              Loading…
+              Loading…{waking && <p className="mt-1 text-xs">{WAKE_HINT}</p>}
             </div>
           )}
 
@@ -436,18 +444,16 @@ function ConfidencePicks({ games }: { games: TodayGame[] }) {
   );
 }
 
-// ── Season Recap (off-season) ─────────────────────────────────────────────────
-
-const ROUND_ORDER = ["First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
+// ── Season Recap (days without games) ─────────────────────────────────────────
 
 function SeasonRecap({ log }: { log: PredictionEntry[] }) {
-  const filtered = log.filter(e => e.round !== "Regular Season");
+  const filtered = log;
 
   const total    = filtered.length;
   const correct  = filtered.filter(e => e.correct).length;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
 
-  const PLAYOFF_ROUNDS = ["First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
+  const PLAYOFF_ROUNDS = ["Regular Season", "Play-In", "First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
   const roundMap: Record<string, { correct: number; total: number }> = {};
   for (const e of filtered) {
     const r = e.round ?? "Playoffs";
@@ -483,7 +489,7 @@ function SeasonRecap({ log }: { log: PredictionEntry[] }) {
       {/* Hero accuracy card */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">NBA 2025–26 · Playoffs</p>
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">NBA {nbaSeasonLabel()}</p>
         </div>
         <div className="flex items-end gap-8">
           <div>

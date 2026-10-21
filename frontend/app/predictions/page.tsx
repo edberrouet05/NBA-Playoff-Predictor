@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { nbaSeasonLabel } from "../components/PredictionBits";
+import { useWakeHint, WAKE_HINT } from "../components/useWakeHint";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -46,7 +48,7 @@ const TEAM_IDS: Record<string, number> = {
   TOR: 1610612761, UTA: 1610612762, WAS: 1610612764,
 };
 
-const ROUND_ORDER = ["Regular Season", "First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
+const ROUND_ORDER = ["Regular Season", "Play-In", "First Round", "Conference Semifinals", "Conference Finals", "NBA Finals"];
 
 function getAbbr(t: string) {
   return TEAM_ABBR[t] ?? t.split(" ").pop()?.substring(0, 3).toUpperCase() ?? "???";
@@ -97,17 +99,21 @@ export default function NBAPredictionsPage() {
   const [log,     setLog]     = useState<PredictionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter,  setFilter]  = useState<Filter>("all");
+  const [failed,  setFailed]  = useState(false);
+  const waking = useWakeHint(loading);
 
   useEffect(() => {
     fetch(`${API}/api/predictions_log?n=500`, { cache: "no-store" })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(d => setLog(d.log ?? []))
+      .catch(() => setFailed(true))
       .finally(() => setLoading(false));
   }, []);
 
-  const todayStr     = new Date().toLocaleDateString("en-CA");
-  const yesterdayStr = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
-  const weekAgoStr   = new Date(Date.now() - 7 * 86400000).toLocaleDateString("en-CA");
+  const [now] = useState(() => Date.now());   // fixed at first render: the filters stay stable
+  const todayStr     = new Date(now).toLocaleDateString("en-CA");
+  const yesterdayStr = new Date(now - 86400000).toLocaleDateString("en-CA");
+  const weekAgoStr   = new Date(now - 7 * 86400000).toLocaleDateString("en-CA");
 
   const visible = filter === "all"
     ? log
@@ -143,7 +149,7 @@ export default function NBAPredictionsPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Predictions log</h1>
-            <p className="text-sm text-gray-500 mt-0.5">All completed playoff games · NBA 2025–26</p>
+            <p className="text-sm text-gray-500 mt-0.5">All completed games · NBA {nbaSeasonLabel()}</p>
           </div>
         </div>
 
@@ -165,7 +171,13 @@ export default function NBAPredictionsPage() {
 
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden min-h-[300px] flex flex-col">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading…</div>
+            <div className="flex-1 flex flex-col items-center justify-center gap-1 text-gray-400 text-sm">
+              Loading…{waking && <span className="text-xs">{WAKE_HINT}</span>}
+            </div>
+          ) : failed ? (
+            <div className="flex-1 flex items-center justify-center text-red-500 text-sm">
+              Could not load the predictions. Try again in a minute.
+            </div>
           ) : visible.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
               {filter === "today" ? "No completed games today."
