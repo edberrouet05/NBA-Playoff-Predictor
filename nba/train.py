@@ -45,6 +45,8 @@ FEATURES = [
     "elo_diff",
     # Recent form: recency-weighted point margin per game
     "margin_ewm_diff",
+    # Who is on the roster: last season's per-minute Game Score of today's players
+    "roster_diff",
 ]
 TARGET   = "win"
 GAME_KEY = "game_id"

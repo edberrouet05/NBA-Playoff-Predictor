@@ -11,7 +11,7 @@ interface NBATeam {
   wins: number; losses: number;
   power: number; power_rank: number; elo: number;
   off_rtg: number; def_rtg: number; net_rtg: number; pace: number;
-  off_rank: number; def_rank: number;
+  off_rank: number; def_rank: number; roster_rank: number;
   sos_rank: number | null; rem_sos_rank: number | null;
   projected_wins: number; playoff_pct: number; top6_pct: number; top_seed_pct: number;
   conf_pct: number; title_pct: number;
@@ -37,7 +37,7 @@ const POWER_COLS: Col<NBATeam>[] = [
   { key: "wl", label: "W-L", title: "Record this regular season.",
     value: r => r.wins - r.losses, render: r => `${r.wins}-${r.losses}` },
   { key: "power", label: "POWER", group: "Power index", highlight: true,
-    title: "Team strength in points: expected margin vs an average NBA team on a neutral floor, from the prediction model (Elo and recent point margin).",
+    title: "Team strength in points: expected margin vs an average NBA team on a neutral floor, from the prediction model (Elo, recent point margin and roster).",
     value: r => r.power, render: r => signed(r.power) },
   { key: "rank", label: "RK", group: "Power index", lowerIsBetter: true,
     title: "Power index rank among all 30 teams.", value: r => r.power_rank, render: r => r.power_rank },
@@ -54,6 +54,9 @@ const POWER_COLS: Col<NBATeam>[] = [
     title: "Offensive minus defensive rating.", value: r => r.net_rtg, render: r => signed(r.net_rtg) },
   { key: "pace", label: "PACE", group: "Efficiency",
     title: "Estimated possessions per game.", value: r => r.pace, render: r => r.pace.toFixed(1) },
+  { key: "roster", label: "ROSTER", group: "Ranks", lowerIsBetter: true,
+    title: "Roster rank: last season's per-minute production (Game Score) of the players on today's roster, weighted by their expected minutes — summer moves count from opening night.",
+    value: r => r.roster_rank, render: r => r.roster_rank },
   { key: "sos", label: "SOS", group: "Ranks", lowerIsBetter: true,
     title: "Strength of schedule so far: rank of the average power of opponents already played (1 = toughest).",
     value: r => r.sos_rank, render: r => r.sos_rank ?? "–" },

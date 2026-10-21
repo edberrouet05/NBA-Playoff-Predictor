@@ -6,6 +6,7 @@ game, and outputs:
   data/nba/nba_team_state.csv             — live team table: model state + display stats
   data/nba/nba_game_features_current.csv  — per-game feature rows for every current-season
                                             game (played → pre-game values, upcoming → latest)
+  data/nba/nba_roster_history.csv         — daily roster ratings of the current season
   data/processed/nba_training_data.csv    — labelled rows for model training
 
 Source: ESPN's public scoreboard (stats.nba.com blocks cloud hosts such as GitHub Actions
@@ -18,6 +19,9 @@ Features (one row per team per game, mirrored for the opponent):
     run continuously since 2012-13 so there's no opening-night cold start
   - Recency-weighted point margin per game, carried across seasons and shrunk toward 0
   - Rest days (capped) and second night of a back-to-back
+  - Roster rating: last season's per-minute Game Score of the players on the roster, weighted
+    by expected minutes (this season: today's rosters, one snapshot a day; past seasons: the
+    players each team finished with) — so summer moves count from opening night
   - Home court (neutral sites — 2020 bubble, international games — count as away for both)
 
 Run:
@@ -60,6 +64,10 @@ SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/score
 TEAMS_URL  = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams"
 TEAM_STATS = ("https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/{season}"
               "/types/2/teams/{team_id}/statistics")
+ROSTER_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{team_id}/roster"
+PLAYERS_URL = ("https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete"
+               "?isqualified=false&limit=1000&season={season}&seasontype=2&sort=general.avgMinutes:desc")
+ROSTER_HISTORY = NBA_DIR / "nba_roster_history.csv"
 UA = {"User-Agent": "Mozilla/5.0"}
 
 # Season types kept: 2 regular season, 3 playoffs, 5 play-in
@@ -81,7 +89,17 @@ MAX_REST = 4          # rest days are capped: opening night / long breaks count 
 # about this many per game in recent seasons
 TOV_MINUS_OREB = 3.5
 
+# Roster rating: last season's per-minute Game Score of the players on the roster, weighted by
+# their expected minutes. Players with few minutes are pulled toward replacement level.
+PLAYER_PRIOR_MIN = 600.0   # minutes of replacement-level play mixed into every player's rate
+REPLACEMENT_PCTL = 0.20    # replacement level = this percentile among players with 500+ minutes
+ROOKIE_MPG       = 10.0    # expected minutes per game for a player with no NBA minutes last season
+MAX_MPG          = 36.0
+TEAM_MINUTES     = 240.0   # 5 players × 48 minutes
+
 EAST = {"ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DET", "IND", "MIA", "MIL", "NY", "ORL", "PHI", "TOR", "WSH"}
+_PLAYER_KEYS = {"gamesPlayed", "minutes", "points", "fieldGoalsMade", "fieldGoalsAttempted", "freeThrowsMade",
+                "freeThrowsAttempted", "rebounds", "assists", "steals", "blocks", "fouls", "turnovers"}
 
 _STAT_KEYS = {"fieldGoalsAttempted": "fga", "fieldGoalsMade": "fgm", "freeThrowsAttempted": "fta",
               "freeThrowsMade": "ftm", "threePointFieldGoalsAttempted": "fg3a",
@@ -217,6 +235,119 @@ def load_season_team_stats(teams: dict[str, dict]) -> dict[str, dict]:
     return out
 
 
+# ── Roster ratings ──────────────────────────────────────────────────────────────
+
+def load_player_season(season: int) -> pd.DataFrame:
+    """Every player's regular-season totals and team (his team at the end of that season)."""
+    path = RAW_DIR / f"players_{season}.json"
+    if path.exists() and season < CURRENT_SEASON:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        data = _get_json(PLAYERS_URL.format(season=season))
+        names = {c["name"]: c.get("names", []) for c in data.get("categories", [])}
+        rows = []
+        for a in data.get("athletes", []):
+            ath = a.get("athlete", {})
+            row = {"id": str(ath.get("id")), "name": ath.get("displayName"), "team": ath.get("teamShortName", "")}
+            for c in a.get("categories", []):
+                for n, v in zip(names.get(c["name"], []), c.get("totals", [])):
+                    if n in _PLAYER_KEYS:
+                        try:
+                            row[n] = float(str(v).replace(",", ""))
+                        except ValueError:
+                            row[n] = 0.0
+            rows.append(row)
+        path.write_text(json.dumps(rows), encoding="utf-8")
+    df = pd.DataFrame(rows)
+    for k in _PLAYER_KEYS:
+        df[k] = df[k].fillna(0.0) if k in df else 0.0
+    return df
+
+
+def player_ratings(prev: pd.DataFrame) -> tuple[pd.DataFrame, float]:
+    """(per-player rate + expected minutes for next season, replacement rate) from one season.
+    Rate = Hollinger Game Score per minute, shrunk toward replacement level."""
+    gs = (prev.points + 0.4 * prev.fieldGoalsMade - 0.7 * prev.fieldGoalsAttempted
+          - 0.4 * (prev.freeThrowsAttempted - prev.freeThrowsMade) + 0.4 * prev.rebounds + prev.steals
+          + 0.7 * prev.assists + 0.7 * prev.blocks - 0.4 * prev.fouls - prev.turnovers)
+    raw = gs / prev.minutes.clip(lower=1)
+    repl = float(raw[prev.minutes >= 500].quantile(REPLACEMENT_PCTL))
+    out = pd.DataFrame({
+        "id":      prev["id"],
+        "rate":    (gs + PLAYER_PRIOR_MIN * repl) / (prev.minutes + PLAYER_PRIOR_MIN),
+        # Minutes per game played: a player who missed games through injury keeps his role
+        "exp_min": (prev.minutes / prev.gamesPlayed.clip(lower=1)).clip(upper=MAX_MPG),
+    })
+    return out, repl
+
+
+def roster_ratings(roster: pd.DataFrame, ratings: pd.DataFrame, repl: float,
+                   teams: dict[str, dict]) -> dict[str, float]:
+    """{team name: roster rating} for a roster (id, team abbr), centered on the league average.
+    The 240 minutes of a game go down the rotation (most expected minutes first); minutes the
+    roster can't fill are played at replacement level."""
+    m = roster.merge(ratings, on="id", how="left")
+    m["rate"] = m["rate"].fillna(repl)
+    m["exp_min"] = m["exp_min"].fillna(ROOKIE_MPG)
+    abbr_to_name = {t["abbr"]: t["name"] for t in teams.values()}
+    out = {}
+    for abbr, g in m.groupby("team"):
+        if abbr not in abbr_to_name:
+            continue
+        g = g.sort_values(["exp_min", "rate"], ascending=False)
+        before = g.exp_min.cumsum() - g.exp_min                 # minutes already handed out
+        mins = (TEAM_MINUTES - before).clip(lower=0).clip(upper=g.exp_min)
+        out[abbr_to_name[abbr]] = (float((mins * g.rate).sum()) + (TEAM_MINUTES - mins.sum()) * repl) / TEAM_MINUTES
+    mean = sum(out.values()) / len(out)
+    return {t: round(v - mean, 4) for t, v in out.items()}
+
+
+def load_current_rosters(teams: dict[str, dict]) -> pd.DataFrame:
+    """Today's rosters (player id, team abbr) from ESPN."""
+    def one(tid: str) -> list[dict]:
+        data = _get_json(ROSTER_URL.format(team_id=tid))
+        return [{"id": str(p["id"]), "team": teams[tid]["abbr"]} for p in data.get("athletes", [])]
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        return pd.DataFrame([r for rows in ex.map(one, teams) for r in rows])
+
+
+def season_roster_ratings(teams: dict[str, dict]) -> dict[int, dict[str, float]]:
+    """{season: {team: roster rating}} for past seasons: the season's players (by the team they
+    finished it with) rated on the season before."""
+    out, prev = {}, load_player_season(FIRST_SEASON - 1)
+    for season in range(FIRST_SEASON, CURRENT_SEASON):
+        cur = load_player_season(season)
+        ratings, repl = player_ratings(prev)
+        out[season] = roster_ratings(cur[["id", "team"]], ratings, repl, teams)
+        prev = cur
+    return out
+
+
+def current_roster_history(teams: dict[str, dict]) -> pd.DataFrame:
+    """Daily roster ratings of the current season (date, team, roster), today's added: a played
+    game is rated with the roster of its own day, never a later one."""
+    ratings, repl = player_ratings(load_player_season(CURRENT_SEASON - 1))
+    today = roster_ratings(load_current_rosters(teams), ratings, repl, teams)
+    hist = pd.read_csv(ROSTER_HISTORY) if ROSTER_HISTORY.exists() else pd.DataFrame(columns=["date", "team", "roster"])
+    hist = hist[(hist["date"] != TODAY.isoformat()) & (hist["date"] >= f"{CURRENT_SEASON - 1}-08-01")]
+    new = pd.DataFrame({"date": TODAY.isoformat(), "team": list(today), "roster": list(today.values())})
+    return pd.concat([hist, new], ignore_index=True).sort_values(["date", "team"])
+
+
+def roster_lookup(by_season: dict[int, dict[str, float]], history: pd.DataFrame):
+    """roster(season, team, date) → rating: by season in the past, by day this season (the
+    latest snapshot on or before the date; the first one for games before it existed)."""
+    snaps = {d: dict(zip(g["team"], g["roster"])) for d, g in history.groupby("date")}
+    days = sorted(snaps)
+
+    def get(season: int, team: str, date: str) -> float:
+        if season < CURRENT_SEASON:
+            return by_season.get(season, {}).get(team, 0.0)
+        earlier = [d for d in days if d <= date]
+        return snaps[earlier[-1] if earlier else days[0]].get(team, 0.0)
+    return get
+
+
 # ── Rolling state trackers ──────────────────────────────────────────────────────
 
 class Elo:
@@ -298,9 +429,10 @@ def _rest(prev_date: str | None, date: str) -> int:
     return max(1, min(days, MAX_REST))
 
 
-def build_features(games: list[dict], teams: dict[str, dict]):
+def build_features(games: list[dict], teams: dict[str, dict], roster):
     """Walk every game chronologically, emitting pre-game feature rows (two per game), then
-    updating all rolling state with the result.
+    updating all rolling state with the result. `roster(season, team, date)` gives the roster
+    rating (see roster_lookup).
 
     Returns (rows DataFrame, Elo, Form, current-season records)."""
     elo, form = Elo(), Form()
@@ -322,9 +454,10 @@ def build_features(games: list[dict], teams: dict[str, dict]):
         rest_h, rest_a = _rest(prev.get(home), date), _rest(prev.get(away), date)
 
         margin_home = g["home"]["score"] - g["away"]["score"] if completed else None
-        for team, opp, is_home, e_t, e_o, f_t, f_o, r_t, r_o in (
-                (home, away, 1, elo_h, elo_a, f_h, f_a, rest_h, rest_a),
-                (away, home, 0, elo_a, elo_h, f_a, f_h, rest_a, rest_h)):
+        ros_h, ros_a = roster(season, home, date), roster(season, away, date)
+        for team, opp, is_home, e_t, e_o, f_t, f_o, r_t, r_o, ro_t, ro_o in (
+                (home, away, 1, elo_h, elo_a, f_h, f_a, rest_h, rest_a, ros_h, ros_a),
+                (away, home, 0, elo_a, elo_h, f_a, f_h, rest_a, rest_h, ros_a, ros_h)):
             rows.append({
                 "season": season, "season_type": g["season_type"], "game_date": date,
                 "start_utc": g["start_utc"], "game_id": g["game_id"],
@@ -335,6 +468,7 @@ def build_features(games: list[dict], teams: dict[str, dict]):
                 "margin_ewm_diff": round(f_t["margin"] - f_o["margin"], 3),
                 "rest_days": r_t, "opp_rest_days": r_o, "rest_diff": r_t - r_o,
                 "b2b": int(r_t == 1), "opp_b2b": int(r_o == 1),
+                "roster": ro_t, "opp_roster": ro_o, "roster_diff": round(ro_t - ro_o, 4),
                 "completed": int(completed),
                 "team_score": (g["home"]["score"] if is_home else g["away"]["score"]) if completed else None,
                 "opp_score": (g["away"]["score"] if is_home else g["home"]["score"]) if completed else None,
@@ -364,7 +498,7 @@ def build_features(games: list[dict], teams: dict[str, dict]):
 
 
 def team_table(teams: dict[str, dict], elo: Elo, form: Form, record: dict, last_played: dict,
-               season_stats: dict[str, dict]) -> pd.DataFrame:
+               season_stats: dict[str, dict], roster_today: dict[str, float]) -> pd.DataFrame:
     """Live team table for the API: model state plus the display stats of the game page."""
     rows = []
     for tid, t in teams.items():
@@ -379,6 +513,7 @@ def team_table(teams: dict[str, dict], elo: Elo, form: Form, record: dict, last_
             "win_pct": round(r["wins"] / gp, 3) if gp else 0.0,
             "elo": round(elo.start_game(name, CURRENT_SEASON), 1),
             "margin_ewm": round(f["margin"], 3),
+            "roster": roster_today.get(name, 0.0),
             # Recency-weighted ratings (per 100 estimated possessions), carried from last season
             "off_rtg": round(f["ortg"], 1), "def_rtg": round(f["drtg"], 1),
             "net_rtg": round(f["ortg"] - f["drtg"], 1), "pace": round(f["pace"], 1),
@@ -406,8 +541,17 @@ if __name__ == "__main__":
     done = sum(g["completed"] for g in games)
     _progress(f"  {len(games):,} games ({done:,} played)")
 
+    _progress("\nRoster ratings (player stats by season, today's rosters)...")
+    by_season = season_roster_ratings(teams)
+    history = current_roster_history(teams)
+    history.to_csv(ROSTER_HISTORY, index=False)
+    roster = roster_lookup(by_season, history)
+    roster_today = {t["name"]: roster(CURRENT_SEASON, t["name"], TODAY.isoformat()) for t in teams.values()}
+    best = sorted(roster_today.items(), key=lambda x: -x[1])[:3]
+    _progress("  Best rosters today: " + ", ".join(f"{t} {v:+.3f}" for t, v in best))
+
     _progress("\nBuilding features game by game...")
-    rows, elo, form, record, last_played = build_features(games, teams)
+    rows, elo, form, record, last_played = build_features(games, teams, roster)
 
     train = rows[rows["season"].isin(TRAIN_SEASONS) & (rows["completed"] == 1)].drop(columns=["completed"])
     train_path = PROCESSED / "nba_training_data.csv"
@@ -421,7 +565,7 @@ if __name__ == "__main__":
     _progress(f"  Current-season rows: {len(cur):,} ({int(cur['completed'].sum()) // 2} played) -> {cur_path.name}")
 
     _progress("\nSeason team stats (turnovers, offensive rebounds)...")
-    table = team_table(teams, elo, form, record, last_played, load_season_team_stats(teams))
+    table = team_table(teams, elo, form, record, last_played, load_season_team_stats(teams), roster_today)
     state_path = NBA_DIR / "nba_team_state.csv"
     table.to_csv(state_path, index=False)
     _progress(f"  -> {state_path.name}")

@@ -27,6 +27,7 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
   elo_diff:        { label: "Elo Rating Gap",          group: "Team",    desc: "Gap between the two teams' Elo ratings. Elo updates after every game (bigger wins move it more) and carries over between seasons, pulled 1/4 toward average, so it knows who's good from opening night." },
   margin_ewm_diff: { label: "Recent Point Margin",     group: "Form",    desc: "Gap in points scored minus points allowed per game, weighted toward recent games (about a 10-game half-life) and pulled toward 0 early in the season." },
   rest_diff:       { label: "Rest Advantage",          group: "Context", desc: "Days of rest for this team minus the opponent's, capped at 4 (opening night counts as fully rested)." },
+  roster_diff:     { label: "Roster Strength Gap",     group: "Roster",  desc: "Gap in roster strength: last season's per-minute production (Game Score) of the players each team has now, weighted by their expected minutes. It's how the model sees summer trades and signings before a single game is played." },
   b2b:             { label: "Back-to-Back",            group: "Context", desc: "This team played the day before. Tired legs: it lowers the win probability." },
   opp_b2b:         { label: "Opponent on Back-to-Back", group: "Context", desc: "The opponent played the day before — an edge for this team." },
 };
@@ -34,12 +35,14 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
 const GROUP_COLORS: Record<string, string> = {
   Team:    "bg-red-500",
   Form:    "bg-orange-500",
+  Roster:  "bg-purple-500",
   Context: "bg-green-500",
 };
 
 const GROUP_TEXT: Record<string, string> = {
   Team:    "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10",
   Form:    "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10",
+  Roster:  "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10",
   Context: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10",
 };
 
@@ -250,7 +253,7 @@ export default function NBAStatsPage() {
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic Regression with L2 regularization + StandardScaler (beat XGBoost in testing)</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on every regular-season, play-in and playoff game from {first - 1}-{String(first).slice(2)} to {last - 1}-{String(last).slice(2)} (2 rows per game)</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Leave-one-season-out cross-validation, balanced class weights</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, recent point margin, rest and back-to-backs, home court</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, recent point margin, roster strength, rest and back-to-backs, home court</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Every feature is computed from games before the one being predicted — no future information leaks into training</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Today&apos;s injury report adjusts the probability of games that haven&apos;t started; predictions are frozen before tip-off</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Probability normalized head-to-head: away prob / (away + home prob)</li>

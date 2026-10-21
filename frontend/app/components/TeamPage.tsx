@@ -36,7 +36,7 @@ interface ModelBlock {
   projected_wins?: number; playoff_pct?: number; division_pct?: number;
   top_seed_pct?: number; conf_pct?: number; sb_win_pct?: number;
   // NBA: top 6 = no play-in; title = NBA championship
-  top6_pct?: number; title_pct?: number;
+  top6_pct?: number; title_pct?: number; roster_rank?: number;
 }
 interface TeamPageData {
   league: League;
@@ -206,7 +206,8 @@ function ModelCard({ d }: { d: TeamPageData }) {
   const unit = d.league === "nba" ? "rating" : "EPA";
   const ranks: [string, number | undefined][] = [
     [`Offense (${unit})`, m.off_rank], [`Defense (${unit})`, m.def_rank],
-    [`QB${m.qb_name ? ` · ${m.qb_name}` : ""}`, m.qb_rank], ["Schedule left (1st = hardest)", m.rem_sos_rank],
+    [`QB${m.qb_name ? ` · ${m.qb_name}` : ""}`, m.qb_rank], ["Roster (players)", m.roster_rank],
+    ["Schedule left (1st = hardest)", m.rem_sos_rank],
   ];
   return (
     <div className={`${card} h-full`}>

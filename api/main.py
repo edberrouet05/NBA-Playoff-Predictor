@@ -30,7 +30,7 @@ STATS_PATH          = ROOT / "data" / "nba" / "nba_team_state.csv"
 # Pre-game feature rows for every current-season game (played → pre-game values)
 NBA_GAME_FEATURES_PATH = ROOT / "data" / "nba" / "nba_game_features_current.csv"
 # Order must match nba/train.py FEATURES exactly
-FEATURES = ["home", "rest_diff", "b2b", "opp_b2b", "elo_diff", "margin_ewm_diff"]
+FEATURES = ["home", "rest_diff", "b2b", "opp_b2b", "elo_diff", "margin_ewm_diff", "roster_diff"]
 NBA_REST_DEFAULT = 2   # rest days assumed when the schedule is unknown (no back-to-back)
 NBA_MAX_REST = 4       # matches nba/pipeline.py MAX_REST
 # 2-2-1-1-1 format: True = team_a (higher seed) is home
@@ -113,12 +113,13 @@ def _nba_row_from(row: dict, opp_row: dict, is_home: bool) -> dict:
         "home": int(is_home), "rest_diff": 0, "b2b": 0, "opp_b2b": 0,
         "elo_diff":        float(row["elo"]) - float(opp_row["elo"]),
         "margin_ewm_diff": float(row["margin_ewm"]) - float(opp_row["margin_ewm"]),
+        "roster_diff":     float(row["roster"]) - float(opp_row["roster"]),
     }
 
 
 def _nba_feature_rows(stats: pd.DataFrame, games: list[tuple[str, str, bool]]) -> list[dict]:
     """Model rows for many (team, opponent, is_home) at once, reading the table once."""
-    lookup = stats[["elo", "margin_ewm"]].to_dict("index")
+    lookup = stats[["elo", "margin_ewm", "roster"]].to_dict("index")
     return [_nba_row_from(lookup[t], lookup[o], h) for t, o, h in games]
 
 
@@ -1556,6 +1557,7 @@ def get_nba_projections():
     power_rank = power.rank(ascending=False, method="first")
     off_rank = stats["off_rtg"].rank(ascending=False, method="min")
     def_rank = stats["def_rtg"].rank(ascending=True, method="min")   # points allowed: lower is better
+    roster_rank = stats["roster"].rank(ascending=False, method="min")
 
     def pct(a: np.ndarray, i: int) -> float:
         return round(float(a[:, i].mean()) * 100, 1)
@@ -1576,6 +1578,7 @@ def get_nba_projections():
         "pace":           round(float(stats.at[t, "pace"]), 1),
         "off_rank":       int(off_rank[t]),
         "def_rank":       int(def_rank[t]),
+        "roster_rank":    int(roster_rank[t]),
         "sos_rank":       None if pd.isna(sos_rank[t]) else int(sos_rank[t]),
         "rem_sos_rank":   None if pd.isna(rem_rank[t]) else int(rem_rank[t]),
         "projected_wins": round(float(wins[:, i].mean()), 1),
@@ -4536,7 +4539,7 @@ def _team_model_block(league: str, team_name: str) -> dict | None:
             r = next((t for t in get_nba_projections()["teams"] if t["team"] == team_name), None)
         except Exception:
             return None
-        return {k: r[k] for k in ("power", "power_rank", "off_rank", "def_rank", "sos_rank", "rem_sos_rank",
+        return {k: r[k] for k in ("power", "power_rank", "off_rank", "def_rank", "roster_rank", "sos_rank", "rem_sos_rank",
                                   "projected_wins", "playoff_pct", "top6_pct", "top_seed_pct",
                                   "conf_pct", "title_pct")} if r else None
     if league != "nfl":

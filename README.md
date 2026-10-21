@@ -50,7 +50,7 @@ uvicorn app.main:app --reload
 Each sport has a data pipeline and a training script (run from the repo root):
 
 ```bash
-python nba/pipeline.py && python nba/train.py   # ESPN scoreboards: Elo, recent point margin, rest / back-to-backs
+python nba/pipeline.py && python nba/train.py   # ESPN: Elo, recent point margin, roster strength, rest / back-to-backs
 python nfl/pipeline.py && python nfl/train.py   # nflverse data: Elo, EPA, starting QBs, rest/travel
 python mlb/pipeline.py && python mlb/train.py   # MLB Stats API: Elo, starter FIP to date, bullpen, recent offense
 ```
