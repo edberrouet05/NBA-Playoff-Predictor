@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { playerHref, teamHref } from "./teamLinks";
+import { nbaGameHref, playerHref, teamHref } from "./teamLinks";
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -35,6 +35,8 @@ interface ModelBlock {
   qb_name?: string; qb_rank?: number; sos_rank?: number; rem_sos_rank?: number;
   projected_wins?: number; playoff_pct?: number; division_pct?: number;
   top_seed_pct?: number; conf_pct?: number; sb_win_pct?: number;
+  // NBA: top 6 = no play-in; title = NBA championship; the season of the stats behind the ratings
+  top6_pct?: number; title_pct?: number; ratings_season?: string;
 }
 interface TeamPageData {
   league: League;
@@ -78,9 +80,15 @@ function fmtMonth(ym: string) {
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "short" });
 }
 
-/** Link to our game page — only NFL game pages use ESPN ids. */
-function gameHref(league: League, gameId: string): string | null {
-  return league === "nfl" ? `/nfl/game/${gameId}` : null;
+/** Link to our game page (NFL, NBA). The NBA page is built from the matchup and our probability. */
+function gameHref(d: TeamPageData, g: TeamGame): string | null {
+  if (d.league === "nfl") return `/nfl/game/${g.game_id}`;
+  if (d.league !== "nba") return null;
+  const status = g.completed ? "Final" : new Date(g.date) <= new Date() ? "Live" : "Scheduled";
+  return nbaGameHref(g.game_id, {
+    team: d.team.name, opponent: g.opponent, home: g.home, date: g.date, winProb: g.win_prob,
+    teamScore: g.team_score, oppScore: g.opp_score, status,
+  });
 }
 
 function rankClass(rank: number | null, of: number) {
@@ -154,7 +162,7 @@ function Hero({ d }: { d: TeamPageData }) {
 function NextGame({ d }: { d: TeamPageData }) {
   const g = d.next_game;
   if (!g) return null;
-  const href = gameHref(d.league, g.game_id);
+  const href = gameHref(d, g);
   const body = (
     <div className={`${card} h-full flex flex-col ${href ? "hover:ring-1 hover:ring-gray-200 dark:hover:ring-gray-700 transition" : ""}`}>
       <p className={cardTitle}>Next game{g.season_type === "post" ? " · Playoffs" : ""}</p>
@@ -185,15 +193,19 @@ function NextGame({ d }: { d: TeamPageData }) {
 function ModelCard({ d }: { d: TeamPageData }) {
   const m = d.model;
   if (!m) return null;
+  const n = LEAGUE_TEAMS[d.league];
   const tiles: [string, string, string?][] = [];
   if (m.power_rank != null) tiles.push(["Power rank", `#${m.power_rank}`, `${m.power! > 0 ? "+" : ""}${m.power} pts vs avg`]);
   if (m.projected_wins != null) tiles.push(["Projected wins", `${m.projected_wins}`]);
-  if (m.playoff_pct != null) tiles.push(["Make playoffs", `${m.playoff_pct}%`]);
+  if (m.playoff_pct != null) tiles.push(["Make playoffs", `${m.playoff_pct}%`, d.league === "nba" ? "incl. play-in" : undefined]);
   if (m.division_pct != null) tiles.push(["Win division", `${m.division_pct}%`]);
+  if (m.top6_pct != null) tiles.push(["Top-6 seed", `${m.top6_pct}%`, "skips the play-in"]);
   if (m.conf_pct != null) tiles.push(["Win conference", `${m.conf_pct}%`]);
   if (m.sb_win_pct != null) tiles.push(["Win Super Bowl", `${m.sb_win_pct}%`]);
+  if (m.title_pct != null) tiles.push(["Win NBA title", `${m.title_pct}%`]);
+  const unit = d.league === "nba" ? "rating" : "EPA";
   const ranks: [string, number | undefined][] = [
-    ["Offense (EPA)", m.off_rank], ["Defense (EPA)", m.def_rank],
+    [`Offense (${unit})`, m.off_rank], [`Defense (${unit})`, m.def_rank],
     [`QB${m.qb_name ? ` · ${m.qb_name}` : ""}`, m.qb_rank], ["Schedule left (1st = hardest)", m.rem_sos_rank],
   ];
   return (
@@ -219,12 +231,17 @@ function ModelCard({ d }: { d: TeamPageData }) {
         {ranks.filter(([, r]) => r != null).map(([k, r]) => (
           <div key={k} className="flex justify-between text-xs">
             <span className="text-gray-500 truncate">{k}</span>
-            <span className={`font-bold tabular-nums ${rankClass(k.startsWith("Schedule") ? 33 - r! : r!, 32)}`}>{ordinal(r!)}</span>
+            <span className={`font-bold tabular-nums ${rankClass(k.startsWith("Schedule") ? n + 1 - r! : r!, n)}`}>{ordinal(r!)}</span>
           </div>
         ))}
       </div>
       {m.rem_sos_rank != null && (
         <p className="mt-2 text-[10px] text-gray-400">Green = good for the team (an easy schedule left is good).</p>
+      )}
+      {m.ratings_season && (
+        <p className="mt-1 text-[10px] text-gray-400">
+          Ratings use {m.ratings_season} team stats; the rest of the season is simulated 10,000 times.
+        </p>
       )}
     </div>
   );
@@ -284,8 +301,9 @@ function LeadersCard({ d }: { d: TeamPageData }) {
   );
 }
 
-function GameLine({ league, g, label }: { league: League; g: GameRef; label: string }) {
-  const href = gameHref(league, g.game_id);
+function GameLine({ d, g, label }: { d: TeamPageData; g: GameRef; label: string }) {
+  const game = d.games.find(x => x.game_id === g.game_id);
+  const href = game ? gameHref(d, game) : null;
   const inner = (
     <>
       <span className="text-gray-500">{label}</span>
@@ -327,8 +345,8 @@ function FactsCard({ d }: { d: TeamPageData }) {
       </dl>
       {(f.best_win || f.worst_loss) && (
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-1.5">
-          {f.best_win && <GameLine league={d.league} g={f.best_win} label="Biggest win" />}
-          {f.worst_loss && <GameLine league={d.league} g={f.worst_loss} label="Worst loss" />}
+          {f.best_win && <GameLine d={d} g={f.best_win} label="Biggest win" />}
+          {f.worst_loss && <GameLine d={d} g={f.worst_loss} label="Worst loss" />}
         </div>
       )}
       {f.by_month && f.by_month.length > 1 && (
@@ -386,8 +404,9 @@ function MarginChart({ d }: { d: TeamPageData }) {
   );
 }
 
-function GameRow({ league, g }: { league: League; g: TeamGame }) {
-  const href = g.completed ? gameHref(league, g.game_id) : null;
+function GameRow({ d, g }: { d: TeamPageData; g: TeamGame }) {
+  const league = d.league;
+  const href = g.completed ? gameHref(d, g) : null;
   const badge = g.result === "W" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
     : g.result === "L" ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
     : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
@@ -435,7 +454,7 @@ function ScheduleCard({ d }: { d: TeamPageData }) {
         )}
       </div>
       <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-        {shown.map(g => <GameRow key={g.game_id} league={d.league} g={g} />)}
+        {shown.map(g => <GameRow key={g.game_id} d={d} g={g} />)}
       </ul>
     </div>
   );
@@ -447,7 +466,7 @@ function PostseasonCard({ d }: { d: TeamPageData }) {
     <div className={card}>
       <p className={`${cardTitle} mb-2`}>Playoffs · {d.season.label}</p>
       <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-        {d.postseason.map(g => <GameRow key={g.game_id} league={d.league} g={g} />)}
+        {d.postseason.map(g => <GameRow key={g.game_id} d={d} g={g} />)}
       </ul>
     </div>
   );

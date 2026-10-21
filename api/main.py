@@ -171,6 +171,33 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
+def _nba_feature_row(stats: pd.DataFrame, team: str, opp: str, is_home: bool,
+                     series_wins: int = 0, opp_wins: int = 0) -> dict:
+    """One team's model input row for a game against `opp`."""
+    opp_row = stats.loc[opp].to_dict() if opp in stats.index else {}
+    return _nba_row_from(stats.loc[team, STAT_FEATURES].to_dict(), opp_row, is_home, series_wins, opp_wins)
+
+
+def _nba_feature_rows(stats: pd.DataFrame, games: list[tuple[str, str, bool]]) -> list[dict]:
+    """_nba_feature_row for many (team, opponent, is_home) at once, reading the table once."""
+    lookup = stats[STAT_FEATURES].to_dict("index")
+    return [_nba_row_from(dict(lookup[t]), lookup.get(o, {}), h) for t, o, h in games]
+
+
+def _nba_row_from(row: dict, opp_row: dict, is_home: bool, series_wins: int = 0, opp_wins: int = 0) -> dict:
+    row["home"]             = 1 if is_home else 0
+    row["back_to_back"]     = 0
+    row["travel_km"]        = 0.0
+    row["prev_margin"]      = 0.0
+    row["series_wins"]      = series_wins
+    row["elimination_game"] = 1 if opp_wins == 3 else 0
+    row["net_rtg_diff"]     = float(row.get("net_rtg", 0)) - float(opp_row.get("net_rtg", 0))
+    row["off_vs_def_diff"]  = float(row.get("off_rtg", 0)) - float(opp_row.get("def_rtg", 0))
+    row["pace_diff"]        = float(row.get("pace", 0))    - float(opp_row.get("pace", 0))
+    row["srs_diff"]         = float(row.get("srs", 0))     - float(opp_row.get("srs", 0))
+    return row
+
+
 def _game_prob(
     model, stats: pd.DataFrame,
     team_a: str, team_b: str,
@@ -184,31 +211,25 @@ def _game_prob(
     wins_a / wins_b are the current series wins before this game.
     ctx_a / ctx_b override any contextual features.
     """
-    def _build(team, opp, is_home, series_wins, opp_wins):
-        row = stats.loc[team, STAT_FEATURES].to_dict()
-        opp_row = stats.loc[opp].to_dict() if opp in stats.index else {}
-        row["home"]             = 1 if is_home else 0
-        row["back_to_back"]     = 0
-        row["travel_km"]        = 0.0
-        row["prev_margin"]      = 0.0
-        row["series_wins"]      = series_wins
-        row["elimination_game"] = 1 if opp_wins == 3 else 0
-        row["net_rtg_diff"]     = float(row.get("net_rtg", 0)) - float(opp_row.get("net_rtg", 0))
-        row["off_vs_def_diff"]  = float(row.get("off_rtg", 0)) - float(opp_row.get("def_rtg", 0))
-        row["pace_diff"]        = float(row.get("pace", 0))    - float(opp_row.get("pace", 0))
-        row["srs_diff"]         = float(row.get("srs", 0))     - float(opp_row.get("srs", 0))
-        return row
-
-    a = _build(team_a, team_b, team_a_is_home, wins_a, wins_b)
+    a = _nba_feature_row(stats, team_a, team_b, team_a_is_home, wins_a, wins_b)
     if ctx_a:
         a.update(ctx_a)
 
-    b = _build(team_b, team_a, not team_a_is_home, wins_b, wins_a)
+    b = _nba_feature_row(stats, team_b, team_a, not team_a_is_home, wins_b, wins_a)
     if ctx_b:
         b.update(ctx_b)
 
     p_a = float(model.predict_proba(pd.DataFrame([a])[FEATURES])[0][1])
     p_b = float(model.predict_proba(pd.DataFrame([b])[FEATURES])[0][1])
+    return p_a / (p_a + p_b)
+
+
+def _nba_pair_probs(model, rows_a: list[dict], rows_b: list[dict]) -> np.ndarray:
+    """P(side a wins) for many games in one model call — same normalisation as _game_prob."""
+    if not rows_a:
+        return np.array([])
+    raw = model.predict_proba(pd.DataFrame(rows_a + rows_b)[FEATURES])[:, 1]
+    p_a, p_b = raw[:len(rows_a)], raw[len(rows_a):]
     return p_a / (p_a + p_b)
 
 
@@ -1186,6 +1207,314 @@ def get_predictions_log(n: int = 5):
         return {"log": log[:n]}
     except Exception:
         return {"log": []}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  NBA season — power index, season simulation, per-game win probabilities
+#  (team and player pages)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+NBA_SIMS = 10_000
+NBA_MARGIN_SD = 12.0   # SD of NBA final margins — converts win probability <-> point margin
+NBA_HCA_PTS = 2.5      # home-court edge in points for simulated play-in / playoff games
+NBA_GAMES = 82
+_NBA_EAST = {
+    "Atlanta Hawks", "Boston Celtics", "Brooklyn Nets", "Charlotte Hornets", "Chicago Bulls",
+    "Cleveland Cavaliers", "Detroit Pistons", "Indiana Pacers", "Miami Heat", "Milwaukee Bucks",
+    "New York Knicks", "Orlando Magic", "Philadelphia 76ers", "Toronto Raptors", "Washington Wizards",
+}
+_nba_proj_cache: dict | None = None
+_nba_proj_cache_time: float = 0.0
+_NBA_PROJ_TTL = 600.0
+
+
+def _nba_season_year(day=None) -> int:
+    """ESPN's NBA season year, i.e. the year it ends (2026-27 → 2027). A new season from August."""
+    import datetime
+    d = day or datetime.date.today()
+    return d.year + 1 if d.month >= 8 else d.year
+
+
+def _nba_et_date(iso: str) -> str:
+    """Eastern 'YYYY-MM-DD' of an ESPN UTC datetime."""
+    import datetime, zoneinfo
+    try:
+        dt = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return iso[:10]
+    return dt.astimezone(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+
+
+def _nba_team_from_espn_abbr(abbr: str) -> str | None:
+    """'GS' / 'GSW' → 'Golden State Warriors' (the name used in the stats table)."""
+    ours = _ESPN_NBA_ABBR.get(abbr.upper(), abbr.upper())
+    names = [n for n, a in TEAM_TO_ABBR.items() if a == ours]
+    stats = _load_stats_by_name()
+    return next((n for n in names if n in stats.index), names[0] if names else None)
+
+
+def _nba_current_season_games() -> list[dict]:
+    """Every regular-season game of the current season, played or not, oldest first.
+    Raises when a month can't be fetched: a partial schedule would skew the simulation."""
+    year = _nba_season_year()
+    months = [(year - 1, m) for m in (10, 11, 12)] + [(year, m) for m in range(1, 5)]
+    by_id: dict[str, dict] = {}
+    for y, m in months:
+        for g in _espn_nba_month(y, m):
+            if g["season_type"] == 2:
+                by_id[g["game_id"]] = g
+    return sorted(by_id.values(), key=lambda g: (g["date"], g["game_id"]))
+
+
+def _nba_play_dates(games: list[dict]) -> dict[str, set[str]]:
+    """{team: Eastern dates it plays} — for back-to-back detection."""
+    out: dict[str, set[str]] = {}
+    for g in games:
+        out.setdefault(g["home_team"], set()).add(g["date"])
+        out.setdefault(g["away_team"], set()).add(g["date"])
+    return out
+
+
+def _nba_game_ctx(away: str, home: str, date: str, play_dates: dict[str, set[str]]) -> tuple[dict, dict]:
+    """Back-to-back and travel context for (away, home) — the same context the home page uses."""
+    import datetime
+    prev = (datetime.date.fromisoformat(date) - datetime.timedelta(days=1)).isoformat()
+    return ({"back_to_back": int(prev in play_dates.get(away, set())), "travel_km": _team_travel_km(away, home)},
+            {"back_to_back": int(prev in play_dates.get(home, set())), "travel_km": 0.0})
+
+
+def _nba_injury_factors(*teams: str) -> list[float]:
+    injuries, minutes = _fetch_all_espn_injuries(), _get_player_minutes_cached()
+    return [_compute_injury_factor(injuries.get(t, []), t, minutes)[0] for t in teams]
+
+
+def _nba_game_probs(team: str, games: list[dict]) -> list[float | None]:
+    """Our win probability (%) for `team` in each game ({opponent, home, date, completed}).
+
+    Played games get the plain matchup, as the predictions log scores them. Upcoming games add
+    back-to-backs and travel like the home page schedule, plus injuries for a game today."""
+    import datetime
+    model, stats = _load_model(), _load_stats_by_name()
+    out: list[float | None] = [None] * len(games)
+    if team not in stats.index:
+        return out
+    today = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    today = _nba_et_date(today)
+    play_dates: dict[str, set[str]] | None = None
+    meta = []
+    for i, g in enumerate(games):
+        if g["opponent"] in stats.index:
+            away, home = (g["opponent"], team) if g["home"] else (team, g["opponent"])
+            meta.append((i, away, home, _nba_et_date(g["date"]), not g["completed"]))
+    rows_a = _nba_feature_rows(stats, [(away, home, False) for _, away, home, _, _ in meta])
+    rows_b = _nba_feature_rows(stats, [(home, away, True) for _, away, home, _, _ in meta])
+    for (_, away, home, date, upcoming), a, b in zip(meta, rows_a, rows_b):
+        if upcoming:
+            if play_dates is None:
+                try:
+                    play_dates = _nba_play_dates(_nba_current_season_games())
+                except Exception:
+                    play_dates = {}
+            ctx_a, ctx_b = _nba_game_ctx(away, home, date, play_dates)
+            a.update(ctx_a)
+            b.update(ctx_b)
+    for (i, away, home, date, upcoming), p in zip(meta, _nba_pair_probs(model, rows_a, rows_b)):
+        is_today = upcoming and date == today
+        if is_today:
+            p = _adjust_for_injuries(float(p), *_nba_injury_factors(away, home))
+        out[i] = round(float(p if team == away else 1 - p) * 100, 1)
+    return out
+
+
+def _nba_power_ratings(model, stats: pd.DataFrame) -> pd.Series:
+    """Expected point margin vs an average team on a neutral floor, from the model.
+
+    Each team plays the 29 others on a neutral floor; its mean win probability is converted to
+    points via NBA_MARGIN_SD. (A synthetic league-average opponent is off the tree model's
+    training data and stretched the scale: +15 for a +8 net-rating team.)"""
+    from statistics import NormalDist
+    teams = list(stats.index)
+    pairs = [(a, b) for a in teams for b in teams if a != b]
+    p = _nba_pair_probs(model, _nba_feature_rows(stats, [(a, b, False) for a, b in pairs]),
+                        _nba_feature_rows(stats, [(b, a, False) for a, b in pairs]))
+    mean_p = pd.Series(p, index=[a for a, _ in pairs]).groupby(level=0).mean().reindex(teams)
+    nd = NormalDist()
+    return mean_p.clip(1e-4, 1 - 1e-4).map(lambda x: NBA_MARGIN_SD * nd.inv_cdf(float(x)))
+
+
+def _nba_series_prob(p_home: np.ndarray, p_road: np.ndarray) -> np.ndarray:
+    """P(the team with home court wins a best-of-7, 2-2-1-1-1) from its home / road game odds."""
+    state = {(0, 0): np.ones_like(p_home)}
+    win = np.zeros_like(p_home)
+    for at_home in HOME_SCHEDULE:
+        p = p_home if at_home else p_road
+        nxt: dict[tuple[int, int], np.ndarray] = {}
+        for (a, b), pr in state.items():
+            if a + 1 == 4:
+                win = win + pr * p
+            else:
+                nxt[(a + 1, b)] = nxt.get((a + 1, b), 0) + pr * p
+            if b + 1 < 4:
+                nxt[(a, b + 1)] = nxt.get((a, b + 1), 0) + pr * (1 - p)
+        state = nxt
+    return win
+
+
+@app.get("/api/nba/projections")
+def get_nba_projections():
+    """Monte Carlo of the rest of the NBA regular season, the play-in and the playoffs.
+
+    Regular season: records from completed games; every remaining game uses the model's
+    probability with the home page's context (home court, back-to-backs, travel), held fixed.
+    Seeding: top 6 per conference, then the play-in (7 v 8 → 7th seed; its loser hosts the
+    9 v 10 winner for the 8th seed); ties in the win column are broken at random. Play-in
+    games and best-of-7 series are decided from power ratings, the higher seed having home
+    court (the better record in the Finals)."""
+    global _nba_proj_cache, _nba_proj_cache_time
+    from scipy.special import ndtr
+    now = _time_mod.time()
+    if _nba_proj_cache is not None and (now - _nba_proj_cache_time) < _NBA_PROJ_TTL:
+        return _nba_proj_cache
+
+    model, stats = _load_model(), _load_stats_by_name()
+    teams = list(stats.index)
+    idx = {t: i for i, t in enumerate(teams)}
+    n_t = len(teams)
+    try:
+        games = [g for g in _nba_current_season_games() if g["home_team"] in idx and g["away_team"] in idx]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA schedule fetch failed: {e}")
+    play_dates = _nba_play_dates(games)
+
+    wins0, losses0 = np.zeros(n_t), np.zeros(n_t)
+    played, remaining = [], []
+    for g in games:
+        if g["completed"] and g["home_score"] is not None and g["away_score"] is not None:
+            home_won = g["home_score"] > g["away_score"]
+            wins0[idx[g["home_team"] if home_won else g["away_team"]]] += 1
+            losses0[idx[g["away_team"] if home_won else g["home_team"]]] += 1
+            played.append(g)
+        else:
+            remaining.append(g)
+
+    rows_a = _nba_feature_rows(stats, [(g["away_team"], g["home_team"], False) for g in remaining])
+    rows_b = _nba_feature_rows(stats, [(g["home_team"], g["away_team"], True) for g in remaining])
+    for g, a, b in zip(remaining, rows_a, rows_b):
+        ctx_away, ctx_home = _nba_game_ctx(g["away_team"], g["home_team"], g["date"], play_dates)
+        a.update(ctx_away)
+        b.update(ctx_home)
+    p_away = _nba_pair_probs(model, rows_a, rows_b).astype(np.float32)
+    power = _nba_power_ratings(model, stats)
+    pw = power.to_numpy()
+
+    rng = np.random.default_rng()
+    wins = np.tile(wins0, (NBA_SIMS, 1))
+    scheduled = wins0 + losses0
+    if remaining:
+        n_g = len(remaining)
+        away_hot = np.zeros((n_g, n_t), np.float32)
+        home_hot = np.zeros((n_g, n_t), np.float32)
+        away_hot[np.arange(n_g), [idx[g["away_team"]] for g in remaining]] = 1
+        home_hot[np.arange(n_g), [idx[g["home_team"]] for g in remaining]] = 1
+        scheduled = scheduled + away_hot.sum(axis=0) + home_hot.sum(axis=0)
+        # In chunks: ~1,200 games × 10,000 seasons would not fit in memory at once
+        for s in range(0, NBA_SIMS, 2000):
+            m = min(2000, NBA_SIMS - s)
+            away_won = (rng.random((m, n_g), dtype=np.float32) < p_away).astype(np.float32)
+            wins[s:s + m] += away_won @ away_hot + (1 - away_won) @ home_hot
+    # ESPN lists the NBA Cup knockout-week games only once the groups are decided (80 of 82 in
+    # the fall): games not on the schedule yet are played vs an average team on a neutral floor
+    missing = np.clip(NBA_GAMES - scheduled, 0, None).astype(int)
+    if missing.any():
+        wins += rng.binomial(missing, ndtr(pw / NBA_MARGIN_SD), size=(NBA_SIMS, n_t))
+    noisy = wins + rng.random(wins.shape) * 1e-3   # random tiebreak
+
+    rows_ix = np.arange(NBA_SIMS)
+
+    def game(home: np.ndarray, away: np.ndarray) -> np.ndarray:
+        p = ndtr((pw[home] - pw[away] + NBA_HCA_PTS) / NBA_MARGIN_SD)
+        return np.where(rng.random(NBA_SIMS) < p, home, away)
+
+    def series(high: np.ndarray, low: np.ndarray) -> np.ndarray:
+        d = pw[high] - pw[low]
+        p = _nba_series_prob(ndtr((d + NBA_HCA_PTS) / NBA_MARGIN_SD), ndtr((d - NBA_HCA_PTS) / NBA_MARGIN_SD))
+        return np.where(rng.random(NBA_SIMS) < p, high, low)
+
+    made = np.zeros((NBA_SIMS, n_t), bool)
+    top6 = np.zeros((NBA_SIMS, n_t), bool)
+    top_seed = np.zeros((NBA_SIMS, n_t), bool)
+    conf_champ = np.zeros((NBA_SIMS, n_t), bool)
+    champs = []
+    for conf in (True, False):   # East, West
+        c = np.array([idx[t] for t in teams if (t in _NBA_EAST) == conf])
+        order = c[np.argsort(-noisy[:, c], axis=1)]                       # (sims, 15), best record first
+        top_seed[rows_ix, order[:, 0]] = True
+        top6[rows_ix[:, None], order[:, :6]] = True
+        seed7 = game(order[:, 6], order[:, 7])
+        loser78 = np.where(seed7 == order[:, 6], order[:, 7], order[:, 6])
+        seed8 = game(loser78, game(order[:, 8], order[:, 9]))
+        seeds = np.column_stack([order[:, :6], seed7, seed8])             # (sims, 8)
+        made[rows_ix[:, None], seeds] = True
+
+        # Bracket on seed positions (0 = #1 seed); the higher seed has home court
+        def matchup(p1: np.ndarray, p2: np.ndarray, seeds=seeds) -> np.ndarray:
+            hi, lo = np.minimum(p1, p2), np.maximum(p1, p2)
+            winner = series(seeds[rows_ix, hi], seeds[rows_ix, lo])
+            return np.where(winner == seeds[rows_ix, hi], hi, lo)
+        full = lambda k: np.full(NBA_SIMS, k)
+        r1 = [matchup(full(0), full(7)), matchup(full(3), full(4)),
+              matchup(full(2), full(5)), matchup(full(1), full(6))]
+        champ = seeds[rows_ix, matchup(matchup(r1[0], r1[1]), matchup(r1[2], r1[3]))]
+        conf_champ[rows_ix, champ] = True
+        champs.append(champ)
+
+    east, west = champs
+    east_hosts = noisy[rows_ix, east] >= noisy[rows_ix, west]
+    winner = series(np.where(east_hosts, east, west), np.where(east_hosts, west, east))
+    title = np.zeros((NBA_SIMS, n_t), bool)
+    title[rows_ix, winner] = True
+
+    # Strength of schedule: mean opponent power, ranked (1 = toughest)
+    opp_played: dict[str, list[float]] = {t: [] for t in teams}
+    opp_left: dict[str, list[float]] = {t: [] for t in teams}
+    for lst, bucket in ((played, opp_played), (remaining, opp_left)):
+        for g in lst:
+            bucket[g["home_team"]].append(float(power[g["away_team"]]))
+            bucket[g["away_team"]].append(float(power[g["home_team"]]))
+    sos_rank = pd.Series({t: np.mean(v) if v else np.nan for t, v in opp_played.items()}).rank(ascending=False, method="min")
+    rem_rank = pd.Series({t: np.mean(v) if v else np.nan for t, v in opp_left.items()}).rank(ascending=False, method="min")
+    power_rank = power.rank(ascending=False, method="first")
+    off_rank = stats["off_rtg"].rank(ascending=False, method="min")
+    def_rank = stats["def_rtg"].rank(ascending=True, method="min")   # points allowed: lower is better
+
+    def pct(a: np.ndarray, i: int) -> float:
+        return round(float(a[:, i].mean()) * 100, 1)
+
+    out = [{
+        "team":           t,
+        "conference":     "East" if t in _NBA_EAST else "West",
+        "wins":           int(wins0[i]),
+        "losses":         int(losses0[i]),
+        "power":          round(float(pw[i]), 1),
+        "power_rank":     int(power_rank[t]),
+        "off_rank":       int(off_rank[t]),
+        "def_rank":       int(def_rank[t]),
+        "sos_rank":       None if pd.isna(sos_rank[t]) else int(sos_rank[t]),
+        "rem_sos_rank":   None if pd.isna(rem_rank[t]) else int(rem_rank[t]),
+        "projected_wins": round(float(wins[:, i].mean()), 1),
+        "playoff_pct":    pct(made, i),
+        "top6_pct":       pct(top6, i),
+        "top_seed_pct":   pct(top_seed, i),
+        "conf_pct":       pct(conf_champ, i),
+        "title_pct":      pct(title, i),
+    } for t, i in idx.items()]
+    out.sort(key=lambda r: (-r["title_pct"], -r["playoff_pct"]))
+
+    year = _nba_season_year()
+    result = {"season": f"{year - 1}-{str(year)[-2:]}", "simulations": NBA_SIMS,
+              "games_remaining": len(remaining), "ratings_from": STATS_PATH.stem, "teams": out}
+    _nba_proj_cache, _nba_proj_cache_time = result, now
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -4156,7 +4485,19 @@ def _team_leaders(sport: str, league: str, team_id: str, season: int, cfg: dict,
 
 
 def _team_model_block(league: str, team_name: str) -> dict | None:
-    """Our model's view of the team (NFL: power index + season simulation)."""
+    """Our model's view of the team (NFL / NBA: power index + season simulation)."""
+    if league == "nba":
+        try:
+            r = next((t for t in get_nba_projections()["teams"] if t["team"] == team_name), None)
+        except Exception:
+            return None
+        if not r:
+            return None
+        return {**{k: r[k] for k in ("power", "power_rank", "off_rank", "def_rank", "sos_rank", "rem_sos_rank",
+                                     "projected_wins", "playoff_pct", "top6_pct", "top_seed_pct",
+                                     "conf_pct", "title_pct")},
+                # 'reg_season_2025_26' → '2025-26': the team stats the ratings come from
+                "ratings_season": STATS_PATH.stem.removeprefix("reg_season_").replace("_", "-")}
     if league != "nfl":
         return None
     out: dict = {}
@@ -4181,6 +4522,11 @@ def _team_model_block(league: str, team_name: str) -> dict | None:
 
 def _team_next_game_prob(league: str, game: dict, team_name: str) -> float | None:
     """Our pre-game win probability for the team's next game, when we can produce one."""
+    if league == "nba":
+        try:
+            return _nba_game_probs(team_name, [{**game, "completed": False}])[0]
+        except Exception:
+            return None
     if league != "nfl":
         return None
     try:
@@ -4232,8 +4578,16 @@ def get_team_page(league: str, team: str):
         if any(g["completed"] for g in prev):
             season, games = season - 1, prev
     post = _team_schedule(sport, league, tid, season, 3)
+    if league == "nba":
+        # Every NBA game gets our probability: the NBA game page is built from it
+        for lst in (games, post):
+            try:
+                for g, p in zip(lst, _nba_game_probs(t["displayName"], lst)):
+                    g["win_prob"] = p
+            except Exception:
+                pass
 
-    soon = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M")
+    soon =(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M")
     upcoming = sorted((g for g in cur_reg + post if not g["completed"] and g["date"] >= soon),
                       key=lambda g: g["date"])
     next_game = upcoming[0] if upcoming else None
@@ -4740,6 +5094,8 @@ def get_player_page(league: str, athlete_id: str):
         for row in cat.get("events", []):
             meta = events_meta.get(row.get("eventId"), {})
             opp = meta.get("opponent") or {}
+            home = str(meta.get("homeTeamId", "")) == str((meta.get("team") or {}).get("id", ""))
+            hs, as_ = _stat_num(meta.get("homeTeamScore")), _stat_num(meta.get("awayTeamScore"))
             games.append({
                 "game_id":  row.get("eventId"),
                 "date":     meta.get("gameDate", ""),
@@ -4749,9 +5105,30 @@ def get_player_page(league: str, athlete_id: str):
                 "opponent_logo": opp.get("logo"),
                 "result":   meta.get("gameResult"),
                 "score":    meta.get("score", ""),
+                "home":       home,
+                "team_abbr":  (meta.get("team") or {}).get("abbreviation", ""),
+                "team_name":  None,
+                "team_score": None if hs is None or as_ is None else int(hs if home else as_),
+                "opp_score":  None if hs is None or as_ is None else int(as_ if home else hs),
+                "win_prob":   None,
                 "stats":    row.get("stats", []),
             })
     games.sort(key=lambda g: g["date"])
+    if league == "nba":
+        # Our pick for each game, from the side of the team he played for (he may have been traded)
+        by_team: dict[str, list[dict]] = {}
+        for g in games:
+            name = _nba_team_from_espn_abbr(g["team_abbr"]) if g["team_abbr"] else None
+            if name:
+                by_team.setdefault(name, []).append(g)
+        for name, lst in by_team.items():
+            try:
+                probs = _nba_game_probs(name, [{"opponent": g["opponent"], "home": g["home"],
+                                                "date": g["date"], "completed": True} for g in lst])
+                for g, p in zip(lst, probs):
+                    g["team_name"], g["win_prob"] = name, p
+            except Exception:
+                pass
 
     def col(name: str) -> int | None:
         return names.index(name) if name in names else None
@@ -4833,14 +5210,15 @@ def get_player_page(league: str, athlete_id: str):
     if games:
         g = games[-1]
         last_game = {k: g[k] for k in ("game_id", "date", "at_vs", "opponent", "opponent_abbr",
-                                        "opponent_logo", "result", "score")}
+                                        "opponent_logo", "result", "score", "home", "team_name",
+                                        "team_score", "opp_score", "win_prob")}
         last_game["line"] = [
             {"label": _PLAYER_STAT_LABELS.get(n) or (labels[col(n)] if col(n) < len(labels) else n),
              "value": g["stats"][col(n)] if col(n) < len(g["stats"]) else "—"}
             for n in focus
         ]
 
-    # Next game of his team (ESPN overview), with our win probability for NFL games
+    # Next game of his team (ESPN overview), with our win probability for NFL / NBA games
     next_game = None
     team_name = (ath.get("team") or {}).get("displayName", "")
     nxt = (((overview.get("nextGame") or {}).get("league") or {}).get("events") or [None])[0]
@@ -4854,9 +5232,10 @@ def get_player_page(league: str, athlete_id: str):
             "location": nxt.get("location", ""), "broadcast": nxt.get("broadcast", ""),
             "win_prob": None, "preseason": nxt.get("seasonType") == 1, "live": nxt.get("status") == "in",
         }
-        if league == "nfl":
+        if league in ("nfl", "nba"):
             next_game["win_prob"] = _team_next_game_prob(
-                "nfl", {"game_id": next_game["game_id"], "home": is_home, "opponent": next_game["opponent"]},
+                league, {"game_id": next_game["game_id"], "home": is_home, "opponent": next_game["opponent"],
+                         "date": next_game["date"]},
                 team_name)
 
     projection = None

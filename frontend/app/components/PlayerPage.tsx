@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   BarChart, Bar, Cell, LabelList, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { teamHref } from "./teamLinks";
+import { nbaGameHref, teamHref } from "./teamLinks";
 import type { League } from "./TeamPage";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -12,7 +12,11 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 // ── Types (mirror get_player_page in api/main.py) ──────────────────────────────
 
 interface ChartPoint { date: string; opp: string; at_vs: string; value: number; result: string | null; score: string; }
-interface LogGame {
+// The team he played for, its score and our pre-game probability (NBA) — for links to the NBA game page
+interface GameSide {
+  home: boolean; team_name: string | null; team_score: number | null; opp_score: number | null; win_prob: number | null;
+}
+interface LogGame extends GameSide {
   game_id: string; date: string; at_vs: string; opponent: string; opponent_abbr: string;
   opponent_logo: string | null; result: string | null; score: string; stats: string[];
 }
@@ -44,10 +48,10 @@ interface PlayerData {
     volume?: number; volume_label?: string; efficiency?: number; efficiency_label?: string;
     season_efficiency?: number | null; prior_efficiency?: number;
   } | null;
-  last_game: {
+  last_game: (GameSide & {
     game_id: string; date: string; at_vs: string; opponent: string; opponent_abbr: string;
     opponent_logo: string | null; result: string | null; score: string; line: { label: string; value: string }[];
-  } | null;
+  }) | null;
   next_game: {
     game_id: string; date: string; home: boolean; opponent: string; label: string;
     location: string; broadcast: string; win_prob: number | null; live?: boolean;
@@ -64,6 +68,17 @@ interface PlayerData {
 
 const card = "bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5";
 const cardTitle = "text-[10px] font-semibold text-gray-500 uppercase tracking-widest";
+
+/** Link to our page for one of his games (NFL, NBA), or null. */
+function playedGameHref(d: PlayerData, g: GameSide & { game_id: string; date: string; opponent: string }): string | null {
+  if (d.league === "nfl") return `/nfl/game/${g.game_id}`;
+  const team = g.team_name ?? d.team?.name;
+  if (d.league !== "nba" || !team) return null;
+  return nbaGameHref(g.game_id, {
+    team, opponent: g.opponent, home: g.home, date: g.date, winProb: g.win_prob,
+    teamScore: g.team_score, oppScore: g.opp_score, status: "Final",
+  });
+}
 
 function fmtDate(iso: string, withYear = false) {
   try {
@@ -337,8 +352,14 @@ function GamesCard({ d }: { d: PlayerData }) {
   const last = d.last_game, next = d.next_game;
   if (!last && !next) return null;
   const color = d.team?.color ?? "#555";
-  const nextHref = next && d.league === "nfl" ? `/nfl/game/${next.game_id}` : null;
-  const lastHref = last && d.league === "nfl" ? `/nfl/game/${last.game_id}` : null;
+  const nextHref = !next ? null
+    : d.league === "nfl" ? `/nfl/game/${next.game_id}`
+    : d.league === "nba" && d.team ? nbaGameHref(next.game_id, {
+        team: d.team.name, opponent: next.opponent, home: next.home, date: next.date, winProb: next.win_prob,
+        teamScore: null, oppScore: null, status: next.live ? "Live" : "Scheduled",
+      })
+    : null;
+  const lastHref = last ? playedGameHref(d, last) : null;
   const when = (iso: string) => {
     try {
       return new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -506,7 +527,7 @@ function GameLogCard({ d }: { d: PlayerData }) {
               )}
             </span>
           );
-          const href = d.league === "nfl" ? `/nfl/game/${g.game_id}` : null;
+          const href = playedGameHref(d, g);
           return { key: g.game_id, head: href ? <Link href={href} className="hover:underline">{head}</Link> : head, stats: g.stats };
         })} />
     </div>
