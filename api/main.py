@@ -24,42 +24,17 @@ from pydantic import BaseModel
 ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
 
 ROOT                = Path(__file__).parent.parent
-MODEL_PATH          = ROOT / "models" / "logistic_regression.pkl"
-STATS_PATH          = ROOT / "data" / "raw" / "reg_season_2025_26.csv"
-PLAYOFF_STATS_PATH  = ROOT / "data" / "raw" / "playoff_stats_2024_25.csv"
-# Order must match train.py FEATURES exactly
-FEATURES = [
-    "off_rtg", "def_rtg", "net_rtg", "pace", "rest_days",
-    "ts_pct", "tov_pct", "oreb_pct", "home",
-    "win_streak", "srs", "point_diff", "fg3_rate", "ftr",
-    "back_to_back", "travel_km", "prev_margin",
-    "playoff_net_rtg",
-    "win_pct_last10", "net_rtg_last15", "opp_3pt_pct_allowed", "bench_net_rtg",
-    "net_rtg_diff", "off_vs_def_diff", "pace_diff", "srs_diff",
-    "series_wins", "elimination_game",
-]
-_CONTEXT_FEATURES = {
-    "home", "back_to_back", "travel_km", "prev_margin", "series_wins", "elimination_game",
-    "net_rtg_diff", "off_vs_def_diff", "pace_diff", "srs_diff",
-}
-# Features read directly from the stats CSV (context + differentials injected separately)
-STAT_FEATURES = [f for f in FEATURES if f not in _CONTEXT_FEATURES]
+MODEL_PATH          = ROOT / "models" / "nba_logistic_regression.pkl"
+# Live team table written by nba/pipeline.py: model state (Elo, recent margin) + display stats
+STATS_PATH          = ROOT / "data" / "nba" / "nba_team_state.csv"
+# Pre-game feature rows for every current-season game (played → pre-game values)
+NBA_GAME_FEATURES_PATH = ROOT / "data" / "nba" / "nba_game_features_current.csv"
+# Order must match nba/train.py FEATURES exactly
+FEATURES = ["home", "rest_diff", "b2b", "opp_b2b", "elo_diff", "margin_ewm_diff"]
+NBA_REST_DEFAULT = 2   # rest days assumed when the schedule is unknown (no back-to-back)
+NBA_MAX_REST = 4       # matches nba/pipeline.py MAX_REST
 # 2-2-1-1-1 format: True = team_a (higher seed) is home
 HOME_SCHEDULE = [True, True, False, False, True, False, True]
-
-# Arena coordinates (lat, lon) for travel distance calculation
-ARENA_COORDS = {
-    "ATL": (33.757, -84.396), "BOS": (42.366, -71.062), "BKN": (40.683, -73.975),
-    "CHA": (35.225, -80.839), "CHI": (41.881, -87.674), "CLE": (41.497, -81.688),
-    "DAL": (32.790, -96.810), "DEN": (39.749, -105.008), "DET": (42.341, -83.055),
-    "GSW": (37.768, -122.387), "HOU": (29.751, -95.362), "IND": (39.764, -86.156),
-    "LAC": (33.942, -118.339), "LAL": (34.043, -118.267), "MEM": (35.138, -90.051),
-    "MIA": (25.781, -80.187), "MIL": (43.045, -87.917), "MIN": (44.979, -93.276),
-    "NOP": (29.949, -90.082), "NYK": (40.751, -73.993), "OKC": (35.463, -97.515),
-    "ORL": (28.539, -81.384), "PHI": (39.901, -75.172), "PHX": (33.446, -112.071),
-    "POR": (45.532, -122.667), "SAC": (38.580, -121.500), "SAS": (29.427, -98.437),
-    "TOR": (43.643, -79.379), "UTA": (40.768, -111.901), "WAS": (38.898, -77.021),
-}
 
 # ESPN team IDs — used to fetch live injury reports
 ESPN_TEAM_IDS: dict[str, int] = {
@@ -105,97 +80,62 @@ app.add_middleware(
 )
 
 
+_nba_model_cache = None
+_nba_stats_cache: pd.DataFrame | None = None
+
+
 def _load_model():
-    
-    with open(MODEL_PATH, "rb") as f:
-        return pickle.load(f)
-
-
-def _add_context_defaults(df: pd.DataFrame) -> pd.DataFrame:
-    df["rest_days"]        = 5
-    df["back_to_back"]     = 0
-    df["travel_km"]        = 0.0
-    df["prev_margin"]      = 0.0
-    df["series_wins"]      = 0
-    df["elimination_game"] = 0
-    return df
-
-
-def _merge_playoff_stats(df: pd.DataFrame) -> pd.DataFrame:
-    """Join previous season's playoff net rating onto the stats DataFrame."""
-    if PLAYOFF_STATS_PATH.exists():
-        playoff = pd.read_csv(PLAYOFF_STATS_PATH)[["team_id", "playoff_net_rtg"]]
-        df = df.merge(playoff, on="team_id", how="left")
-        df["playoff_net_rtg"] = df["playoff_net_rtg"].fillna(0.0)
-    else:
-        df["playoff_net_rtg"] = 0.0
-    return df
-
-
-def _fill_optional_stats(df: pd.DataFrame) -> pd.DataFrame:
-    """Fill optional stat columns that may be absent from older CSVs."""
-    defaults = {
-        "win_pct_last10": 0.5, "net_rtg_last15": 0.0,
-        "opp_3pt_pct_allowed": 0.35, "bench_net_rtg": 0.0,
-    }
-    for col, val in defaults.items():
-        if col not in df.columns:
-            df[col] = val
-        else:
-            df[col] = df[col].fillna(val)
-    return df
+    global _nba_model_cache
+    if _nba_model_cache is None:
+        with open(MODEL_PATH, "rb") as f:
+            _nba_model_cache = pickle.load(f)
+    return _nba_model_cache
 
 
 def _load_stats_by_name() -> pd.DataFrame:
-    df = pd.read_csv(STATS_PATH)
-    df = _merge_playoff_stats(df)
-    df = _fill_optional_stats(df)
-    return _add_context_defaults(df).set_index("team_name")
+    """Team table from nba/pipeline.py, indexed by team name (read-only: it is cached)."""
+    global _nba_stats_cache
+    if _nba_stats_cache is None:
+        df = pd.read_csv(STATS_PATH)
+        for col in ("tov_pct", "oreb_pct"):   # ESPN season stats, missing if the fetch failed
+            df[col] = df[col].fillna(df[col].median()).fillna(0.0)
+        _nba_stats_cache = df.set_index("team_name")
+    return _nba_stats_cache
 
 
 def _load_stats_by_id() -> pd.DataFrame:
-    df = pd.read_csv(STATS_PATH)
-    df = _merge_playoff_stats(df)
-    df = _fill_optional_stats(df)
-    return _add_context_defaults(df).set_index("team_id")
+    return _load_stats_by_name().reset_index().set_index("team_id")
 
 
-def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    import math
-    R = 6371
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2
-         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
-         * math.sin(dlon / 2) ** 2)
-    return 2 * R * math.asin(math.sqrt(a))
-
-
-def _nba_feature_row(stats: pd.DataFrame, team: str, opp: str, is_home: bool,
-                     series_wins: int = 0, opp_wins: int = 0) -> dict:
-    """One team's model input row for a game against `opp`."""
-    opp_row = stats.loc[opp].to_dict() if opp in stats.index else {}
-    return _nba_row_from(stats.loc[team, STAT_FEATURES].to_dict(), opp_row, is_home, series_wins, opp_wins)
+def _nba_row_from(row: dict, opp_row: dict, is_home: bool) -> dict:
+    """Model input for one side of a game. Rest is even here; _nba_set_rest fills it in."""
+    return {
+        "home": int(is_home), "rest_diff": 0, "b2b": 0, "opp_b2b": 0,
+        "elo_diff":        float(row["elo"]) - float(opp_row["elo"]),
+        "margin_ewm_diff": float(row["margin_ewm"]) - float(opp_row["margin_ewm"]),
+    }
 
 
 def _nba_feature_rows(stats: pd.DataFrame, games: list[tuple[str, str, bool]]) -> list[dict]:
-    """_nba_feature_row for many (team, opponent, is_home) at once, reading the table once."""
-    lookup = stats[STAT_FEATURES].to_dict("index")
-    return [_nba_row_from(dict(lookup[t]), lookup.get(o, {}), h) for t, o, h in games]
+    """Model rows for many (team, opponent, is_home) at once, reading the table once."""
+    lookup = stats[["elo", "margin_ewm"]].to_dict("index")
+    return [_nba_row_from(lookup[t], lookup[o], h) for t, o, h in games]
 
 
-def _nba_row_from(row: dict, opp_row: dict, is_home: bool, series_wins: int = 0, opp_wins: int = 0) -> dict:
-    row["home"]             = 1 if is_home else 0
-    row["back_to_back"]     = 0
-    row["travel_km"]        = 0.0
-    row["prev_margin"]      = 0.0
-    row["series_wins"]      = series_wins
-    row["elimination_game"] = 1 if opp_wins == 3 else 0
-    row["net_rtg_diff"]     = float(row.get("net_rtg", 0)) - float(opp_row.get("net_rtg", 0))
-    row["off_vs_def_diff"]  = float(row.get("off_rtg", 0)) - float(opp_row.get("def_rtg", 0))
-    row["pace_diff"]        = float(row.get("pace", 0))    - float(opp_row.get("pace", 0))
-    row["srs_diff"]         = float(row.get("srs", 0))     - float(opp_row.get("srs", 0))
-    return row
+def _nba_set_rest(a: dict, b: dict, rest_a: int, rest_b: int) -> None:
+    """Fill the rest features of a mirrored pair of rows (1 day = second night of a back-to-back)."""
+    a["rest_diff"], b["rest_diff"] = rest_a - rest_b, rest_b - rest_a
+    a["b2b"] = b["opp_b2b"] = int(rest_a == 1)
+    b["b2b"] = a["opp_b2b"] = int(rest_b == 1)
+
+
+def _ctx_rest(ctx: dict | None) -> int:
+    """Rest days from a context dict: {"rest_days": n}, or {"back_to_back": 1} from older callers."""
+    if not ctx:
+        return NBA_REST_DEFAULT
+    if "rest_days" in ctx:
+        return int(ctx["rest_days"])
+    return 1 if ctx.get("back_to_back") else NBA_REST_DEFAULT
 
 
 def _game_prob(
@@ -208,20 +148,12 @@ def _game_prob(
 ) -> float:
     """Return P(team_a wins a single game) via normalized logistic scores.
 
-    wins_a / wins_b are the current series wins before this game.
-    ctx_a / ctx_b override any contextual features.
+    wins_a / wins_b (the series score) are accepted from the playoff callers, but the model
+    has no series features. ctx_a / ctx_b carry rest ({"rest_days": n} or {"back_to_back": 1}).
     """
-    a = _nba_feature_row(stats, team_a, team_b, team_a_is_home, wins_a, wins_b)
-    if ctx_a:
-        a.update(ctx_a)
-
-    b = _nba_feature_row(stats, team_b, team_a, not team_a_is_home, wins_b, wins_a)
-    if ctx_b:
-        b.update(ctx_b)
-
-    p_a = float(model.predict_proba(pd.DataFrame([a])[FEATURES])[0][1])
-    p_b = float(model.predict_proba(pd.DataFrame([b])[FEATURES])[0][1])
-    return p_a / (p_a + p_b)
+    a, b = _nba_feature_rows(stats, [(team_a, team_b, team_a_is_home), (team_b, team_a, not team_a_is_home)])
+    _nba_set_rest(a, b, _ctx_rest(ctx_a), _ctx_rest(ctx_b))
+    return float(_nba_pair_probs(model, [a], [b])[0])
 
 
 def _nba_pair_probs(model, rows_a: list[dict], rows_b: list[dict]) -> np.ndarray:
@@ -246,17 +178,16 @@ def _simulate_series(
     injury_a: float = 1.0, injury_b: float = 1.0,
     n: int = 10_000, seed: int = 42,
 ) -> list:
-    """Monte Carlo simulation — probabilities computed dynamically with series context."""
+    """Monte Carlo simulation of a best-of-7 (team_a has home court)."""
     rng = np.random.default_rng(seed)
     buckets = {"4-0": [0, 0], "4-1": [0, 0], "4-2": [0, 0], "4-3": [0, 0]}
+    # The model has no series-score features: one probability at home, one on the road
+    p_at = {h: _adjust_for_injuries(_game_prob(model, stats, team_a, team_b, h), injury_a, injury_b)
+            for h in (True, False)}
     for _ in range(n):
         wa = wb = game_idx = 0
         while wa < 4 and wb < 4:
-            h = HOME_SCHEDULE[game_idx]
-            p = _adjust_for_injuries(
-                _game_prob(model, stats, team_a, team_b, h, wins_a=wa, wins_b=wb),
-                injury_a, injury_b,
-            )
+            p = p_at[HOME_SCHEDULE[game_idx]]
             if rng.random() < p:
                 wa += 1
             else:
@@ -331,6 +262,8 @@ _COMPARE_CACHE_TTL = 1800.0
 # ── Injury helpers ────────────────────────────────────────────────────────────
 
 _player_minutes_cache: pd.DataFrame | None = None
+_player_minutes_cache_time: float = 0.0
+_PLAYER_MINUTES_TTL = 12 * 3600.0   # averages move with each night of games
 _injuries_cache: dict[str, list[dict]] | None = None
 _injuries_cache_time: float = 0.0
 _INJURIES_TTL = 3600.0  # re-fetch after 1 hour
@@ -340,11 +273,21 @@ _INJURIES_TTL = 3600.0  # re-fetch after 1 hour
 _ESPN_NBA_ABBR = {"GS": "GSW", "NY": "NYK", "NO": "NOP", "SA": "SAS", "UTAH": "UTA", "WSH": "WAS"}
 
 
-def _get_player_minutes() -> pd.DataFrame:
-    """Per-game averages for every 2025-26 player, from ESPN (stats.nba.com blocks cloud hosts)."""
+def _nba_season_year(day=None) -> int:
+    """ESPN's NBA season year, i.e. the year it ends (2026-27 → 2027). A new season from August."""
+    import datetime
+    d = day or datetime.date.today()
+    return d.year + 1 if d.month >= 8 else d.year
+
+
+_PLAYER_MIN_GAMES = 5   # games this season before his own averages replace last season's
+
+
+def _espn_player_averages(season: int) -> dict[str, dict]:
+    """{player name: per-game averages + team} for one season (ESPN: stats.nba.com blocks cloud hosts)."""
     import json, urllib.request
     url = ("https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete"
-           "?isqualified=false&limit=1000&season=2026&seasontype=2&sort=general.avgMinutes:desc")
+           f"?isqualified=false&limit=1000&season={season}&seasontype=2&sort=general.avgMinutes:desc")
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=20) as resp:
         data = json.loads(resp.read())
@@ -359,20 +302,38 @@ def _get_player_minutes() -> pd.DataFrame:
                     return 0.0
         return 0.0
 
-    rows = []
+    out = {}
     for a in data.get("athletes", []):
         ath = a.get("athlete", {})
         abbr = ath.get("teamShortName", "")
-        rows.append({
-            "PLAYER_NAME": ath.get("displayName", ""),
+        out[ath.get("displayName", "")] = {
             "TEAM_ABBREVIATION": _ESPN_NBA_ABBR.get(abbr, abbr),
+            "GP": stat(a, "general", "gamesPlayed"),
             "MIN": stat(a, "general", "avgMinutes"),
             "PTS": stat(a, "offensive", "avgPoints"),
             "AST": stat(a, "offensive", "avgAssists"),
             "REB": stat(a, "general", "avgRebounds"),
             "STL": stat(a, "defensive", "avgSteals"),
             "BLK": stat(a, "defensive", "avgBlocks"),
-        })
+        }
+    return out
+
+
+def _get_player_minutes() -> pd.DataFrame:
+    """Per-game averages for every player: this season's once he has _PLAYER_MIN_GAMES games,
+    else last season's (early in the season, and for players injured since opening night).
+    His team is this season's when he has played for it, else last season's."""
+    season = _nba_season_year()
+    cur = _espn_player_averages(season)
+    try:
+        prev = _espn_player_averages(season - 1)
+    except Exception:
+        prev = {}
+    rows = []
+    for name in set(cur) | set(prev):
+        c, p = cur.get(name), prev.get(name)
+        stats = c if c and (c["GP"] >= _PLAYER_MIN_GAMES or not p) else p
+        rows.append({**stats, "PLAYER_NAME": name, "TEAM_ABBREVIATION": (c or p)["TEAM_ABBREVIATION"]})
     df = pd.DataFrame(rows)
     df["IMPACT"] = (
         df.get("PTS", 0) * 1.0
@@ -385,14 +346,16 @@ def _get_player_minutes() -> pd.DataFrame:
 
 
 def _get_player_minutes_cached() -> pd.DataFrame:
-    global _player_minutes_cache
-    if _player_minutes_cache is None:
+    global _player_minutes_cache, _player_minutes_cache_time
+    if _player_minutes_cache is None or _time_mod.time() - _player_minutes_cache_time > _PLAYER_MINUTES_TTL:
         try:
             _player_minutes_cache = _get_player_minutes()
+            _player_minutes_cache_time = _time_mod.time()
         except Exception:
-            _player_minutes_cache = pd.DataFrame(
-                columns=["PLAYER_NAME", "TEAM_ABBREVIATION", "MIN", "PTS"]
-            )
+            if _player_minutes_cache is None:
+                _player_minutes_cache = pd.DataFrame(
+                    columns=["PLAYER_NAME", "TEAM_ABBREVIATION", "MIN", "PTS"]
+                )
     return _player_minutes_cache
 
 
@@ -545,7 +508,7 @@ def _build_series_history(team_a: str, team_b: str) -> dict:
         if espn_id:
             url = (
                 f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
-                f"/teams/{espn_id}/schedule?season=2026&seasontype=3"
+                f"/teams/{espn_id}/schedule?season={_nba_season_year()}&seasontype=3"
             )
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=8) as resp:
@@ -666,7 +629,6 @@ _COMPLETED_SERIES_TTL = 900.0
 # ── NBA games from ESPN ───────────────────────────────────────────────────────
 # stats.nba.com (nba_api) blocks cloud hosts such as Render, so live NBA data comes from ESPN.
 NBA_ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
-NBA_SEASON_MONTHS = [(2025, m) for m in (10, 11, 12)] + [(2026, m) for m in range(1, 7)]  # 2025-26
 _nba_month_cache: dict[tuple[int, int], tuple[float, list[dict]]] = {}
 _NBA_MONTH_TTL = 600.0
 
@@ -747,12 +709,14 @@ def _espn_nba_month(year: int, month: int) -> list[dict]:
     return games
 
 
-def _espn_nba_season_games() -> list[dict]:
-    """Every 2025-26 game ESPN lists so far (regular season, play-in, playoffs), oldest first."""
+def _espn_nba_season_games(season: int | None = None) -> list[dict]:
+    """Every game of a season (default: the current one) ESPN lists so far — regular season,
+    play-in, playoffs — oldest first."""
     import datetime
     today = datetime.date.today()
+    year = season or _nba_season_year()
     out: list[dict] = []
-    for y, m in NBA_SEASON_MONTHS:
+    for y, m in [(year - 1, m) for m in (10, 11, 12)] + [(year, m) for m in range(1, 7)]:
         if (y, m) > (today.year, today.month):
             break
         try:
@@ -763,9 +727,13 @@ def _espn_nba_season_games() -> list[dict]:
 
 
 def _nba_playoff_series() -> dict[tuple[int, tuple[str, str]], dict]:
-    """(round, sorted team pair) → series state, from completed playoff games."""
+    """(round, sorted team pair) → series state, from completed playoff games of the latest
+    playoffs (last season's until this season's begin)."""
     series: dict[tuple[int, tuple[str, str]], dict] = {}
-    for g in _espn_nba_season_games():
+    games = _espn_nba_season_games()
+    if not any(g["season_type"] == 3 for g in games):
+        games = _espn_nba_season_games(_nba_season_year() - 1)
+    for g in games:
         if g["season_type"] != 3 or not g["completed"] or not g["round"]:
             continue
         if g["home_score"] is None or g["away_score"] is None:
@@ -920,21 +888,14 @@ def get_team(name: str):
     return {"name": name, "stats": team_stats, "recent_games": recent}
 
 
-def _team_travel_km(away_name: str, home_name: str) -> float:
-    """Distance from away team's home arena to the game arena (home team's city)."""
-    a = TEAM_TO_ABBR.get(away_name, "")
-    h = TEAM_TO_ABBR.get(home_name, "")
-    if a in ARENA_COORDS and h in ARENA_COORDS and a != h:
-        return round(_haversine_km(*ARENA_COORDS[a], *ARENA_COORDS[h]), 1)
-    return 0.0
-
-
 def _fetch_day(
-    date_str: str, model, stats_by_id, stats_by_name,
-    played_yesterday: set | None = None,
+    date_str: str, model, stats_by_name,
     fetch_injuries: bool = False,
 ) -> dict:
-    """Fetch one day's games (ESPN) and attach predictions. `date_str` is MM/DD/YYYY."""
+    """Fetch one day's games (ESPN) and attach predictions. `date_str` is MM/DD/YYYY.
+
+    Games that have started show the prediction frozen before tip-off; with `fetch_injuries`
+    (today), upcoming games get the injury report and their prediction is written down."""
     import datetime
     day = datetime.datetime.strptime(date_str, "%m/%d/%Y").date()
     # Only regular-season / play-in / playoff games our model knows both teams of
@@ -960,32 +921,29 @@ def _fetch_day(
                     injury_players[name] = players
 
     nba_odds = _fetch_odds_today("basketball_nba", [g.get("start_utc", "") for g in games if g["state"] == "pre"])
+    known = _load_nba_game_features()
+    play_dates = _nba_season_play_dates() if any(g["game_id"] not in known for g in games) else {}
     results = []
     for g in games:
         home_name = g["home_team"]
         away_name = g["away_team"]
 
-        prev = played_yesterday or set()
-        ctx_away = {
-            "back_to_back": 1 if away_name in prev else 0,
-            "travel_km":    _team_travel_km(away_name, home_name),
-        }
-        ctx_home = {
-            "back_to_back": 1 if home_name in prev else 0,
-            "travel_km":    0.0,
-        }
-
         inj_away = injury_factors.get(away_name, 1.0)
         inj_home = injury_factors.get(home_name, 1.0)
 
-        try:
-            p_raw = _game_prob(
-                model, stats_by_name, away_name, home_name,
-                team_a_is_home=False, ctx_a=ctx_away, ctx_b=ctx_home,
-            )
-            p_away = _adjust_for_injuries(p_raw, inj_away, inj_home)
-        except Exception:
-            continue
+        frozen = _nba_known_pred(g["game_id"]) if g["state"] != "pre" else None
+        if frozen and (frozen["away_team"], frozen["home_team"]) == (away_name, home_name):
+            p_raw = p_away = frozen["away_win_prob"] / 100   # injuries already in it
+            inj_away = inj_home = 1.0
+        else:
+            try:
+                a, b = _nba_game_rows(stats_by_name, away_name, home_name, g["date"], g["game_id"], play_dates)
+                p_raw = float(_nba_pair_probs(model, [a], [b])[0])
+                p_away = _adjust_for_injuries(p_raw, inj_away, inj_home)
+            except Exception:
+                continue
+            if fetch_injuries and g["state"] == "pre":
+                _nba_record_pred(g["game_id"], away_name, home_name, p_away, g["start_utc"])
 
         away_impact = round((_adjust_for_injuries(p_raw, inj_away, 1.0) - p_raw) * 100, 1) if inj_away != 1.0 else 0.0
         home_impact = round((p_raw - _adjust_for_injuries(p_raw, 1.0, inj_home)) * 100, 1) if inj_home != 1.0 else 0.0
@@ -1030,15 +988,18 @@ def _fetch_day(
     return {"date": date, "games": results}
 
 
+def _nba_today():
+    """Today in Eastern time — NBA game days (the server clock is UTC: after 8 pm ET it is
+    already tomorrow there, mid-slate)."""
+    import datetime, zoneinfo
+    return datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+
+
 @app.get("/api/today")
 def get_today_games():
-    import datetime
-    model         = _load_model()
-    stats_by_id   = _load_stats_by_id()
-    stats_by_name = _load_stats_by_name()
-    today = datetime.date.today().strftime("%m/%d/%Y")
     try:
-        return _fetch_day(today, model, stats_by_id, stats_by_name)
+        return _fetch_day(_nba_today().strftime("%m/%d/%Y"), _load_model(), _load_stats_by_name(),
+                          fetch_injuries=True)
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -1048,32 +1009,16 @@ def get_schedule(days: int = 7):
     """Return the next `days` days of games with predictions (max 14)."""
     import datetime
     days = min(days, 14)
-    model         = _load_model()
-    stats_by_id   = _load_stats_by_id()
-    stats_by_name = _load_stats_by_name()
-
-    # Fetch yesterday's teams so day-1 back-to-backs are detected correctly
-    played_yesterday: set = set()
-    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%m/%d/%Y")
-    try:
-        yest = _fetch_day(yesterday, model, stats_by_id, stats_by_name, set())
-        played_yesterday = {g["away_team"] for g in yest["games"]} | {g["home_team"] for g in yest["games"]}
-    except Exception:
-        pass
-
+    model, stats_by_name = _load_model(), _load_stats_by_name()
     schedule = []
     for i in range(days):
-        d = (datetime.date.today() + datetime.timedelta(days=i)).strftime("%m/%d/%Y")
+        d = (_nba_today() + datetime.timedelta(days=i)).strftime("%m/%d/%Y")
         try:
-            day = _fetch_day(
-                d, model, stats_by_id, stats_by_name, played_yesterday,
-                fetch_injuries=(i == 0),  # only fetch injuries for today
-            )
+            day = _fetch_day(d, model, stats_by_name,
+                             fetch_injuries=(i == 0))  # only fetch injuries for today
             if day["games"]:
                 schedule.append(day)
-            played_yesterday = {g["away_team"] for g in day["games"]} | {g["home_team"] for g in day["games"]}
         except Exception:
-            played_yesterday = set()
             continue
 
     return {"schedule": schedule}
@@ -1157,8 +1102,9 @@ _PREDICTIONS_LOG_TTL = 300.0
 
 @app.get("/api/predictions_log")
 def get_predictions_log(n: int = 5):
-    """Completed 2025-26 games (playoffs first, then regular season, newest first) with the
-    model's pre-game pick vs the actual result."""
+    """Completed games of the current season (playoffs first, then the play-in and the regular
+    season, newest first) with the model's pre-game pick vs the actual result. The pick is the
+    one frozen before tip-off when we have it, else the model on the pipeline's pre-game rows."""
     global _predictions_log_cache, _predictions_log_cache_time
 
     now = _time_mod.time()
@@ -1169,19 +1115,31 @@ def get_predictions_log(n: int = 5):
         model = _load_model()
         stats = _load_stats_by_name()
         games = [g for g in _espn_nba_season_games()
-                 if g["completed"] and g["season_type"] in (2, 3)
+                 if g["completed"] and g["season_type"] in (2, 3, 5)
                  and g["home_score"] is not None and g["away_score"] is not None
                  and g["home_team"] in stats.index and g["away_team"] in stats.index]
-        # Playoffs first, then regular season; newest first within each
+        # Playoffs first, then play-in / regular season; newest first within each
         games.sort(key=lambda g: (g["season_type"] == 3, g["date"], g["game_id"]), reverse=True)
+
+        known = _load_nba_game_features()
+        play_dates = _nba_season_play_dates() if any(g["game_id"] not in known for g in games) else {}
+        p_away_of: dict[str, float] = {}
+        rows_a, rows_b, todo = [], [], []
+        for g in games:
+            frozen = _nba_known_pred(g["game_id"])
+            if frozen and (frozen["away_team"], frozen["home_team"]) == (g["away_team"], g["home_team"]):
+                p_away_of[g["game_id"]] = frozen["away_win_prob"] / 100
+                continue
+            a, b = _nba_game_rows(stats, g["away_team"], g["home_team"], g["date"], g["game_id"], play_dates)
+            rows_a.append(a)
+            rows_b.append(b)
+            todo.append(g["game_id"])
+        p_away_of.update(zip(todo, (float(p) for p in _nba_pair_probs(model, rows_a, rows_b))))
 
         log: list[dict] = []
         for g in games:
             away_team, home_team = g["away_team"], g["home_team"]
-            try:
-                p_away = _game_prob(model, stats, away_team, home_team, team_a_is_home=False)
-            except Exception:
-                continue
+            p_away = p_away_of[g["game_id"]]
             predicted_winner = away_team if p_away >= 0.5 else home_team
             predicted_prob   = round((p_away if p_away >= 0.5 else 1 - p_away) * 100, 1)
             actual_winner    = home_team if g["home_score"] > g["away_score"] else away_team
@@ -1198,7 +1156,8 @@ def get_predictions_log(n: int = 5):
                 "home_score":       g["home_score"],
                 "away_win_prob":    round(p_away * 100, 1),
                 "home_win_prob":    round((1 - p_away) * 100, 1),
-                "round":            ROUND_NAMES.get(g["round"], "Playoffs") if g["season_type"] == 3 else "Regular Season",
+                "round":            (ROUND_NAMES.get(g["round"], "Playoffs") if g["season_type"] == 3
+                                     else "Play-In" if g["season_type"] == 5 else "Regular Season"),
             })
 
         if log:
@@ -1228,13 +1187,6 @@ _nba_proj_cache_time: float = 0.0
 _NBA_PROJ_TTL = 600.0
 
 
-def _nba_season_year(day=None) -> int:
-    """ESPN's NBA season year, i.e. the year it ends (2026-27 → 2027). A new season from August."""
-    import datetime
-    d = day or datetime.date.today()
-    return d.year + 1 if d.month >= 8 else d.year
-
-
 def _nba_et_date(iso: str) -> str:
     """Eastern 'YYYY-MM-DD' of an ESPN UTC datetime."""
     import datetime, zoneinfo
@@ -1253,34 +1205,80 @@ def _nba_team_from_espn_abbr(abbr: str) -> str | None:
     return next((n for n in names if n in stats.index), names[0] if names else None)
 
 
-def _nba_current_season_games() -> list[dict]:
-    """Every regular-season game of the current season, played or not, oldest first.
-    Raises when a month can't be fetched: a partial schedule would skew the simulation."""
+def _nba_current_season_games(types: tuple[int, ...] = (2,)) -> list[dict]:
+    """Every game of the current season of the given season types (2 regular season, 3 playoffs,
+    5 play-in), played or not, oldest first. Raises when a month can't be fetched: a partial
+    schedule would skew the simulation."""
     year = _nba_season_year()
-    months = [(year - 1, m) for m in (10, 11, 12)] + [(year, m) for m in range(1, 5)]
+    months = [(year - 1, m) for m in (10, 11, 12)] + [(year, m) for m in range(1, 7)]
     by_id: dict[str, dict] = {}
     for y, m in months:
         for g in _espn_nba_month(y, m):
-            if g["season_type"] == 2:
+            if g["season_type"] in types:
                 by_id[g["game_id"]] = g
     return sorted(by_id.values(), key=lambda g: (g["date"], g["game_id"]))
 
 
-def _nba_play_dates(games: list[dict]) -> dict[str, set[str]]:
-    """{team: Eastern dates it plays} — for back-to-back detection."""
+def _nba_play_dates(games: list[dict]) -> dict[str, list[str]]:
+    """{team: sorted Eastern dates it plays} — for rest days."""
     out: dict[str, set[str]] = {}
     for g in games:
         out.setdefault(g["home_team"], set()).add(g["date"])
         out.setdefault(g["away_team"], set()).add(g["date"])
-    return out
+    return {t: sorted(d) for t, d in out.items()}
 
 
-def _nba_game_ctx(away: str, home: str, date: str, play_dates: dict[str, set[str]]) -> tuple[dict, dict]:
-    """Back-to-back and travel context for (away, home) — the same context the home page uses."""
-    import datetime
-    prev = (datetime.date.fromisoformat(date) - datetime.timedelta(days=1)).isoformat()
-    return ({"back_to_back": int(prev in play_dates.get(away, set())), "travel_km": _team_travel_km(away, home)},
-            {"back_to_back": int(prev in play_dates.get(home, set())), "travel_km": 0.0})
+def _nba_season_play_dates() -> dict[str, list[str]]:
+    """Play dates of every current-season game (all phases); empty if ESPN is unreachable."""
+    try:
+        return _nba_play_dates(_nba_current_season_games((2, 3, 5)))
+    except Exception:
+        return {}
+
+
+def _nba_rest(team: str, date: str, play_dates: dict[str, list[str]]) -> int:
+    """Days since the team's previous scheduled game, capped like nba/pipeline.py
+    (opening night counts as fully rested; unknown schedule → NBA_REST_DEFAULT)."""
+    import bisect, datetime
+    dates = play_dates.get(team)
+    if not dates:
+        return NBA_REST_DEFAULT
+    i = bisect.bisect_left(dates, date)
+    if i == 0:
+        return NBA_MAX_REST
+    days = (datetime.date.fromisoformat(date) - datetime.date.fromisoformat(dates[i - 1])).days
+    return max(1, min(days, NBA_MAX_REST))
+
+
+_nba_game_features_cache: dict[str, dict[str, dict]] | None = None
+
+
+def _load_nba_game_features() -> dict[str, dict[str, dict]]:
+    """{ESPN game id: {team name: model row}} for every current-season game, written by
+    nba/pipeline.py: pre-game values for played games, the latest state for the others."""
+    global _nba_game_features_cache
+    if _nba_game_features_cache is None:
+        out: dict[str, dict[str, dict]] = {}
+        if NBA_GAME_FEATURES_PATH.exists():
+            df = pd.read_csv(NBA_GAME_FEATURES_PATH, dtype={"game_id": str})
+            for r in df.to_dict("records"):
+                out.setdefault(r["game_id"], {})[r["team"]] = {f: r[f] for f in FEATURES}
+        _nba_game_features_cache = out
+    return _nba_game_features_cache
+
+
+def _nba_game_rows(stats: pd.DataFrame, away: str, home: str, date: str, game_id: str | None = None,
+                   play_dates: dict[str, list[str]] | None = None) -> tuple[dict, dict]:
+    """Model rows (away, home) for one game: the pipeline's pre-game rows when it has the game
+    (so a played game is never re-predicted with later data), else the current team table with
+    rest from the schedule."""
+    known = _load_nba_game_features().get(str(game_id)) if game_id else None
+    if known and away in known and home in known:
+        return dict(known[away]), dict(known[home])
+    a, b = _nba_feature_rows(stats, [(away, home, False), (home, away, True)])
+    pd_ = play_dates or {}
+    _nba_set_rest(a, b, _nba_rest(away, date, pd_), _nba_rest(home, date, pd_))
+    return a, b
 
 
 def _nba_injury_factors(*teams: str) -> list[float]:
@@ -1289,49 +1287,122 @@ def _nba_injury_factors(*teams: str) -> list[float]:
 
 
 def _nba_game_probs(team: str, games: list[dict]) -> list[float | None]:
-    """Our win probability (%) for `team` in each game ({opponent, home, date, completed}).
-
-    Played games get the plain matchup, as the predictions log scores them. Upcoming games add
-    back-to-backs and travel like the home page schedule, plus injuries for a game today."""
+    """Our win probability (%) for `team` in each game ({game_id, opponent, home, date, completed}),
+    the same number as the home page and the predictions log: the frozen pre-game prediction when
+    there is one, else the model on the pipeline's pre-game rows, with today's injury report for
+    a game today that has not started."""
     import datetime
     model, stats = _load_model(), _load_stats_by_name()
     out: list[float | None] = [None] * len(games)
     if team not in stats.index:
         return out
-    today = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    today = _nba_et_date(today)
-    play_dates: dict[str, set[str]] | None = None
-    meta = []
+    today = _nba_et_date(datetime.datetime.now(datetime.timezone.utc).isoformat())
+    known = _load_nba_game_features()
+    play_dates: dict[str, list[str]] | None = None
+    rows_a, rows_b, meta = [], [], []
     for i, g in enumerate(games):
-        if g["opponent"] in stats.index:
-            away, home = (g["opponent"], team) if g["home"] else (team, g["opponent"])
-            meta.append((i, away, home, _nba_et_date(g["date"]), not g["completed"]))
-    rows_a = _nba_feature_rows(stats, [(away, home, False) for _, away, home, _, _ in meta])
-    rows_b = _nba_feature_rows(stats, [(home, away, True) for _, away, home, _, _ in meta])
-    for (_, away, home, date, upcoming), a, b in zip(meta, rows_a, rows_b):
-        if upcoming:
-            if play_dates is None:
-                try:
-                    play_dates = _nba_play_dates(_nba_current_season_games())
-                except Exception:
-                    play_dates = {}
-            ctx_a, ctx_b = _nba_game_ctx(away, home, date, play_dates)
-            a.update(ctx_a)
-            b.update(ctx_b)
-    for (i, away, home, date, upcoming), p in zip(meta, _nba_pair_probs(model, rows_a, rows_b)):
-        is_today = upcoming and date == today
+        if g["opponent"] not in stats.index:
+            continue
+        away, home = (g["opponent"], team) if g["home"] else (team, g["opponent"])
+        gid = str(g.get("game_id") or "")
+        frozen = _nba_known_pred(gid)
+        if frozen and {frozen["away_team"], frozen["home_team"]} == {away, home}:
+            out[i] = frozen["away_win_prob"] if team == frozen["away_team"] else frozen["home_win_prob"]
+            continue
+        date = _nba_et_date(g["date"])
+        if play_dates is None and gid not in known:
+            play_dates = _nba_season_play_dates()
+        a, b = _nba_game_rows(stats, away, home, date, gid, play_dates)
+        rows_a.append(a)
+        rows_b.append(b)
+        meta.append((i, away, home, not g["completed"] and date == today))
+    for (i, away, home, is_today), p in zip(meta, _nba_pair_probs(model, rows_a, rows_b)):
         if is_today:
             p = _adjust_for_injuries(float(p), *_nba_injury_factors(away, home))
         out[i] = round(float(p if team == away else 1 - p) * 100, 1)
     return out
 
 
+# Pre-game predictions written down before tip-off, so a played game is never re-predicted with
+# later data (the injury report changes after it). Refreshed while the game is upcoming, frozen
+# once it starts. Same scheme as the NFL: the deployed API records them as the home page is
+# served, the freeze workflow records the night's slate and commits the file.
+NBA_FROZEN_PREDS_PATH = ROOT / "data" / "nba" / "nba_frozen_predictions.json"
+
+
+def _load_nba_frozen_preds() -> dict[str, dict]:
+    import json as _json
+    try:
+        return _json.loads(NBA_FROZEN_PREDS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _merge_nba_frozen_preds(into: dict[str, dict], other: dict[str, dict]) -> None:
+    """Add `other`'s entries to `into`; for a game in both, the later freeze wins."""
+    for gid, entry in other.items():
+        mine = into.get(gid)
+        if not mine or entry.get("frozen_at", "") > mine.get("frozen_at", ""):
+            into[gid] = entry
+
+
+def _save_nba_frozen_preds() -> None:
+    import json as _json
+    try:
+        _merge_nba_frozen_preds(_nba_frozen_preds, _load_nba_frozen_preds())
+        NBA_FROZEN_PREDS_PATH.write_text(_json.dumps(_nba_frozen_preds, indent=1, sort_keys=True), encoding="utf-8")
+    except Exception:
+        pass
+
+
+_nba_frozen_preds: dict[str, dict] = _load_nba_frozen_preds()
+_nba_frozen_mtime: float = 0.0
+
+
+def _refresh_nba_frozen_preds() -> None:
+    """Pick up entries written to the file by someone else (a pulled commit)."""
+    global _nba_frozen_mtime
+    try:
+        mtime = NBA_FROZEN_PREDS_PATH.stat().st_mtime
+    except OSError:
+        return
+    if mtime != _nba_frozen_mtime:
+        _nba_frozen_mtime = mtime
+        _merge_nba_frozen_preds(_nba_frozen_preds, _load_nba_frozen_preds())
+
+
+def _nba_known_pred(game_id) -> dict | None:
+    _refresh_nba_frozen_preds()
+    return _nba_frozen_preds.get(str(game_id)) if game_id else None
+
+
+def _nba_record_pred(game_id: str, away: str, home: str, p_away: float, tipoff: str) -> None:
+    """Write down (or refresh) the pre-game prediction of a game that has not started."""
+    away_pct = round(p_away * 100, 1)
+    old = _nba_frozen_preds.get(str(game_id))
+    if old and old.get("away_win_prob") == away_pct:
+        return
+    _nba_frozen_preds[str(game_id)] = {
+        "away_team": away, "home_team": home,
+        "away_win_prob": away_pct, "home_win_prob": round(100 - away_pct, 1),
+        "predicted_winner": away if away_pct >= 50 else home,
+        "tipoff": tipoff, "frozen_at": _time_mod.strftime("%Y-%m-%dT%H:%M:%SZ", _time_mod.gmtime()),
+    }
+    _save_nba_frozen_preds()
+
+
+@app.get("/api/nba/frozen_predictions")
+def get_nba_frozen_predictions() -> dict[str, dict]:
+    """Every frozen pre-game prediction (read by the workflows so a redeploy loses none)."""
+    _refresh_nba_frozen_preds()
+    return _nba_frozen_preds
+
+
 def _nba_power_ratings(model, stats: pd.DataFrame) -> pd.Series:
     """Expected point margin vs an average team on a neutral floor, from the model.
 
-    Each team plays the 29 others on a neutral floor; its mean win probability is converted to
-    points via NBA_MARGIN_SD. (A synthetic league-average opponent is off the tree model's
-    training data and stretched the scale: +15 for a +8 net-rating team.)"""
+    Each team plays the 29 others on a neutral floor with even rest; its mean win probability
+    is converted to points via NBA_MARGIN_SD."""
     from statistics import NormalDist
     teams = list(stats.index)
     pairs = [(a, b) for a in teams for b in teams if a != b]
@@ -1365,7 +1436,7 @@ def get_nba_projections():
     """Monte Carlo of the rest of the NBA regular season, the play-in and the playoffs.
 
     Regular season: records from completed games; every remaining game uses the model's
-    probability with the home page's context (home court, back-to-backs, travel), held fixed.
+    probability with the home page's context (home court, rest, back-to-backs), held fixed.
     Seeding: top 6 per conference, then the play-in (7 v 8 → 7th seed; its loser hosts the
     9 v 10 winner for the 8th seed); ties in the win column are broken at random. Play-in
     games and best-of-7 series are decided from power ratings, the higher seed having home
@@ -1400,9 +1471,8 @@ def get_nba_projections():
     rows_a = _nba_feature_rows(stats, [(g["away_team"], g["home_team"], False) for g in remaining])
     rows_b = _nba_feature_rows(stats, [(g["home_team"], g["away_team"], True) for g in remaining])
     for g, a, b in zip(remaining, rows_a, rows_b):
-        ctx_away, ctx_home = _nba_game_ctx(g["away_team"], g["home_team"], g["date"], play_dates)
-        a.update(ctx_away)
-        b.update(ctx_home)
+        _nba_set_rest(a, b, _nba_rest(g["away_team"], g["date"], play_dates),
+                      _nba_rest(g["home_team"], g["date"], play_dates))
     p_away = _nba_pair_probs(model, rows_a, rows_b).astype(np.float32)
     power = _nba_power_ratings(model, stats)
     pw = power.to_numpy()
@@ -1492,11 +1562,18 @@ def get_nba_projections():
 
     out = [{
         "team":           t,
+        "abbr":           str(stats.at[t, "abbr"]),
         "conference":     "East" if t in _NBA_EAST else "West",
         "wins":           int(wins0[i]),
         "losses":         int(losses0[i]),
         "power":          round(float(pw[i]), 1),
         "power_rank":     int(power_rank[t]),
+        "elo":            round(float(stats.at[t, "elo"])),
+        # Recency-weighted, per 100 estimated possessions (nba/pipeline.py)
+        "off_rtg":        round(float(stats.at[t, "off_rtg"]), 1),
+        "def_rtg":        round(float(stats.at[t, "def_rtg"]), 1),
+        "net_rtg":        round(float(stats.at[t, "net_rtg"]), 1),
+        "pace":           round(float(stats.at[t, "pace"]), 1),
         "off_rank":       int(off_rank[t]),
         "def_rank":       int(def_rank[t]),
         "sos_rank":       None if pd.isna(sos_rank[t]) else int(sos_rank[t]),
@@ -1512,7 +1589,7 @@ def get_nba_projections():
 
     year = _nba_season_year()
     result = {"season": f"{year - 1}-{str(year)[-2:]}", "simulations": NBA_SIMS,
-              "games_remaining": len(remaining), "ratings_from": STATS_PATH.stem, "teams": out}
+              "games_remaining": len(remaining), "teams": out}
     _nba_proj_cache, _nba_proj_cache_time = result, now
     return result
 
@@ -2522,40 +2599,8 @@ def get_mlb_game_detail(game_id: int):
 
 @app.get("/api/stats")
 def get_model_stats():
-    """Return model accuracy, training data info, and feature importance."""
-    model     = _load_model()
-    estimator = model.named_steps["clf"]
-    if hasattr(estimator, "feature_importances_"):
-        coefs = [round(float(c), 4) for c in estimator.feature_importances_]
-    elif hasattr(estimator, "coef_"):
-        coefs = [round(float(c), 4) for c in estimator.coef_[0]]
-    else:
-        coefs = []
-
-    cv_acc = 0.0
-    metrics_path = ROOT / "models" / "metrics.txt"
-    if metrics_path.exists():
-        for line in metrics_path.read_text().split("\n"):
-            if "Cross-val accuracy" in line:
-                try:
-                    cv_acc = float(line.split(":")[1].split("±")[0].strip())
-                except Exception:
-                    pass
-
-    n_games = n_seasons = 0
-    training_path = ROOT / "data" / "processed" / "training_data.csv"
-    if training_path.exists():
-        df = pd.read_csv(training_path)
-        n_games   = len(df) // 2
-        n_seasons = int(df["season"].nunique()) if "season" in df.columns else 0
-
-    return {
-        "accuracy":     round(cv_acc * 100, 1),
-        "n_games":      n_games,
-        "n_seasons":    n_seasons,
-        "features":     FEATURES,
-        "coefficients": coefs,
-    }
+    """NBA model card: leave-one-season-out metrics written by nba/train.py."""
+    return _model_stats_payload("nba", FEATURES)
 
 
 @app.get("/api/debug/odds")
@@ -4491,13 +4536,9 @@ def _team_model_block(league: str, team_name: str) -> dict | None:
             r = next((t for t in get_nba_projections()["teams"] if t["team"] == team_name), None)
         except Exception:
             return None
-        if not r:
-            return None
-        return {**{k: r[k] for k in ("power", "power_rank", "off_rank", "def_rank", "sos_rank", "rem_sos_rank",
-                                     "projected_wins", "playoff_pct", "top6_pct", "top_seed_pct",
-                                     "conf_pct", "title_pct")},
-                # 'reg_season_2025_26' → '2025-26': the team stats the ratings come from
-                "ratings_season": STATS_PATH.stem.removeprefix("reg_season_").replace("_", "-")}
+        return {k: r[k] for k in ("power", "power_rank", "off_rank", "def_rank", "sos_rank", "rem_sos_rank",
+                                  "projected_wins", "playoff_pct", "top6_pct", "top_seed_pct",
+                                  "conf_pct", "title_pct")} if r else None
     if league != "nfl":
         return None
     out: dict = {}
@@ -5123,8 +5164,9 @@ def get_player_page(league: str, athlete_id: str):
                 by_team.setdefault(name, []).append(g)
         for name, lst in by_team.items():
             try:
-                probs = _nba_game_probs(name, [{"opponent": g["opponent"], "home": g["home"],
-                                                "date": g["date"], "completed": True} for g in lst])
+                probs = _nba_game_probs(name, [{"game_id": g["game_id"], "opponent": g["opponent"],
+                                                "home": g["home"], "date": g["date"], "completed": True}
+                                               for g in lst])
                 for g, p in zip(lst, probs):
                     g["team_name"], g["win_prob"] = name, p
             except Exception:

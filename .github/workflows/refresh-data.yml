@@ -2,18 +2,20 @@ name: Refresh model data
 
 # MLB: pipeline every morning during the season, retrain on Mondays.
 # NFL: pipeline + retrain every Tuesday during the season (after Monday Night Football).
+# NBA: pipeline every morning during the season (after the night's games), retrain on Mondays.
 # Updated CSVs / models are committed back to the repo, which redeploys the API.
 on:
   schedule:
     - cron: "0 10 * 3-11 *"        # MLB — 10:00 UTC daily, March–November
     - cron: "0 11 * 1,2,9-12 2"    # NFL — 11:00 UTC Tuesdays, September–February
+    - cron: "0 9 * 1-6,10-12 *"    # NBA — 09:00 UTC daily, October–June
   workflow_dispatch:
     inputs:
       sport:
         description: "Sport to refresh"
         type: choice
-        options: [mlb, nfl, both]
-        default: both
+        options: [mlb, nfl, nba, all]
+        default: all
       retrain:
         description: "Retrain the models after the pipeline"
         type: boolean
@@ -30,7 +32,7 @@ jobs:
   mlb:
     if: >-
       (github.event_name == 'schedule' && github.event.schedule == '0 10 * 3-11 *') ||
-      (github.event_name == 'workflow_dispatch' && inputs.sport != 'nfl')
+      (github.event_name == 'workflow_dispatch' && (inputs.sport == 'mlb' || inputs.sport == 'all'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -72,7 +74,7 @@ jobs:
   nfl:
     if: >-
       (github.event_name == 'schedule' && github.event.schedule == '0 11 * 1,2,9-12 2') ||
-      (github.event_name == 'workflow_dispatch' && inputs.sport != 'mlb')
+      (github.event_name == 'workflow_dispatch' && (inputs.sport == 'nfl' || inputs.sport == 'all'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -104,5 +106,47 @@ jobs:
           git add data/nfl data/processed/nfl_training_data.csv models/nfl_* data/pregame_odds.json
           git diff --cached --quiet && { echo "No changes"; exit 0; }
           git commit -m "Refresh NFL data ($(date -u +%F))"
+          git pull --rebase
+          git push
+
+  nba:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 9 * 1-6,10-12 *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.sport == 'nba' || inputs.sport == 'all'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Cache ESPN scoreboards (past seasons never change)
+        uses: actions/cache@v4
+        with:
+          path: data/nba/raw
+          key: nba-raw-${{ github.run_id }}
+          restore-keys: nba-raw-
+      - name: Pipeline
+        run: python nba/pipeline.py
+      - name: Train (manual run)
+        if: github.event_name == 'workflow_dispatch' && inputs.retrain
+        run: python nba/train.py
+      - name: Train (scheduled — Mondays only)
+        if: github.event_name == 'schedule'
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then python nba/train.py; else echo "Not Monday — skipping retrain"; fi
+      - name: Pull state the deployed API stored (this commit redeploys it)
+        env:
+          API_URL: https://nba-playoff-predictor-u8bj.onrender.com
+        run: python scripts/sync_deployed_state.py
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/nba data/processed/nba_training_data.csv models/nba_* data/pregame_odds.json data/nfl/nfl_frozen_predictions.json
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "Refresh NBA data ($(date -u +%F))"
           git pull --rebase
           git push

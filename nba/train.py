@@ -1,126 +1,134 @@
+#!/usr/bin/env python3
 """
-Step 4 — Train a gradient-boosting model to predict playoff game wins.
+NBA Model Training
+Trains Logistic Regression + XGBoost on the NBA training dataset (nba/pipeline.py) and saves:
+  models/nba_logistic_regression.pkl
+  models/nba_xgboost.pkl
+  models/nba_metrics.json   (accuracy, log loss, Brier, calibration)
 
-Uses XGBoost if installed, otherwise falls back to
-sklearn's HistGradientBoostingClassifier.
+Validation is leave-one-season-out: each fold holds out a whole season, so the
+two mirrored rows of a game (one per team) never straddle train and test.
 
-Usage:
-    pip install xgboost   # optional but recommended
+Run:
     python nba/train.py
 """
 
 import pickle
+import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import accuracy_score, classification_report
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
-DATA_PATH  = Path(__file__).parent.parent / "data" / "processed" / "training_data.csv"
-MODELS_DIR = Path(__file__).parent.parent / "models"
+ROOT       = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT))
+from evaluation import evaluate, oof_game_probs, write_metrics  # noqa: E402
 
+SPORT      = "nba"
+DATA_PATH  = ROOT / "data" / "processed" / "nba_training_data.csv"
+MODELS_DIR = ROOT / "models"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+MODEL_PATH     = MODELS_DIR / "nba_logistic_regression.pkl"
+XGB_MODEL_PATH = MODELS_DIR / "nba_xgboost.pkl"
+METRICS_PATH   = MODELS_DIR / "nba_metrics.json"
+
+# ── Feature list — must match api/main.py ─────────────────────────────────────
 FEATURES = [
-    "off_rtg", "def_rtg", "net_rtg", "pace", "rest_days",
-    "ts_pct", "tov_pct", "oreb_pct", "home",
-    "win_streak", "srs", "point_diff", "fg3_rate", "ftr",
-    "back_to_back", "travel_km", "prev_margin",
-    "playoff_net_rtg",
-    "win_pct_last10", "net_rtg_last15", "opp_3pt_pct_allowed", "bench_net_rtg",
-    "net_rtg_diff", "off_vs_def_diff", "pace_diff", "srs_diff",
-    "series_wins", "elimination_game",
+    # Context
+    "home", "rest_diff", "b2b", "opp_b2b",
+    # Team strength (Elo carries across seasons → no opening-night cold start)
+    "elo_diff",
+    # Recent form: recency-weighted point margin per game
+    "margin_ewm_diff",
 ]
+TARGET   = "win"
+GAME_KEY = "game_id"
 
 
-def _make_clf():
-    try:
-        from xgboost import XGBClassifier
-        print("Using XGBoost.")
-        return XGBClassifier(
-            n_estimators=400,
-            max_depth=4,
-            learning_rate=0.04,
-            subsample=0.8,
-            colsample_bytree=0.75,
-            min_child_weight=3,
-            gamma=0.1,
-            reg_alpha=0.1,
-            reg_lambda=1.0,
-            eval_metric="logloss",
-            random_state=42,
-            n_jobs=-1,
-        )
-    except ImportError:
-        from sklearn.ensemble import HistGradientBoostingClassifier
-        print("XGBoost not found — using HistGradientBoostingClassifier.")
-        return HistGradientBoostingClassifier(
-            max_iter=400,
-            max_depth=4,
-            learning_rate=0.04,
-            min_samples_leaf=20,
-            random_state=42,
-        )
-
-
-def train():
-    MODELS_DIR.mkdir(exist_ok=True)
-
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     df = pd.read_csv(DATA_PATH)
-    available = [f for f in FEATURES if f in df.columns]
-    missing   = [f for f in FEATURES if f not in df.columns]
+    print(f"Loaded {len(df):,} rows from {DATA_PATH.name}")
+    print(f"  Seasons: {sorted(int(s) for s in df['season'].unique())}")
+    print(f"  Win rate: {df[TARGET].mean():.3f}")
+    missing = [f for f in FEATURES if f not in df.columns]
     if missing:
-        print(f"Features not in training data (skipped): {missing}")
-        print("Run python nba/build_dataset.py to regenerate with all features.\n")
+        raise ValueError(f"Missing features in training data: {missing}")
+    X = df[FEATURES].copy()
+    nan_cols = X.columns[X.isna().any()].tolist()
+    if nan_cols:
+        print(f"  WARNING: NaN values in {nan_cols} — filling with column median")
+        X = X.fillna(X.median())
+    return df, X, df[TARGET]
 
-    X = df[available].fillna(0)
-    y = df["label"]
 
-    pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
-        ("clf",     _make_clf()),
+def make_lr() -> Pipeline:
+    return Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", LogisticRegression(
+            C=1.0, max_iter=1000, solver="lbfgs",
+            class_weight="balanced", random_state=42,
+        )),
     ])
 
-    cv     = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    scores = cross_val_score(pipeline, X, y, cv=cv, scoring="accuracy")
-    print(f"Cross-validation accuracy: {scores.mean():.3f} ± {scores.std():.3f}")
-    print(f"Per-fold scores: {[round(s, 3) for s in scores]}")
 
-    pipeline.fit(X, y)
-
-    model_path = MODELS_DIR / "logistic_regression.pkl"
-    with open(model_path, "wb") as f:
-        pickle.dump(pipeline, f)
-
-    y_pred = pipeline.predict(X)
-    report = classification_report(y, y_pred, target_names=["loss", "win"])
-    acc    = accuracy_score(y, y_pred)
-
-    estimator  = pipeline.named_steps["clf"]
-    model_type = type(estimator).__name__
-
-    metrics_text = (
-        f"Model              : {model_type}\n"
-        f"Features           : {len(available)}\n"
-        f"Cross-val accuracy : {scores.mean():.3f} ± {scores.std():.3f}\n"
-        f"Train accuracy     : {acc:.3f}\n\n"
-        f"Classification report (train set):\n{report}"
+def make_xgb() -> XGBClassifier:
+    return XGBClassifier(
+        n_estimators=300, max_depth=3, learning_rate=0.05,
+        subsample=0.8, colsample_bytree=0.8, min_child_weight=10,
+        eval_metric="logloss", random_state=42, n_jobs=-1, verbosity=0,
     )
-    (MODELS_DIR / "metrics.txt").write_text(metrics_text)
-    print(f"\n{metrics_text}")
-    print(f"Model saved → {model_path}")
 
-    estimator = pipeline.named_steps["clf"]
-    if hasattr(estimator, "feature_importances_"):
-        print("\nFeature importances:")
-        for feat, imp in sorted(zip(available, estimator.feature_importances_), key=lambda x: x[1], reverse=True):
-            bar = "█" * int(imp * 200)
-            print(f"  {feat:<25} {imp:.4f}  {bar}")
-    elif hasattr(estimator, "coef_"):
-        print("\nFeature coefficients (scaled):")
-        for feat, coef in sorted(zip(available, estimator.coef_[0]), key=lambda x: abs(x[1]), reverse=True):
-            print(f"  {feat:<25} {coef:+.4f}")
+
+def report(name: str, m: dict) -> None:
+    accs = list(m["per_season"].values())
+    print(f"\n  {name}: accuracy {m['accuracy']:.4f} (+/- {np.std(accs):.4f} across seasons)"
+          f"  log loss {m['log_loss']:.4f}  Brier {m['brier']:.4f}")
+    print(f"  Per season: {m['per_season']}")
 
 
 if __name__ == "__main__":
-    train()
+    print("=" * 55)
+    print("  NBA Model Training")
+    print("=" * 55)
+
+    df, X, y = load_data()
+    groups, games = df["season"], df[GAME_KEY]
+    print(f"\nFeature matrix: {X.shape[0]:,} rows x {X.shape[1]} features")
+
+    print("\nLogistic Regression (leave-one-season-out)...")
+    lr_metrics = evaluate(oof_game_probs(make_lr(), X, y, groups, games), y, groups)
+    report("LR", lr_metrics)
+
+    print("\nXGBoost (leave-one-season-out)...")
+    xgb_metrics = evaluate(oof_game_probs(make_xgb(), X, y, groups, games), y, groups)
+    report("XGBoost", xgb_metrics)
+
+    pipe = make_lr().fit(X, y)
+    xgb_clf = make_xgb().fit(X, y)
+    coefs = pipe.named_steps["clf"].coef_[0]
+    print("\n  LR features by |coefficient|:")
+    for feat, coef in sorted(zip(FEATURES, coefs), key=lambda x: abs(x[1]), reverse=True):
+        print(f"    {feat:32s}  {coef:+.4f}  {'#' * int(abs(coef) * 20)}")
+
+    with open(MODEL_PATH, "wb") as f:
+        pickle.dump(pipe, f)
+    with open(XGB_MODEL_PATH, "wb") as f:
+        pickle.dump(xgb_clf, f)
+    write_metrics(METRICS_PATH, {
+        "sport": SPORT,
+        "served_model": "logistic_regression",
+        "features": FEATURES,
+        "coefficients": [round(float(c), 6) for c in coefs],
+        "n_rows": int(len(df)),
+        "seasons": sorted(int(s) for s in groups.unique()),
+        "validation": "leave-one-season-out, game-level normalised probabilities",
+        "logistic_regression": lr_metrics,
+        "xgboost": xgb_metrics,
+    })
+    print(f"\n  Saved: {MODEL_PATH.name}, {XGB_MODEL_PATH.name}, {METRICS_PATH.name}")
+    print("\nDone!")
