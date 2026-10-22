@@ -1750,6 +1750,61 @@ def _nba_series_prob(p_home: np.ndarray, p_road: np.ndarray) -> np.ndarray:
     return win
 
 
+_nba_standings_cache: dict | None = None
+_nba_standings_cache_time: float = 0.0
+_NBA_STANDINGS_TTL = 300.0
+
+
+@app.get("/api/nba/standings")
+def get_nba_standings():
+    """Conference standings (ESPN's seeds) and the divisions inside each conference, with games
+    behind the conference leader, home / road records, last 10, streak and point differential."""
+    global _nba_standings_cache, _nba_standings_cache_time
+    now = _time_mod.time()
+    if _nba_standings_cache is not None and now - _nba_standings_cache_time < _NBA_STANDINGS_TTL:
+        return _nba_standings_cache
+    year = _nba_season_year()
+    try:
+        data = _espn_json(f"https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season={year}&level=3")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA standings fetch failed: {e}")
+
+    def team_row(entry: dict) -> dict:
+        st = {s.get("name"): s for s in entry.get("stats", [])}
+        def num(k: str) -> float:
+            try:
+                return float(st.get(k, {}).get("value") or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        def disp(k: str) -> str:
+            return st.get(k, {}).get("displayValue", "-")
+        t = entry.get("team", {})
+        return {"name": t.get("displayName", ""), "abbr": t.get("abbreviation", ""),
+                "seed": int(num("playoffSeed")) or None, "w": int(num("wins")), "l": int(num("losses")),
+                "pct": disp("winPercent"), "home": disp("Home"), "road": disp("Road"),
+                "last10": disp("Last Ten Games"), "streak": disp("streak"),
+                "diff": round(num("avgPointsFor") - num("avgPointsAgainst"), 1)}
+
+    conferences = []
+    for conf in data.get("children", []):
+        divisions, teams = [], []
+        for div in conf.get("children", []):
+            rows = [team_row(e) for e in div.get("standings", {}).get("entries", [])]
+            divisions.append({"name": div.get("name", ""),
+                              "teams": sorted(rows, key=lambda r: (-(r["w"] - r["l"]), -r["w"], r["name"]))})
+            teams += rows
+        teams.sort(key=lambda r: (r["seed"] or 99, r["name"]))
+        if teams:
+            lead = max(teams, key=lambda r: r["w"] - r["l"])
+            for r in teams:   # games behind the conference leader
+                r["gb"] = ((lead["w"] - r["w"]) + (r["l"] - lead["l"])) / 2
+        conferences.append({"name": "East" if "East" in conf.get("name", "") else "West",
+                            "teams": teams, "divisions": divisions})
+    result = {"season": f"{year - 1}-{str(year)[-2:]}", "conferences": conferences}
+    _nba_standings_cache, _nba_standings_cache_time = result, now
+    return result
+
+
 @app.get("/api/nba/projections")
 def get_nba_projections():
     """Monte Carlo of the rest of the NBA regular season, the play-in and the playoffs.
