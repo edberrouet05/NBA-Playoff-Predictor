@@ -26,6 +26,9 @@ interface TodayGame extends ValueFields {
   home_injury_players: InjuryPlayerMin[];
   away_odds: number | null;
   home_odds: number | null;
+  // During the game: our live probability (away/home_win_prob stay the pre-game prediction)
+  live_away_prob?: number | null;
+  live_home_prob?: number | null;
 }
 
 interface PredictionEntry {
@@ -164,6 +167,19 @@ export default function GamesPage() {
   }, []);
 
   const allGames = schedule.flatMap(d => d.games);
+  const anyLive = allGames.some(g => g.status === "Live");
+
+  // While games are on, refresh scores and live probabilities every minute
+  useEffect(() => {
+    if (!anyLive) return;
+    const timer = setInterval(() => {
+      fetch(`${API}/api/schedule?days=1`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d?.schedule) setSchedule(d.schedule); })
+        .catch(() => {});
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [anyLive]);
 
   return (
     <main className="px-4 md:px-6 py-6 md:py-8">
@@ -240,6 +256,11 @@ function GameCard({ game }: { game: TodayGame }) {
   const showScore = isLive || isFinal;
   const awayWins = isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score;
   const homeWins = isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score;
+  // Live: who leads in our live probability; otherwise the pre-game pick
+  const live = isLive && game.live_away_prob != null && game.live_home_prob != null;
+  const awayProb = live ? game.live_away_prob! : game.away_win_prob;
+  const homeProb = live ? game.live_home_prob! : game.home_win_prob;
+  const awayFav = live ? awayProb >= homeProb : game.predicted_winner === game.away_team;
 
   return (
     <Link href={gameUrl(game)} className="block group">
@@ -260,8 +281,8 @@ function GameCard({ game }: { game: TodayGame }) {
           <div className="flex flex-col items-center gap-1.5">
             <TeamLogo team={game.away_team} size="w-12 h-12" />
             <span className="text-gray-900 dark:text-white text-sm font-bold">{getAbbr(game.away_team)}</span>
-            <span className={`text-sm font-bold ${probClass(game.predicted_winner === game.away_team, homeWins)}`}>
-              {game.away_win_prob}%
+            <span className={`text-sm font-bold ${probClass(awayFav, homeWins)}`}>
+              {awayProb}%
             </span>
             {game.away_odds && (
               <span className="text-[11px] text-gray-400">x{game.away_odds}</span>
@@ -273,13 +294,20 @@ function GameCard({ game }: { game: TodayGame }) {
             )}
           </div>
 
-          <span className="text-gray-300 dark:text-gray-700 font-bold text-sm">VS</span>
+          {live ? (
+            <span className="flex flex-col items-center text-center">
+              <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">Live prob</span>
+              <span className="text-[10px] text-gray-400 whitespace-nowrap">pre-game {game.away_win_prob}–{game.home_win_prob}</span>
+            </span>
+          ) : (
+            <span className="text-gray-300 dark:text-gray-700 font-bold text-sm">VS</span>
+          )}
 
           <div className="flex flex-col items-center gap-1.5">
             <TeamLogo team={game.home_team} size="w-12 h-12" />
             <span className="text-gray-900 dark:text-white text-sm font-bold">{getAbbr(game.home_team)}</span>
-            <span className={`text-sm font-bold ${probClass(game.predicted_winner === game.home_team, awayWins)}`}>
-              {game.home_win_prob}%
+            <span className={`text-sm font-bold ${probClass(!awayFav, awayWins)}`}>
+              {homeProb}%
             </span>
             {game.home_odds && (
               <span className="text-[11px] text-gray-400">x{game.home_odds}</span>
@@ -293,7 +321,7 @@ function GameCard({ game }: { game: TodayGame }) {
         </div>
 
         <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
-          <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: getColor(game.away_team) }} />
+          <div className="h-full transition-all duration-700" style={{ width: `${awayProb}%`, background: getColor(game.away_team) }} />
           <div className="h-full flex-1" style={{ background: getColor(game.home_team) }} />
         </div>
 

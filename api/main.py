@@ -687,6 +687,8 @@ def _parse_espn_nba_event(ev: dict) -> dict | None:
         "state":       st.get("state", "pre"),                              # pre / in / post
         "completed":   bool(st.get("completed")),
         "detail":      st.get("shortDetail", ""),
+        "period":      int(comp.get("status", {}).get("period") or 0),
+        "clock":       comp.get("status", {}).get("displayClock", ""),
     }
 
 
@@ -956,9 +958,17 @@ def _fetch_day(
         # Finished games only show the stored pre-game line
         game_odds    = _game_odds_for(nba_odds, away_name, home_name, g["date"], nba_status == "Final")
 
+        # During the game: our live probability (same formula as the game page)
+        live_away = None
+        if g["state"] == "in" and g["away_score"] is not None and g["home_score"] is not None:
+            _, left = _nba_clock_minutes(g["period"] or 1, g["clock"])
+            live_away = round((1 - _nba_live_prob(1 - p_away, g["home_score"] - g["away_score"], left)) * 100, 1)
+
         results.append({
             "game_id":             g["game_id"],
             "status":              nba_status,
+            "live_away_prob":      live_away,
+            "live_home_prob":      None if live_away is None else round(100 - live_away, 1),
             "status_text":         g["time_et"] if g["state"] == "pre" else (g["detail"] or nba_status),
             "away_team":           away_name,
             "home_team":           home_name,
@@ -1426,18 +1436,26 @@ def _nba_clock_minutes(period: int, clock: str) -> tuple[float, float]:
     return 48 + (period - 5) * 5 + (5 - on_clock), on_clock
 
 
+# Uncertainty of the rest of a game: a Student t (fat tails: comebacks happen more often than a
+# normal curve allows) with scale NBA_MARGIN_SD × √(share left), widened late in the game by up to
+# NBA_LIVE_LATE_SD (intentional fouls, threes). Both vanish at tip-off, so a 0-0 game starts at
+# the pre-game probability exactly. A 24-point halftime deficit stays ~2-3 %, a 10-point lead
+# with 2 minutes left ~95 %.
+NBA_LIVE_DF = 5
+NBA_LIVE_LATE_SD = 3.0
+
+
 def _nba_live_prob(p_home_pregame: float, home_margin: float, minutes_left: float) -> float:
     """P(home wins) during a game. The pre-game edge, as an expected point margin, only applies to
-    the time left, and so does the uncertainty (SD NBA_MARGIN_SD over 48 minutes); the current
-    score margin is in the bag."""
+    the time left; the current score margin is in the bag."""
     import math
-    from statistics import NormalDist
-    nd = NormalDist()
+    from scipy.stats import t as student_t
     if minutes_left <= 0:
         return 1.0 if home_margin > 0 else 0.0 if home_margin < 0 else 0.5
-    frac = minutes_left / 48
-    edge = NBA_MARGIN_SD * nd.inv_cdf(min(max(p_home_pregame, 1e-4), 1 - 1e-4))
-    p = nd.cdf((home_margin + edge * frac) / (NBA_MARGIN_SD * math.sqrt(frac)))
+    root = math.sqrt(min(minutes_left / 48, 1.0))
+    edge = NBA_MARGIN_SD * float(student_t.ppf(min(max(p_home_pregame, 1e-4), 1 - 1e-4), NBA_LIVE_DF))
+    scale = NBA_MARGIN_SD * root + NBA_LIVE_LATE_SD * (1 - root)
+    p = float(student_t.cdf((home_margin + edge * root ** 2) / scale, NBA_LIVE_DF))
     return min(max(p, 0.001), 0.999)   # never 100 % before the final buzzer
 
 
