@@ -435,6 +435,12 @@ def _compute_injury_factor(
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+@app.get("/api/health")
+def get_health() -> dict:
+    """Cheap liveness check: the keep-alive workflow and the home page ping it to wake the server."""
+    return {"ok": True}
+
+
 @app.get("/api/teams")
 def get_teams() -> list[str]:
     return sorted(_load_stats_by_name().index.tolist())
