@@ -178,7 +178,7 @@ export default function GamesPage() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tonight&apos;s Games</h1>
                 <p className="text-gray-500 text-sm mt-1">Live win probability · injury-adjusted · click a game for details</p>
               </>
-            ) : !logLoading && predLog.length > 0 ? (
+            ) : !loading && !logLoading && predLog.length > 0 ? (
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Season Recap</h1>
             ) : null}
           </div>
@@ -190,7 +190,7 @@ export default function GamesPage() {
           )}
 
           {/* Loading: no data yet from either fetch */}
-          {!error && (loading || logLoading) && predLog.length === 0 && schedule.length === 0 && (
+          {!error && (loading || (logLoading && predLog.length === 0)) && schedule.length === 0 && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
               Loading…{waking && <p className="mt-1 text-xs">{WAKE_HINT}</p>}
             </div>
@@ -203,8 +203,8 @@ export default function GamesPage() {
             </div>
           )}
 
-          {/* Season Recap — show as soon as predLog has data, even if schedule is still loading */}
-          {!error && !logLoading && predLog.length > 0 && schedule.length === 0 && (
+          {/* Season Recap — on days without games, once today's schedule has loaded */}
+          {!error && !loading && !logLoading && predLog.length > 0 && schedule.length === 0 && (
             <SeasonRecap log={predLog} />
           )}
 
