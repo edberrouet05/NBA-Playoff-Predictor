@@ -22,11 +22,20 @@ interface CompareResult {
 interface HistoryPoint  { game: string; team_a_prob: number; team_b_prob: number; series: string; }
 // /api/nba/game/{id}/live: our win probability through the game, after each basket
 interface LivePoint { minute: number; label: string; away_score: number; home_score: number; away_prob: number; home_prob: number; }
+interface BoxPlayer {
+  id: string; name: string; position: string; headshot: string | null; starter: boolean; dnp: boolean;
+  min: string; pts: string; reb: string; ast: string; fg: string; fg3: string; stl: string; blk: string; tov: string; pm: string;
+}
+interface Factor { feature: string; away_value: number; home_value: number; impact: number; }  // impact > 0 favours away
 interface LiveGame {
   season_type: number; state: "pre" | "in" | "post"; status: string;
   away_team: string; home_team: string; away_score: number; home_score: number;
   pregame_away_prob: number; pregame_home_prob: number; away_prob: number; home_prob: number;
   timeline: LivePoint[];
+  away_quarters: (number | null)[]; home_quarters: (number | null)[];
+  away_stats: Record<string, string>; home_stats: Record<string, string>;
+  away_players: BoxPlayer[]; home_players: BoxPlayer[];
+  explanation: Factor[];
 }
 interface InjuryPlayer { id?: string | null; name: string; status: string; pts_per_game: number | null; }
 interface InjuryData   { factor: number; players: InjuryPlayer[]; }
@@ -179,7 +188,7 @@ export default function GamePage({
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const load = () => {
-      fetch(`${API}/api/nba/game/${game_id}/live`)
+      fetch(`${API}/api/nba/game/${game_id}`)
         .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
         .then((d: LiveGame) => {
           if (!active) return;
@@ -249,6 +258,11 @@ export default function GamePage({
       injCtrl.abort();  clearTimeout(injTimer);
     };
   }, [away, home]);
+
+  const showChart = (started && !!live && live.season_type !== 3 && live.timeline.length > 1)
+    || (live?.season_type === 3 && history.length > 0);
+  const hasGameStats = started && !!live && Object.keys(live.away_stats).length > 0;
+  const hasPlayers = started && !!live && (live.away_players.length > 0 || live.home_players.length > 0);
 
   return (
     <main className="px-4 md:px-8 pt-4 md:pt-5 pb-4 flex flex-col gap-3">
@@ -324,86 +338,305 @@ export default function GamePage({
         </div>
       </div>
 
-      {loading && (
+      {!live && loading && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center text-xs text-gray-400 dark:text-gray-600">
-          Loading stats…
+          Loading game…
         </div>
       )}
 
-      {!loading && fetchErr && (
+      {!live && !loading && fetchErr && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center text-xs text-gray-400 dark:text-gray-600">
           Stats unavailable — backend timed out.{" "}
           <button onClick={() => window.location.reload()} className="underline hover:text-gray-600 dark:hover:text-gray-400">Retry</button>
         </div>
       )}
 
-      {!loading && !fetchErr && (
-        <>
-          {/* ── Win Prob chart + Injuries side by side ── */}
-          <div className="grid grid-cols-1 md:grid-cols-[5fr_2fr] gap-3 items-start">
-            {/* Regular season: how the game swung; playoffs: the series */}
-            {live && live.season_type !== 3 && live.timeline.length > 1 && (
-              <GameProbChart live={live} awayTeam={away} homeTeam={home} colors={colors} />
-            )}
-            {live?.season_type === 3 && history.length > 0 && (
-              <ProbChart data={history} awayTeam={away} homeTeam={home} colors={colors} />
-            )}
-            {injuries && (
-              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
-                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
-                  Injury Report
-                </p>
-                <div className="flex flex-col gap-4">
-                  <InjuryColumn team={away} data={injuries[away]} />
-                  <InjuryColumn team={home} data={injuries[home]} />
-                </div>
-              </div>
-            )}
-          </div>
+      {/* ── Score by quarter ── */}
+      {started && live && (live.away_quarters.length > 0 || live.home_quarters.length > 0) && (
+        <Quarterscore live={live} awayTeam={away} homeTeam={home} />
+      )}
 
-          {/* ── Stats full width ── */}
-          {compare && (
+      {/* ── Win probability (this game, or the series in the playoffs) + team stats ── */}
+      {(showChart || hasGameStats || compare) && (
+        <div className={`grid gap-3 items-start ${showChart ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : "grid-cols-1"}`}>
+          {started && live && live.season_type !== 3 && live.timeline.length > 1 && (
+            <GameProbChart live={live} awayTeam={away} homeTeam={home} colors={colors} />
+          )}
+          {live?.season_type === 3 && history.length > 0 && (
+            <ProbChart data={history} awayTeam={away} homeTeam={home} colors={colors} />
+          )}
+          {hasGameStats && live
+            ? <GameStatsCard live={live} />
+            : compare && <SeasonStatsCard compare={compare} />}
+        </div>
+      )}
+
+      {/* ── Why the model leans + the players in this game (injuries before tip-off) ── */}
+      {live && (live.explanation.length > 0 || hasPlayers || injuries) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+          {live.explanation.length > 0 && (
+            <WhyPanel factors={live.explanation} awayTeam={away} homeTeam={home} colors={colors} />
+          )}
+          {hasPlayers ? (
+            <BoxScore live={live} awayTeam={away} homeTeam={home} colors={colors} />
+          ) : injuries && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
-                Stats Comparison
-              </p>
-              <div className="flex flex-col gap-3">
-                {STATS.map(({ key, label, better, pct }) => {
-                  const a = compare.team_a_stats[key as keyof TeamStats] ?? 0;
-                  const b = compare.team_b_stats[key as keyof TeamStats] ?? 0;
-                  const aWins = better !== 0 && (better === 1 ? a > b : a < b);
-                  const bWins = better !== 0 && (better === 1 ? b > a : b < a);
-                  const { aPct, bPct } = barPcts(a, b, better);
-                  return (
-                    <div key={key}>
-                      <div className="flex items-center mb-1">
-                        <span className={`w-12 text-xs font-bold ${aWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-                          {fmt(a, pct)}
-                        </span>
-                        <span className="flex-1 text-center text-[10px] text-gray-500 uppercase tracking-wide">
-                          {label}
-                        </span>
-                        <span className={`w-12 text-xs font-bold text-right ${bWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-                          {fmt(b, pct)}
-                        </span>
-                      </div>
-                      <div className="flex h-[3px] gap-[2px]">
-                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-l-full overflow-hidden flex justify-end">
-                          <div className={`h-full rounded-l-full ${aWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`} style={{ width: `${aPct}%` }} />
-                        </div>
-                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-r-full overflow-hidden">
-                          <div className={`h-full rounded-r-full ${bWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`} style={{ width: `${bPct}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Injury Report</p>
+              <div className="flex flex-col gap-4">
+                <InjuryColumn team={away} data={injuries[away]} />
+                <InjuryColumn team={home} data={injuries[home]} />
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </main>
+  );
+}
+
+// ── Score by quarter ───────────────────────────────────────────────────────────
+
+function Quarterscore({ live, awayTeam, homeTeam }: { live: LiveGame; awayTeam: string; homeTeam: string }) {
+  const n = Math.max(4, live.away_quarters.length, live.home_quarters.length);
+  const cols = Array.from({ length: n }, (_, i) => i + 1);
+  const label = (q: number) => (q <= 4 ? `Q${q}` : q === 5 ? "OT" : `OT${q - 4}`);
+  const final = live.state === "post";
+  const rows: [string, (number | null)[], number, boolean][] = [
+    [awayTeam, live.away_quarters, live.away_score, final && live.away_score > live.home_score],
+    [homeTeam, live.home_quarters, live.home_score, final && live.home_score > live.away_score],
+  ];
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 overflow-x-auto">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Score by quarter</p>
+      <table className="text-xs tabular-nums min-w-full">
+        <thead>
+          <tr>
+            <th className="text-left text-gray-400 font-semibold pb-2 pr-4 min-w-[40px]" />
+            {cols.map(q => <th key={q} className="text-center text-gray-400 font-semibold pb-2 w-9 min-w-[32px]">{label(q)}</th>)}
+            <th className="text-center text-gray-400 font-semibold pb-2 pl-3 border-l border-gray-200 dark:border-gray-700 min-w-[32px]">{final ? "Final" : "Total"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([team, qs, total, won]) => (
+            <tr key={team} className="border-t border-gray-100 dark:border-gray-800">
+              <td className={`pr-4 py-2 font-bold ${won || !final ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{getAbbr(team)}</td>
+              {cols.map(q => <td key={q} className="text-center py-2 text-gray-700 dark:text-gray-300">{qs[q - 1] ?? ""}</td>)}
+              <td className={`text-center py-2 pl-3 font-bold border-l border-gray-200 dark:border-gray-700 ${won || !final ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Team stats: this game, or the season before tip-off ────────────────────────
+
+const GAME_STATS: { key: string; label: string; lowerBetter?: boolean }[] = [
+  { key: "fg", label: "Field goals" }, { key: "fg_pct", label: "FG %" },
+  { key: "fg3", label: "3-pointers" }, { key: "fg3_pct", label: "3PT %" },
+  { key: "ft", label: "Free throws" }, { key: "reb", label: "Rebounds" },
+  { key: "ast", label: "Assists" }, { key: "tov", label: "Turnovers", lowerBetter: true },
+  { key: "stl", label: "Steals" }, { key: "blk", label: "Blocks" },
+  { key: "paint", label: "Points in paint" }, { key: "fast_break", label: "Fast-break points" },
+];
+
+function GameStatsCard({ live }: { live: LiveGame }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Stats comparison · this game</p>
+      <div className="flex flex-col gap-2.5">
+        {GAME_STATS.filter(s => live.away_stats[s.key] !== undefined || live.home_stats[s.key] !== undefined).map(({ key, label, lowerBetter }) => {
+          const a = live.away_stats[key] ?? "—", b = live.home_stats[key] ?? "—";
+          const an = parseFloat(a), bn = parseFloat(b);   // "43-95" → 43 made
+          const ok = !isNaN(an) && !isNaN(bn);
+          const aWins = ok && (lowerBetter ? an < bn : an > bn);
+          const bWins = ok && (lowerBetter ? bn < an : bn > an);
+          const pct = key.endsWith("_pct");
+          return (
+            <div key={key} className="flex items-center">
+              <span className={`w-16 text-xs font-bold tabular-nums ${aWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{a}{pct && a !== "—" ? "%" : ""}</span>
+              <span className="flex-1 text-center text-[10px] text-gray-500 uppercase tracking-wide">{label}</span>
+              <span className={`w-16 text-xs font-bold tabular-nums text-right ${bWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{b}{pct && b !== "—" ? "%" : ""}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SeasonStatsCard({ compare }: { compare: CompareResult }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Stats comparison · season</p>
+      <div className="flex flex-col gap-3">
+        {STATS.map(({ key, label, better, pct }) => {
+          const a = compare.team_a_stats[key as keyof TeamStats] ?? 0;
+          const b = compare.team_b_stats[key as keyof TeamStats] ?? 0;
+          const aWins = better !== 0 && (better === 1 ? a > b : a < b);
+          const bWins = better !== 0 && (better === 1 ? b > a : b < a);
+          const { aPct, bPct } = barPcts(a, b, better);
+          return (
+            <div key={key}>
+              <div className="flex items-center mb-1">
+                <span className={`w-12 text-xs font-bold ${aWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{fmt(a, pct)}</span>
+                <span className="flex-1 text-center text-[10px] text-gray-500 uppercase tracking-wide">{label}</span>
+                <span className={`w-12 text-xs font-bold text-right ${bWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>{fmt(b, pct)}</span>
+              </div>
+              <div className="flex h-[3px] gap-[2px]">
+                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-l-full overflow-hidden flex justify-end">
+                  <div className={`h-full rounded-l-full ${aWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`} style={{ width: `${aPct}%` }} />
+                </div>
+                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-r-full overflow-hidden">
+                  <div className={`h-full rounded-r-full ${bWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`} style={{ width: `${bPct}%` }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Why the model leans ────────────────────────────────────────────────────────
+
+const FACTOR_LABELS: Record<string, { label: string; desc: string; fmt: (v: number) => string }> = {
+  elo_diff: {
+    label: "Elo rating",
+    desc: "Overall team strength. Goes up after wins (more for big wins), down after losses, and carries over between seasons. Shown as the gap vs the opponent.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(0),
+  },
+  margin_ewm_diff: {
+    label: "Recent point margin",
+    desc: "Points scored minus points allowed per game, weighted toward recent games. Shown as the gap vs the opponent.",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(1) + " pts",
+  },
+  roster_diff: {
+    label: "Roster strength",
+    desc: "Last season's production (Game Score per minute) of the players on today's roster, weighted by their expected minutes — how the model sees trades and signings. Shown per 100 minutes, as the gap vs the opponent.",
+    fmt: v => (v > 0 ? "+" : "") + (v * 100).toFixed(1),
+  },
+  home: {
+    label: "Home court",
+    desc: "Home teams win about 56% of NBA games. Neutral sites give no home edge.",
+    fmt: v => (v ? "Home" : "Away"),
+  },
+  rest_diff: {
+    label: "Extra rest",
+    desc: "Days of rest compared with the opponent (capped at 4).",
+    fmt: v => (v > 0 ? "+" : "") + v.toFixed(0) + "d",
+  },
+  b2b: {
+    label: "Back-to-back",
+    desc: "Whether the team played the day before. Tired legs lower its chances.",
+    fmt: v => (v ? "Yes" : "No"),
+  },
+};
+
+function WhyPanel({ factors, awayTeam, homeTeam, colors }: { factors: Factor[]; awayTeam: string; homeTeam: string; colors: Colors }) {
+  const shown = factors.filter(f => Math.abs(f.impact) >= 0.01).slice(0, 6);
+  if (!shown.length) return null;
+  const maxAbs = Math.max(...shown.map(f => Math.abs(f.impact)));
+  return (
+    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Why the model leans this way</p>
+      <p className="text-xs text-gray-400 mb-4">Each bar is that factor&apos;s share of the pre-game edge. Values are from each team&apos;s side.</p>
+      <div className="flex justify-between text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-2">
+        <span>← favours {getAbbr(awayTeam)}</span><span>favours {getAbbr(homeTeam)} →</span>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {shown.map(f => {
+          const meta = FACTOR_LABELS[f.feature] ?? { label: f.feature, desc: "", fmt: (v: number) => v.toFixed(2) };
+          const w = (Math.abs(f.impact) / maxAbs) * 50;
+          const favAway = f.impact > 0;
+          return (
+            <div key={f.feature}>
+              <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1 tabular-nums">
+                <span className="w-20">{meta.fmt(f.away_value)}</span>
+                <span className="relative group/def">
+                  <span tabIndex={0} className="font-medium text-gray-700 dark:text-gray-300 cursor-help underline decoration-dotted decoration-gray-400 underline-offset-2">{meta.label}</span>
+                  {meta.desc && (
+                    <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 w-60 px-3 py-2 rounded-lg shadow-lg bg-gray-900 dark:bg-gray-800 text-white text-[11px] leading-relaxed font-normal text-left opacity-0 group-hover/def:opacity-100 group-focus-within/def:opacity-100 transition-opacity duration-150">
+                      {meta.desc}
+                    </span>
+                  )}
+                </span>
+                <span className="w-20 text-right">{meta.fmt(f.home_value)}</span>
+              </div>
+              <div className="relative h-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <div className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-gray-600" style={{ left: "50%" }} />
+                <div className="absolute top-0 bottom-0 rounded-full"
+                  style={{ width: `${w}%`, left: favAway ? `${50 - w}%` : "50%", background: getColor(favAway ? awayTeam : homeTeam, colors) }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Players in this game ───────────────────────────────────────────────────────
+
+const BOX_COLS: { key: keyof BoxPlayer; label: string }[] = [
+  { key: "min", label: "MIN" }, { key: "pts", label: "PTS" }, { key: "reb", label: "REB" },
+  { key: "ast", label: "AST" }, { key: "fg", label: "FG" }, { key: "fg3", label: "3PT" }, { key: "pm", label: "+/-" },
+];
+
+function BoxScore({ live, awayTeam, homeTeam, colors }: { live: LiveGame; awayTeam: string; homeTeam: string; colors: Colors }) {
+  const [side, setSide] = useState<"away" | "home">("away");
+  const team = side === "away" ? awayTeam : homeTeam;
+  const players = side === "away" ? live.away_players : live.home_players;
+  const firstBench = players.findIndex(p => !p.starter);
+  return (
+    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3 gap-3">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Players · this game</p>
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+          {(["away", "home"] as const).map(s => {
+            const t = s === "away" ? awayTeam : homeTeam;
+            return (
+              <button key={s} onClick={() => setSide(s)}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${side === s ? "bg-white dark:bg-gray-900 shadow-sm" : "text-gray-500"}`}
+                style={side === s ? { color: getColor(t, colors) } : undefined}>
+                {getAbbr(t)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="overflow-x-auto -mx-1">
+        <table className="w-full text-xs tabular-nums">
+          <thead>
+            <tr className="text-gray-400">
+              <th className="text-left font-semibold py-1.5 px-1">{lastName(team)}</th>
+              {BOX_COLS.map(c => <th key={c.key} className="text-right font-semibold py-1.5 px-1.5">{c.label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((pl, i) => (
+              <tr key={pl.id || pl.name}
+                className={`border-t ${i === firstBench && i > 0 ? "border-gray-300 dark:border-gray-600" : "border-gray-100 dark:border-gray-800"} ${pl.dnp ? "text-gray-400" : "text-gray-700 dark:text-gray-300"}`}>
+                <td className="py-1.5 px-1 whitespace-nowrap">
+                  {pl.id
+                    ? <Link href={playerHref("nba", pl.id)} className="font-semibold text-gray-900 dark:text-white hover:underline">{pl.name}</Link>
+                    : <span className="font-semibold">{pl.name}</span>}
+                  <span className="text-gray-400"> {pl.position}</span>
+                </td>
+                {pl.dnp
+                  ? <td colSpan={BOX_COLS.length} className="text-right py-1.5 px-1.5 text-[10px] uppercase">Did not play</td>
+                  : BOX_COLS.map(c => (
+                      <td key={c.key} className={`text-right py-1.5 px-1.5 whitespace-nowrap ${c.key === "pts" ? "font-bold text-gray-900 dark:text-white" : ""}`}>{String(pl[c.key] ?? "")}</td>
+                    ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[10px] text-gray-400">Starters first · {live.state === "in" ? "updates every 30 s" : "final box score"}</p>
+    </div>
   );
 }
 

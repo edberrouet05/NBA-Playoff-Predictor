@@ -1438,10 +1438,64 @@ def _nba_live_prob(p_home_pregame: float, home_margin: float, minutes_left: floa
     return min(max(p, 0.001), 0.999)   # never 100 % before the final buzzer
 
 
+# Team box-score stats shown on the game page (ESPN names → our keys), in display order
+_NBA_TEAM_BOX = [
+    ("fieldGoalsMade-fieldGoalsAttempted", "fg"), ("fieldGoalPct", "fg_pct"),
+    ("threePointFieldGoalsMade-threePointFieldGoalsAttempted", "fg3"), ("threePointFieldGoalPct", "fg3_pct"),
+    ("freeThrowsMade-freeThrowsAttempted", "ft"), ("totalRebounds", "reb"), ("offensiveRebounds", "oreb"),
+    ("assists", "ast"), ("turnovers", "tov"), ("steals", "stl"), ("blocks", "blk"),
+    ("pointsInPaint", "paint"), ("fastBreakPoints", "fast_break"), ("largestLead", "largest_lead"),
+]
+# Player box-score columns kept (ESPN key → ours)
+_NBA_PLAYER_BOX = {"minutes": "min", "points": "pts", "rebounds": "reb", "assists": "ast",
+                   "fieldGoalsMade-fieldGoalsAttempted": "fg",
+                   "threePointFieldGoalsMade-threePointFieldGoalsAttempted": "fg3",
+                   "steals": "stl", "blocks": "blk", "turnovers": "tov", "plusMinus": "pm"}
+
+
+def _nba_explain(a: dict, b: dict) -> list[dict]:
+    """Per-feature contribution to the away-vs-home log-odds gap of the logistic regression
+    (positive favours the away team): coef · (z_away − z_home), so the terms add up to the tilt.
+    `a` / `b` are the away / home model rows."""
+    model = _load_model()
+    scaler, clf = model.named_steps["scaler"], model.named_steps["clf"]
+    impacts = {f: float(clf.coef_[0][i]) * (float(a[f]) - float(b[f])) / float(scaler.scale_[i])
+               for i, f in enumerate(FEATURES)}
+    out = []
+    for f, impact in impacts.items():
+        if f.startswith("opp_") and f[4:] in impacts:
+            continue   # mirror of f[4:] (opp_b2b) — folded into that feature
+        out.append({"feature": f, "away_value": round(float(a[f]), 4), "home_value": round(float(b[f]), 4),
+                    "impact": round(impact + impacts.get(f"opp_{f}", 0.0), 4)})
+    return sorted(out, key=lambda r: abs(r["impact"]), reverse=True)
+
+
+def _nba_box_players(team_box: dict) -> list[dict]:
+    """One team's players from an ESPN box score, starters first, then by minutes."""
+    out = []
+    for group in team_box.get("statistics", []):
+        keys = group.get("keys") or []
+        for a in group.get("athletes", []):
+            ath = a.get("athlete") or {}
+            st = a.get("stats") or []
+            row = {ours: (st[keys.index(k)] if k in keys and keys.index(k) < len(st) else "")
+                   for k, ours in _NBA_PLAYER_BOX.items()}
+            out.append({
+                "id": str(ath.get("id", "")), "name": ath.get("shortName") or ath.get("displayName", ""),
+                "position": (ath.get("position") or {}).get("abbreviation", ""),
+                "headshot": (ath.get("headshot") or {}).get("href"),
+                "starter": bool(a.get("starter")), "dnp": bool(a.get("didNotPlay")) or not st,
+                **row,
+            })
+    return sorted(out, key=lambda r: (not r["starter"], r["dnp"], -(_stat_num(r["min"]) or 0)))
+
+
+@app.get("/api/nba/game/{game_id}")
 @app.get("/api/nba/game/{game_id}/live")
 def get_nba_game_live(game_id: str):
-    """Score, clock and our win probability through the game (after each basket), starting from
-    the pre-game prediction (the frozen one when we have it)."""
+    """Everything for an NBA game page: score by quarter, clock, our win probability through the
+    game (after each basket, from the pre-game prediction — the frozen one when we have it), why
+    the model leans that way, team box-score stats and the players' stats in the game."""
     if not game_id.isdigit():
         raise HTTPException(status_code=404, detail="Unknown game")
     hit = _nba_live_cache.get(game_id)
@@ -1462,15 +1516,17 @@ def get_nba_game_live(game_id: str):
     state = st.get("type", {}).get("state", "pre")
     season_type = int(((data.get("header") or {}).get("season") or {}).get("type") or 2)
 
+    stats = _load_stats_by_name()
+    if away not in stats.index or home not in stats.index:
+        raise HTTPException(status_code=404, detail="Teams not rated")
+    date = _nba_et_date(comp.get("date", ""))
+    known = _load_nba_game_features()
+    a, b = _nba_game_rows(stats, away, home, date, game_id,
+                          None if game_id in known else _nba_season_play_dates())
     frozen = _nba_known_pred(game_id)
     if frozen and (frozen["away_team"], frozen["home_team"]) == (away, home):
         p_home = frozen["home_win_prob"] / 100
     else:
-        stats = _load_stats_by_name()
-        if away not in stats.index or home not in stats.index:
-            raise HTTPException(status_code=404, detail="Teams not rated")
-        date = _nba_et_date(comp.get("date", ""))
-        a, b = _nba_game_rows(stats, away, home, date, game_id, _nba_season_play_dates())
         p_home = 1 - float(_nba_pair_probs(_load_model(), [a], [b])[0])
 
     def point(period: int, clock: str, away_score: int, home_score: int, label: str) -> dict:
@@ -1493,6 +1549,17 @@ def get_nba_game_live(game_id: str):
 
     away_score = int(sides["away"].get("score") or 0)
     home_score = int(sides["home"].get("score") or 0)
+
+    def quarters(c: dict) -> list[int | None]:
+        return [_espn_score({"score": q.get("displayValue")}) for q in c.get("linescores") or []]
+
+    box = data.get("boxscore") or {}
+    team_stats: dict[str, dict] = {}
+    for t in box.get("teams", []):
+        vals = {s.get("name"): s.get("displayValue") for s in t.get("statistics", [])}
+        team_stats[(t.get("team") or {}).get("displayName", "")] = {
+            ours: vals[k] for k, ours in _NBA_TEAM_BOX if vals.get(k) not in (None, "")}
+    players = {(t.get("team") or {}).get("displayName", ""): _nba_box_players(t) for t in box.get("players", [])}
     if state == "in":
         timeline.append(point(int(st.get("period") or 1), st.get("displayClock", "0:00"),
                               away_score, home_score, "Now"))
@@ -1508,6 +1575,12 @@ def get_nba_game_live(game_id: str):
         "pregame_away_prob": round((1 - p_home) * 100, 1), "pregame_home_prob": round(p_home * 100, 1),
         "away_prob": timeline[-1]["away_prob"], "home_prob": timeline[-1]["home_prob"],
         "timeline": timeline,
+        "away_quarters": quarters(sides["away"]), "home_quarters": quarters(sides["home"]),
+        "away_stats": team_stats.get(away, {}), "home_stats": team_stats.get(home, {}),
+        "away_players": players.get(away, []), "home_players": players.get(home, []),
+        "explanation": _nba_explain(a, b),
+        "venue": ((data.get("gameInfo") or {}).get("venue") or {}).get("fullName", ""),
+        "start_utc": comp.get("date", ""),
     }
     ttl = _NBA_LIVE_FINAL_TTL if state == "post" else _NBA_LIVE_TTL
     _nba_live_cache[game_id] = (_time_mod.time() + ttl, result)
