@@ -308,6 +308,8 @@ def _espn_player_averages(season: int) -> dict[str, dict]:
         ath = a.get("athlete", {})
         abbr = ath.get("teamShortName", "")
         out[ath.get("displayName", "")] = {
+            "ID": str(ath.get("id", "")),
+            "SEASON": season,
             "TEAM_ABBREVIATION": _ESPN_NBA_ABBR.get(abbr, abbr),
             "GP": stat(a, "general", "gamesPlayed"),
             "MIN": stat(a, "general", "avgMinutes"),
@@ -334,7 +336,8 @@ def _get_player_minutes() -> pd.DataFrame:
     for name in set(cur) | set(prev):
         c, p = cur.get(name), prev.get(name)
         stats = c if c and (c["GP"] >= _PLAYER_MIN_GAMES or not p) else p
-        rows.append({**stats, "PLAYER_NAME": name, "TEAM_ABBREVIATION": (c or p)["TEAM_ABBREVIATION"]})
+        rows.append({**stats, "PLAYER_NAME": name, "TEAM_ABBREVIATION": (c or p)["TEAM_ABBREVIATION"],
+                     "ID": (c or p)["ID"]})
     df = pd.DataFrame(rows)
     df["IMPACT"] = (
         df.get("PTS", 0) * 1.0
@@ -1490,6 +1493,98 @@ def _nba_box_players(team_box: dict) -> list[dict]:
     return sorted(out, key=lambda r: (not r["starter"], r["dnp"], -(_stat_num(r["min"]) or 0)))
 
 
+def _nba_team_form(team: str, games: list[dict], before: str) -> dict:
+    """Record, current streak and last 5 results of a team this season, games before `before`
+    (an ISO start time) — so a game's page shows the form going into it."""
+    done = [g for g in games if g["completed"] and g["season_type"] == 2 and g["start_utc"] < before
+            and team in (g["home_team"], g["away_team"]) and g["home_score"] is not None]
+    results = []
+    for g in done:
+        home = g["home_team"] == team
+        mine, theirs = (g["home_score"], g["away_score"]) if home else (g["away_score"], g["home_score"])
+        results.append({"date": g["date"], "opponent": g["away_team"] if home else g["home_team"], "home": home,
+                        "result": "W" if mine > theirs else "L", "score": f"{mine}-{theirs}"})
+    wins = sum(r["result"] == "W" for r in results)
+    streak = 0
+    for r in reversed(results):
+        if streak == 0 or (streak > 0) == (r["result"] == "W"):
+            streak += 1 if r["result"] == "W" else -1
+        else:
+            break
+    return {"record": f"{wins}-{len(results) - wins}", "streak": streak, "last5": results[-5:][::-1]}
+
+
+def _nba_head_to_head(away: str, home: str, game_id: str) -> list[dict]:
+    """Meetings of the two teams this season and last season (all phases), newest first."""
+    year = _nba_season_year()
+    out = []
+    for season in (year, year - 1):
+        try:
+            games = _espn_nba_season_games(season)
+        except Exception:
+            continue
+        for g in games:
+            if (g["completed"] and g["game_id"] != game_id and {g["home_team"], g["away_team"]} == {away, home}
+                    and g["home_score"] is not None):
+                out.append({"date": g["date"], "season": f"{season - 1}-{str(season)[-2:]}",
+                            "home_team": g["home_team"], "away_team": g["away_team"],
+                            "home_score": g["home_score"], "away_score": g["away_score"],
+                            "playoffs": g["season_type"] == 3})
+    return sorted(out, key=lambda r: r["date"], reverse=True)
+
+
+def _nba_projected_score(away: str, home: str, p_home: float) -> dict | None:
+    """Expected final score: the margin from our pre-game probability (so it agrees with the
+    pick), the total from both teams' pace and ratings (points per 100 possessions)."""
+    from statistics import NormalDist
+    stats = _load_stats_by_name()
+    if away not in stats.index or home not in stats.index:
+        return None
+    a, h = stats.loc[away], stats.loc[home]
+    pace = (float(a["pace"]) + float(h["pace"])) / 2
+    total = pace * (float(a["off_rtg"]) + float(h["def_rtg"]) + float(h["off_rtg"]) + float(a["def_rtg"])) / 200
+    margin = NBA_MARGIN_SD * NormalDist().inv_cdf(min(max(p_home, 1e-4), 1 - 1e-4))
+    return {"away": round((total - margin) / 2), "home": round((total + margin) / 2),
+            "total": round(total), "margin": round(margin, 1), "pace": round(pace, 1)}
+
+
+_nba_roster_cache: dict[str, tuple[float, set[str]]] = {}
+_NBA_ROSTER_TTL = 6 * 3600.0
+
+
+def _nba_roster_ids(team: str) -> set[str]:
+    """ESPN athlete ids on the team's current roster (cached a few hours)."""
+    hit = _nba_roster_cache.get(team)
+    if hit and _time_mod.time() - hit[0] < _NBA_ROSTER_TTL:
+        return hit[1]
+    tid = ESPN_TEAM_IDS.get(team)
+    ids = set(_team_roster("basketball", "nba", str(tid))[1]) if tid else set()
+    if ids:
+        _nba_roster_cache[team] = (_time_mod.time(), ids)
+    return ids
+
+
+def _nba_key_players(team: str, also_ids: set[str] | None = None, n: int = 3) -> list[dict]:
+    """The top scorers on the team's current roster (plus `also_ids`, e.g. the players in this
+    game's box score) — season averages: this season once a player has 5 games, else last
+    season's — with today's injury status."""
+    table = _get_player_minutes_cached()
+    if table.empty or "ID" not in table.columns:
+        return []
+    injuries = {(i.get("athlete") or {}).get("displayName", ""): i.get("status", "")
+                for i in _fetch_all_espn_injuries().get(team, [])}
+    ids = _nba_roster_ids(team) | (also_ids or set())
+    mine = table[table["ID"].isin(ids)] if ids else table[table["TEAM_ABBREVIATION"] == TEAM_TO_ABBR.get(team, "")]
+    top = mine.sort_values("PTS", ascending=False).head(n)
+    year = _nba_season_year()
+    return [{"id": r["ID"], "name": r["PLAYER_NAME"],
+             "headshot": f"https://a.espncdn.com/i/headshots/nba/players/full/{r['ID']}.png" if r["ID"] else None,
+             "pts": round(float(r["PTS"]), 1), "reb": round(float(r["REB"]), 1), "ast": round(float(r["AST"]), 1),
+             "games": int(r["GP"]), "this_season": int(r.get("SEASON", year)) == year,
+             "status": injuries.get(r["PLAYER_NAME"]) or None}
+            for _, r in top.iterrows()]
+
+
 @app.get("/api/nba/game/{game_id}")
 @app.get("/api/nba/game/{game_id}/live")
 def get_nba_game_live(game_id: str):
@@ -1553,6 +1648,11 @@ def get_nba_game_live(game_id: str):
     def quarters(c: dict) -> list[int | None]:
         return [_espn_score({"score": q.get("displayValue")}) for q in c.get("linescores") or []]
 
+    try:
+        season_games = _espn_nba_season_games()
+    except Exception:
+        season_games = []
+
     box = data.get("boxscore") or {}
     team_stats: dict[str, dict] = {}
     for t in box.get("teams", []):
@@ -1579,6 +1679,12 @@ def get_nba_game_live(game_id: str):
         "away_stats": team_stats.get(away, {}), "home_stats": team_stats.get(home, {}),
         "away_players": players.get(away, []), "home_players": players.get(home, []),
         "explanation": _nba_explain(a, b),
+        "projection": _nba_projected_score(away, home, p_home),
+        "form": {side: _nba_team_form(t, season_games, comp.get("date", "") or "9999")
+                 for side, t in (("away", away), ("home", home))},
+        "h2h": _nba_head_to_head(away, home, game_id),
+        "key_players": {side: _nba_key_players(t, {pl["id"] for pl in players.get(t, []) if pl["id"]})
+                        for side, t in (("away", away), ("home", home))},
         "venue": ((data.get("gameInfo") or {}).get("venue") or {}).get("fullName", ""),
         "start_utc": comp.get("date", ""),
     }

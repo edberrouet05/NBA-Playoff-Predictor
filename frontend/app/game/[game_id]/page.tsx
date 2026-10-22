@@ -27,6 +27,14 @@ interface BoxPlayer {
   min: string; pts: string; reb: string; ast: string; fg: string; fg3: string; stl: string; blk: string; tov: string; pm: string;
 }
 interface Factor { feature: string; away_value: number; home_value: number; impact: number; }  // impact > 0 favours away
+interface Projection { away: number; home: number; total: number; margin: number; pace: number; }
+interface FormGame { date: string; opponent: string; home: boolean; result: "W" | "L"; score: string; }
+interface TeamForm { record: string; streak: number; last5: FormGame[]; }
+interface Meeting { date: string; season: string; home_team: string; away_team: string; home_score: number; away_score: number; playoffs: boolean; }
+interface KeyPlayer {
+  id: string; name: string; headshot: string | null; pts: number; reb: number; ast: number;
+  games: number; this_season: boolean; status: string | null;
+}
 interface LiveGame {
   season_type: number; state: "pre" | "in" | "post"; status: string;
   away_team: string; home_team: string; away_score: number; home_score: number;
@@ -36,6 +44,10 @@ interface LiveGame {
   away_stats: Record<string, string>; home_stats: Record<string, string>;
   away_players: BoxPlayer[]; home_players: BoxPlayer[];
   explanation: Factor[];
+  projection: Projection | null;
+  form: { away: TeamForm; home: TeamForm };
+  h2h: Meeting[];
+  key_players: { away: KeyPlayer[]; home: KeyPlayer[] };
 }
 interface InjuryPlayer { id?: string | null; name: string; status: string; pts_per_game: number | null; }
 interface InjuryData   { factor: number; players: InjuryPlayer[]; }
@@ -372,22 +384,29 @@ export default function GamePage({
       )}
 
       {/* ── Why the model leans + the players in this game (injuries before tip-off) ── */}
-      {live && (live.explanation.length > 0 || hasPlayers || injuries) && (
+      {live && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-          {live.explanation.length > 0 && (
-            <WhyPanel factors={live.explanation} awayTeam={away} homeTeam={home} colors={colors} />
-          )}
-          {hasPlayers ? (
-            <BoxScore live={live} awayTeam={away} homeTeam={home} colors={colors} />
-          ) : injuries && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Injury Report</p>
-              <div className="flex flex-col gap-4">
-                <InjuryColumn team={away} data={injuries[away]} />
-                <InjuryColumn team={home} data={injuries[home]} />
+          <div className="flex flex-col gap-3">
+            {live.explanation.length > 0 && (
+              <WhyPanel factors={live.explanation} awayTeam={away} homeTeam={home} colors={colors} />
+            )}
+            {live.projection && <ProjectionCard live={live} projection={live.projection} awayTeam={away} homeTeam={home} />}
+            <FormCard live={live} awayTeam={away} homeTeam={home} colors={colors} />
+          </div>
+          <div className="flex flex-col gap-3">
+            {hasPlayers ? (
+              <BoxScore live={live} awayTeam={away} homeTeam={home} colors={colors} />
+            ) : injuries && (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Injury Report</p>
+                <div className="flex flex-col gap-4">
+                  <InjuryColumn team={away} data={injuries[away]} />
+                  <InjuryColumn team={home} data={injuries[home]} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            <KeyPlayersCard live={live} awayTeam={away} homeTeam={home} colors={colors} />
+          </div>
         </div>
       )}
     </main>
@@ -636,6 +655,146 @@ function BoxScore({ live, awayTeam, homeTeam, colors }: { live: LiveGame; awayTe
         </table>
       </div>
       <p className="mt-2 text-[10px] text-gray-400">Starters first · {live.state === "in" ? "updates every 30 s" : "final box score"}</p>
+    </div>
+  );
+}
+
+// ── Projected score ────────────────────────────────────────────────────────────
+
+function ProjectionCard({ live, projection: pr, awayTeam, homeTeam }: {
+  live: LiveGame; projection: Projection; awayTeam: string; homeTeam: string;
+}) {
+  const played = live.timeline[live.timeline.length - 1]?.minute ?? 0;
+  const total = live.away_score + live.home_score;
+  const onPace = live.state === "in" && played >= 6 ? Math.round((total * 48) / played) : null;
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Projected score</p>
+      <div className="flex items-center justify-center gap-4 tabular-nums">
+        <span className="text-xs font-bold text-gray-500">{getAbbr(awayTeam)}</span>
+        <span className="text-2xl font-black text-gray-900 dark:text-white">{pr.away}</span>
+        <span className="text-gray-300 dark:text-gray-700">–</span>
+        <span className="text-2xl font-black text-gray-900 dark:text-white">{pr.home}</span>
+        <span className="text-xs font-bold text-gray-500">{getAbbr(homeTeam)}</span>
+      </div>
+      <p className="mt-2 text-center text-[11px] text-gray-400">
+        Total {pr.total} · about {pr.pace} possessions each
+        {onPace != null && <> · <span className="font-semibold text-gray-600 dark:text-gray-300">on pace for {onPace}</span></>}
+        {live.state === "post" && <> · <span className="font-semibold text-gray-600 dark:text-gray-300">actual {total}</span></>}
+      </p>
+      <p className="mt-1 text-center text-[10px] text-gray-400">
+        Margin from our pre-game win probability; total from both teams&apos; pace and points per 100 possessions.
+      </p>
+    </div>
+  );
+}
+
+// ── Form and head-to-head ──────────────────────────────────────────────────────
+
+function streakLabel(n: number) { return n === 0 ? "—" : `${n > 0 ? "W" : "L"}${Math.abs(n)}`; }
+
+function FormCard({ live, awayTeam, homeTeam, colors }: { live: LiveGame; awayTeam: string; homeTeam: string; colors: Colors }) {
+  const sides: [string, TeamForm][] = [[awayTeam, live.form.away], [homeTeam, live.form.home]];
+  const meetings = live.h2h.slice(0, 4);
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Form going in</p>
+      <div className="flex flex-col gap-2.5">
+        {sides.map(([team, f]) => (
+          <div key={team} className="flex items-center gap-3 text-xs">
+            <span className="w-10 font-bold" style={{ color: getColor(team, colors) }}>{getAbbr(team)}</span>
+            <span className="w-12 font-semibold text-gray-900 dark:text-white tabular-nums">{f.record}</span>
+            <span className="w-8 text-gray-500 tabular-nums">{streakLabel(f.streak)}</span>
+            <div className="flex gap-1">
+              {f.last5.length === 0
+                ? <span className="text-gray-400">First game of the season</span>
+                : f.last5.map((g, i) => (
+                    <span key={i} title={`${g.date} ${g.home ? "vs" : "@"} ${g.opponent} · ${g.score}`}
+                      className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold cursor-help ${g.result === "W" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"}`}>
+                      {g.result}
+                    </span>
+                  ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10px] text-gray-400">Record · streak · last 5 games, latest first (hover for the score)</p>
+
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mt-4 mb-2">Head-to-head</p>
+      {meetings.length === 0 ? (
+        <p className="text-xs text-gray-400">No meetings this season or last.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+          {meetings.map(m => {
+            const homeWon = m.home_score > m.away_score;
+            return (
+              <li key={m.date + m.home_team} className="flex items-center justify-between py-1.5 text-xs tabular-nums">
+                <span className="text-gray-400 w-24">{m.date.slice(5).replace("-", "/")}/{m.date.slice(2, 4)}{m.playoffs ? " · PO" : ""}</span>
+                <span className="flex-1 text-right">
+                  <span className={homeWon ? "text-gray-500" : "font-bold text-gray-900 dark:text-white"}>{getAbbr(m.away_team)} {m.away_score}</span>
+                  <span className="text-gray-300 dark:text-gray-700 mx-1.5">@</span>
+                  <span className={homeWon ? "font-bold text-gray-900 dark:text-white" : "text-gray-500"}>{getAbbr(m.home_team)} {m.home_score}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── Key players ────────────────────────────────────────────────────────────────
+
+const STATUS_CHIP: Record<string, string> = {
+  "Out": "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
+  "Doubtful": "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
+  "Questionable": "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
+  "Day-To-Day": "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
+};
+
+function PlayerHeadshot({ src, team, colors }: { src: string | null; team: string; colors: Colors }) {
+  // Remember which URL failed, so a new player gets a fresh attempt
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || failedSrc === src) {
+    return <div className="w-9 h-9 rounded-full flex-shrink-0 bg-gray-100 dark:bg-gray-800" style={{ border: `2px solid ${getColor(team, colors)}` }} />;
+  }
+  return <img src={src} alt="" onError={() => setFailedSrc(src)} className="w-9 h-9 rounded-full flex-shrink-0 object-cover bg-gray-100 dark:bg-gray-800" />;
+}
+
+function KeyPlayersCard({ live, awayTeam, homeTeam, colors }: { live: LiveGame; awayTeam: string; homeTeam: string; colors: Colors }) {
+  const sides: [string, KeyPlayer[]][] = [[awayTeam, live.key_players.away], [homeTeam, live.key_players.home]];
+  if (!sides.some(([, ps]) => ps.length)) return null;
+  const lastSeason = sides.some(([, ps]) => ps.some(pl => !pl.this_season));
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Key players · season averages</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+        {sides.map(([team, players]) => (
+          <div key={team} className="flex flex-col gap-2.5">
+            <p className="text-[11px] font-bold" style={{ color: getColor(team, colors) }}>{lastName(team)}</p>
+            {players.map(pl => (
+              <div key={pl.id || pl.name} className="flex items-center gap-2.5 min-w-0">
+                <PlayerHeadshot src={pl.headshot} team={team} colors={colors} />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                    {pl.id ? <Link href={playerHref("nba", pl.id)} className="hover:underline">{pl.name}</Link> : pl.name}
+                    {pl.status && (
+                      <span className={`ml-1.5 text-[9px] px-1 py-0.5 rounded font-bold ${STATUS_CHIP[pl.status] ?? "bg-gray-100 text-gray-500 dark:bg-gray-800"}`}>
+                        {pl.status === "Day-To-Day" ? "D2D" : pl.status}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[11px] text-gray-500 tabular-nums">{pl.pts} pts · {pl.reb} reb · {pl.ast} ast</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      {lastSeason && (
+        <p className="mt-3 text-[10px] text-gray-400">Last season&apos;s averages until a player has 5 games this season.</p>
+      )}
     </div>
   );
 }
