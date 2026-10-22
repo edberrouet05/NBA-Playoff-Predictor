@@ -1188,6 +1188,88 @@ def get_predictions_log(n: int = 5):
         return {"log": []}
 
 
+@app.get("/api/nba/performance")
+def get_nba_performance():
+    """How our pre-game picks did this season: accuracy, log loss / Brier, by confidence, a
+    calibration curve, accuracy day by day, and — on games with a stored pre-game line — the
+    bookmakers' no-vig probabilities scored the same way, plus our value bets' record."""
+    import math
+    log = get_predictions_log(n=100_000)["log"]
+    games = sorted(log, key=lambda g: (g["date"], str(g["game_id"])))
+    n = len(games)
+
+    def scores(rows: list[tuple[float, int]]) -> dict:
+        """rows: (P(away wins), away won) → accuracy, log loss, Brier."""
+        if not rows:
+            return {"accuracy": None, "log_loss": None, "brier": None}
+        clip = lambda p: min(max(p, 1e-6), 1 - 1e-6)
+        return {
+            "accuracy": round(sum((p >= 0.5) == bool(y) for p, y in rows) / len(rows), 4),
+            "log_loss": round(-sum(y * math.log(clip(p)) + (1 - y) * math.log(1 - clip(p)) for p, y in rows) / len(rows), 4),
+            "brier":    round(sum((p - y) ** 2 for p, y in rows) / len(rows), 4),
+        }
+
+    rows = [(g["away_win_prob"] / 100, int(g["actual_winner"] == g["away_team"])) for g in games]
+    frozen = sum(1 for g in games if _nba_known_pred(g["game_id"]))
+
+    # By confidence of the pick
+    buckets = [(50, 55), (55, 60), (60, 65), (65, 70), (70, 80), (80, 101)]
+    by_conf = []
+    for lo, hi in buckets:
+        sub = [g for g in games if lo <= g["predicted_prob"] < hi]
+        if sub:
+            by_conf.append({"lo": lo, "hi": min(hi, 100), "n": len(sub),
+                            "correct": sum(g["correct"] for g in sub),
+                            "accuracy": round(sum(g["correct"] for g in sub) / len(sub), 4),
+                            "avg_prob": round(sum(g["predicted_prob"] for g in sub) / len(sub) / 100, 4)})
+
+    # Calibration: both sides of every game, 10 equal-width bins (as models/*_metrics.json)
+    sides = rows + [(1 - p, 1 - y) for p, y in rows]
+    calibration = []
+    for b in range(10):
+        lo, hi = b / 10, (b + 1) / 10
+        sub = [(p, y) for p, y in sides if lo <= p < hi or (b == 9 and p == 1.0)]
+        if sub:
+            calibration.append({"lo": lo, "hi": hi, "n": len(sub),
+                                "predicted": round(sum(p for p, _ in sub) / len(sub), 4),
+                                "actual": round(sum(y for _, y in sub) / len(sub), 4)})
+
+    # Day by day
+    by_day, total, correct = [], 0, 0
+    for date in sorted({g["date"] for g in games}):
+        day = [g for g in games if g["date"] == date]
+        total += len(day)
+        correct += sum(g["correct"] for g in day)
+        by_day.append({"date": date, "games": len(day), "correct": sum(g["correct"] for g in day),
+                       "cum_accuracy": round(correct / total, 4)})
+
+    # Bookmakers, on games with a stored pre-game line
+    market_rows, model_rows, bets = [], [], []
+    for g, (p, y) in zip(games, rows):
+        line = _pregame_odds.get(_pregame_odds_key(g["away_team"], g["home_team"], g["date"]))
+        if not line or not line.get("away_odds") or not line.get("home_odds"):
+            continue
+        ia, ih = 1 / line["away_odds"], 1 / line["home_odds"]
+        market_rows.append((ia / (ia + ih), y))
+        model_rows.append((p, y))
+        vb = _value_bet(g["away_win_prob"], g["home_win_prob"], line["away_odds"], line["home_odds"])
+        if vb["value_side"]:
+            won = (vb["value_side"] == "away") == bool(y)
+            odds = line["away_odds"] if vb["value_side"] == "away" else line["home_odds"]
+            bets.append(odds - 1 if won else -1.0)
+    market = None
+    if market_rows:
+        market = {"n_games": len(market_rows), "model": scores(model_rows), "vegas": scores(market_rows),
+                  "value_bets": {"n": len(bets), "won": sum(b > 0 for b in bets),
+                                 "units": round(sum(bets), 2),
+                                 "roi": round(sum(bets) / len(bets), 4) if bets else None}}
+
+    year = _nba_season_year()
+    return {"season": f"{year - 1}-{str(year)[-2:]}", "n_games": n, "frozen": frozen,
+            "correct": sum(g["correct"] for g in games), **scores(rows),
+            "by_confidence": by_conf, "calibration": calibration, "by_day": by_day, "market": market}
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  NBA season — power index, season simulation, per-game win probabilities
 #  (team and player pages)

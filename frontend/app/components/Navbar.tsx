@@ -60,6 +60,14 @@ function IconStandings() {
   );
 }
 
+function IconTarget() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <circle cx="8" cy="8" r="6.2" /><circle cx="8" cy="8" r="3.4" /><circle cx="8" cy="8" r="0.8" fill="currentColor" />
+    </svg>
+  );
+}
+
 function IconPower() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -114,6 +122,12 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       Icon: IconPower,
       label: "Power",
       isActive: (p) => p === "/nba/power",
+    },
+    {
+      href: "/nba/performance",
+      Icon: IconTarget,
+      label: "Record",
+      isActive: (p) => p === "/nba/performance",
     },
     {
       href: "/stats",

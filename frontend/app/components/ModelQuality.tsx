@@ -124,9 +124,15 @@ function Row({ label, model, vegas, fmt, lowerIsBetter }: {
   );
 }
 
-export function ProbabilityQuality({ logLoss, brier, vegas }: {
+export function ProbabilityQuality({ logLoss, brier, vegas, market }: {
   logLoss: number | null; brier: number | null; vegas?: VegasComparison | null;
+  /** Wording of the betting-market comparison (default: the Vegas closing line of past seasons) */
+  market?: { title: string; column: string; note: string; empty: string };
 }) {
+  const m = market ?? {
+    title: "Model vs Vegas closing line", column: "Vegas",
+    note: "past games, bookmaker margin removed.", empty: "No historical betting lines available for a Vegas comparison.",
+  };
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
   const dec = (v: number) => v.toFixed(3);
   return (
@@ -149,14 +155,14 @@ export function ProbabilityQuality({ logLoss, brier, vegas }: {
 
       {vegas ? (
         <>
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Model vs Vegas closing line</h3>
-          <p className="text-xs text-gray-400 mb-2">Same {vegas.n_games.toLocaleString()} past games, bookmaker margin removed.</p>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{m.title}</h3>
+          <p className="text-xs text-gray-400 mb-2">Same {vegas.n_games.toLocaleString()} {m.note}</p>
           <table className="w-full text-sm tabular-nums">
             <thead>
               <tr className="text-xs text-gray-400">
                 <th className="text-left font-semibold pb-1"></th>
                 <th className="text-right font-semibold pb-1">Model</th>
-                <th className="text-right font-semibold pb-1">Vegas</th>
+                <th className="text-right font-semibold pb-1">{m.column}</th>
               </tr>
             </thead>
             <tbody>
@@ -167,7 +173,7 @@ export function ProbabilityQuality({ logLoss, brier, vegas }: {
           </table>
         </>
       ) : (
-        <p className="text-xs text-gray-400">No historical betting lines available for a Vegas comparison.</p>
+        <p className="text-xs text-gray-400">{m.empty}</p>
       )}
     </div>
   );
