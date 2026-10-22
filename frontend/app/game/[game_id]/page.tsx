@@ -358,7 +358,7 @@ export default function GamePage({
 
       {/* ── Win probability (this game, or the series in the playoffs) + team stats ── */}
       {(showChart || hasGameStats || compare) && (
-        <div className={`grid gap-3 items-start ${showChart ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : "grid-cols-1"}`}>
+        <div className={`grid gap-3 items-stretch ${showChart ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : "grid-cols-1"}`}>
           {started && live && live.season_type !== 3 && live.timeline.length > 1 && (
             <GameProbChart live={live} awayTeam={away} homeTeam={home} colors={colors} />
           )}
@@ -373,7 +373,7 @@ export default function GamePage({
 
       {/* ── Why the model leans + the players in this game (injuries before tip-off) ── */}
       {live && (live.explanation.length > 0 || hasPlayers || injuries) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
           {live.explanation.length > 0 && (
             <WhyPanel factors={live.explanation} awayTeam={away} homeTeam={home} colors={colors} />
           )}
@@ -408,20 +408,20 @@ function Quarterscore({ live, awayTeam, homeTeam }: { live: LiveGame; awayTeam: 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 overflow-x-auto">
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Score by quarter</p>
-      <table className="text-xs tabular-nums min-w-full">
+      <table className="w-full table-fixed text-sm tabular-nums min-w-[360px]">
         <thead>
           <tr>
-            <th className="text-left text-gray-400 font-semibold pb-2 pr-4 min-w-[40px]" />
-            {cols.map(q => <th key={q} className="text-center text-gray-400 font-semibold pb-2 w-9 min-w-[32px]">{label(q)}</th>)}
-            <th className="text-center text-gray-400 font-semibold pb-2 pl-3 border-l border-gray-200 dark:border-gray-700 min-w-[32px]">{final ? "Final" : "Total"}</th>
+            <th className="w-16 text-left text-gray-400 font-semibold text-xs pb-2" />
+            {cols.map(q => <th key={q} className="text-center text-gray-400 font-semibold text-xs pb-2">{label(q)}</th>)}
+            <th className="text-center text-gray-400 font-semibold text-xs pb-2 border-l border-gray-200 dark:border-gray-700">{final ? "Final" : "Total"}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(([team, qs, total, won]) => (
             <tr key={team} className="border-t border-gray-100 dark:border-gray-800">
-              <td className={`pr-4 py-2 font-bold ${won || !final ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{getAbbr(team)}</td>
-              {cols.map(q => <td key={q} className="text-center py-2 text-gray-700 dark:text-gray-300">{qs[q - 1] ?? ""}</td>)}
-              <td className={`text-center py-2 pl-3 font-bold border-l border-gray-200 dark:border-gray-700 ${won || !final ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{total}</td>
+              <td className={`py-2 font-bold ${won || !final ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{getAbbr(team)}</td>
+              {cols.map(q => <td key={q} className="text-center py-2 text-gray-700 dark:text-gray-300">{qs[q - 1] ?? "–"}</td>)}
+              <td className={`text-center py-2 font-black border-l border-gray-200 dark:border-gray-700 ${won || !final ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{total}</td>
             </tr>
           ))}
         </tbody>
@@ -443,7 +443,7 @@ const GAME_STATS: { key: string; label: string; lowerBetter?: boolean }[] = [
 
 function GameStatsCard({ live }: { live: LiveGame }) {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Stats comparison · this game</p>
       <div className="flex flex-col gap-2.5">
         {GAME_STATS.filter(s => live.away_stats[s.key] !== undefined || live.home_stats[s.key] !== undefined).map(({ key, label, lowerBetter }) => {
@@ -647,7 +647,7 @@ function GameProbChart({ live, awayTeam, homeTeam, colors }: { live: LiveGame; a
   const ticks = [0, 12, 24, 36, 48].concat(end > 48 ? [end] : []);
   const tickLabel = (m: number) => (m === 0 ? "Q1" : m < 48 ? `Q${m / 12 + 1}` : m === 48 ? (end > 48 ? "OT" : "End") : "");
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-6 pt-5 pb-4">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-6 pt-5 pb-4">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win probability · this game</p>
@@ -664,7 +664,8 @@ function GameProbChart({ live, awayTeam, homeTeam, colors }: { live: LiveGame; a
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={170}>
+      <div className="flex-1 min-h-[200px]">
+      <ResponsiveContainer width="100%" height="100%">
         <LineChart data={live.timeline} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="2 5" stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="minute" type="number" domain={[0, end]} ticks={ticks} tickFormatter={tickLabel}
@@ -683,10 +684,11 @@ function GameProbChart({ live, awayTeam, homeTeam, colors }: { live: LiveGame; a
               `${v}%`, name?.toString() === "away_prob" ? getAbbr(awayTeam) : getAbbr(homeTeam),
             ]}
           />
-          <Line type="stepAfter" dataKey="away_prob" stroke={ac} strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="stepAfter" dataKey="home_prob" stroke={hc} strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line type="linear" dataKey="away_prob" stroke={ac} strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line type="linear" dataKey="home_prob" stroke={hc} strokeWidth={2} dot={false} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
