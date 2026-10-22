@@ -17,6 +17,24 @@
   "predicted_winner": "Los Angeles Lakers",
   "tipoff": "2026-10-22T02:00Z"
  },
+ "401909093": {
+  "away_team": "Cleveland Cavaliers",
+  "away_win_prob": 45.7,
+  "frozen_at": "2026-10-22T06:28:58Z",
+  "home_team": "Philadelphia 76ers",
+  "home_win_prob": 54.3,
+  "predicted_winner": "Philadelphia 76ers",
+  "tipoff": "2026-10-22T23:00Z"
+ },
+ "401909094": {
+  "away_team": "Denver Nuggets",
+  "away_win_prob": 37.1,
+  "frozen_at": "2026-10-22T06:28:58Z",
+  "home_team": "Oklahoma City Thunder",
+  "home_win_prob": 62.9,
+  "predicted_winner": "Oklahoma City Thunder",
+  "tipoff": "2026-10-23T01:30Z"
+ },
  "401909834": {
   "away_team": "Atlanta Hawks",
   "away_win_prob": 42.9,
