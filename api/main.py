@@ -1399,6 +1399,121 @@ def get_nba_frozen_predictions() -> dict[str, dict]:
     return _nba_frozen_preds
 
 
+# ── In-game win probability ────────────────────────────────────────────────────
+
+_nba_live_cache: dict[str, tuple[float, dict]] = {}
+_NBA_LIVE_TTL = 20.0          # while the game is on
+_NBA_LIVE_FINAL_TTL = 3600.0  # a finished game no longer changes
+
+
+def _nba_clock_minutes(period: int, clock: str) -> tuple[float, float]:
+    """(minutes played, minutes left) at a game clock: 4 × 12-minute quarters, 5-minute overtimes.
+    In overtime, minutes left is what is left of that overtime."""
+    try:
+        if ":" in clock:
+            m, s = clock.split(":", 1)
+            on_clock = int(m) + float(s) / 60
+        else:
+            on_clock = float(clock or 0) / 60
+    except ValueError:
+        on_clock = 0.0
+    if period <= 4:
+        left = (4 - period) * 12 + on_clock
+        return 48 - left, left
+    return 48 + (period - 5) * 5 + (5 - on_clock), on_clock
+
+
+def _nba_live_prob(p_home_pregame: float, home_margin: float, minutes_left: float) -> float:
+    """P(home wins) during a game. The pre-game edge, as an expected point margin, only applies to
+    the time left, and so does the uncertainty (SD NBA_MARGIN_SD over 48 minutes); the current
+    score margin is in the bag."""
+    import math
+    from statistics import NormalDist
+    nd = NormalDist()
+    if minutes_left <= 0:
+        return 1.0 if home_margin > 0 else 0.0 if home_margin < 0 else 0.5
+    frac = minutes_left / 48
+    edge = NBA_MARGIN_SD * nd.inv_cdf(min(max(p_home_pregame, 1e-4), 1 - 1e-4))
+    p = nd.cdf((home_margin + edge * frac) / (NBA_MARGIN_SD * math.sqrt(frac)))
+    return min(max(p, 0.001), 0.999)   # never 100 % before the final buzzer
+
+
+@app.get("/api/nba/game/{game_id}/live")
+def get_nba_game_live(game_id: str):
+    """Score, clock and our win probability through the game (after each basket), starting from
+    the pre-game prediction (the frozen one when we have it)."""
+    if not game_id.isdigit():
+        raise HTTPException(status_code=404, detail="Unknown game")
+    hit = _nba_live_cache.get(game_id)
+    if hit and _time_mod.time() < hit[0]:
+        return hit[1]
+    try:
+        data = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={game_id}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ESPN summary fetch failed: {e}")
+
+    comp = ((data.get("header") or {}).get("competitions") or [{}])[0]
+    sides = {c.get("homeAway"): c for c in comp.get("competitors", [])}
+    if "home" not in sides or "away" not in sides:
+        raise HTTPException(status_code=404, detail="Game not found")
+    away = sides["away"].get("team", {}).get("displayName", "")
+    home = sides["home"].get("team", {}).get("displayName", "")
+    st = comp.get("status", {})
+    state = st.get("type", {}).get("state", "pre")
+    season_type = int(((data.get("header") or {}).get("season") or {}).get("type") or 2)
+
+    frozen = _nba_known_pred(game_id)
+    if frozen and (frozen["away_team"], frozen["home_team"]) == (away, home):
+        p_home = frozen["home_win_prob"] / 100
+    else:
+        stats = _load_stats_by_name()
+        if away not in stats.index or home not in stats.index:
+            raise HTTPException(status_code=404, detail="Teams not rated")
+        date = _nba_et_date(comp.get("date", ""))
+        a, b = _nba_game_rows(stats, away, home, date, game_id, _nba_season_play_dates())
+        p_home = 1 - float(_nba_pair_probs(_load_model(), [a], [b])[0])
+
+    def point(period: int, clock: str, away_score: int, home_score: int, label: str) -> dict:
+        played, left = _nba_clock_minutes(period, clock)
+        p = _nba_live_prob(p_home, home_score - away_score, left)
+        return {"minute": round(played, 2), "label": label, "away_score": away_score, "home_score": home_score,
+                "away_prob": round((1 - p) * 100, 1), "home_prob": round(p * 100, 1)}
+
+    timeline = [{"minute": 0.0, "label": "Tip-off", "away_score": 0, "home_score": 0,
+                 "away_prob": round((1 - p_home) * 100, 1), "home_prob": round(p_home * 100, 1)}]
+    last = (0, 0)
+    for play in data.get("plays", []):
+        period = int((play.get("period") or {}).get("number") or 1)
+        clock = (play.get("clock") or {}).get("displayValue", "")
+        score = (int(play.get("awayScore") or 0), int(play.get("homeScore") or 0))
+        if score != last or play.get("type", {}).get("text") == "End Period":
+            q = f"Q{period}" if period <= 4 else f"OT{period - 4 if period > 5 else ''}"
+            timeline.append(point(period, clock, *score, f"{q} {clock}"))
+            last = score
+
+    away_score = int(sides["away"].get("score") or 0)
+    home_score = int(sides["home"].get("score") or 0)
+    if state == "in":
+        timeline.append(point(int(st.get("period") or 1), st.get("displayClock", "0:00"),
+                              away_score, home_score, "Now"))
+    elif state == "post":
+        home_won = home_score > away_score
+        timeline.append({"minute": max(48.0, timeline[-1]["minute"]), "label": "Final",
+                         "away_score": away_score, "home_score": home_score,
+                         "away_prob": 0.0 if home_won else 100.0, "home_prob": 100.0 if home_won else 0.0})
+    result = {
+        "game_id": game_id, "season_type": season_type, "state": state,
+        "status": st.get("type", {}).get("shortDetail", ""),
+        "away_team": away, "home_team": home, "away_score": away_score, "home_score": home_score,
+        "pregame_away_prob": round((1 - p_home) * 100, 1), "pregame_home_prob": round(p_home * 100, 1),
+        "away_prob": timeline[-1]["away_prob"], "home_prob": timeline[-1]["home_prob"],
+        "timeline": timeline,
+    }
+    ttl = _NBA_LIVE_FINAL_TTL if state == "post" else _NBA_LIVE_TTL
+    _nba_live_cache[game_id] = (_time_mod.time() + ttl, result)
+    return result
+
+
 def _nba_power_ratings(model, stats: pd.DataFrame) -> pd.Series:
     """Expected point margin vs an average team on a neutral floor, from the model.
 

@@ -5,10 +5,10 @@ import Link from "next/link";
 import { playerHref, teamHref } from "../../components/teamLinks";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip, LabelList,
+  ResponsiveContainer, Tooltip, LabelList, ReferenceLine,
 } from "recharts";
 
-const API = "https://nba-playoff-predictor-u8bj.onrender.com";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface TeamStats {
   off_rtg: number; def_rtg: number; net_rtg: number; pace: number;
@@ -20,6 +20,14 @@ interface CompareResult {
   team_a_stats: TeamStats; team_b_stats: TeamStats;
 }
 interface HistoryPoint  { game: string; team_a_prob: number; team_b_prob: number; series: string; }
+// /api/nba/game/{id}/live: our win probability through the game, after each basket
+interface LivePoint { minute: number; label: string; away_score: number; home_score: number; away_prob: number; home_prob: number; }
+interface LiveGame {
+  season_type: number; state: "pre" | "in" | "post"; status: string;
+  away_team: string; home_team: string; away_score: number; home_score: number;
+  pregame_away_prob: number; pregame_home_prob: number; away_prob: number; home_prob: number;
+  timeline: LivePoint[];
+}
 interface InjuryPlayer { id?: string | null; name: string; status: string; pts_per_game: number | null; }
 interface InjuryData   { factor: number; players: InjuryPlayer[]; }
 type InjuryReport = Record<string, InjuryData>;
@@ -85,8 +93,9 @@ function teamColorCandidates(t: string): string[] {
   return [TEAM_COLORS[a] ?? "#555", ...(TEAM_ALT_COLORS[a] ? [TEAM_ALT_COLORS[a]] : [])];
 }
 // Colors for the matchup on screen, set by the page so both teams are clearly distinct
-let matchupColors: Record<string, string> = {};
-function getColor(t: string) { return matchupColors[t] ?? TEAM_COLORS[getAbbr(t)] ?? "#555"; }
+/** The team's color in this matchup (picked so the two sides contrast), else its usual one. */
+type Colors = Record<string, string>;
+function getColor(t: string, colors: Colors) { return colors[t] ?? TEAM_COLORS[getAbbr(t)] ?? "#555"; }
 
 const TEAM_IDS: Record<string, number> = {
   ATL: 1610612737, BOS: 1610612738, BKN: 1610612751,
@@ -105,12 +114,12 @@ function getLogoUrl(t: string) {
   return id ? `https://cdn.nba.com/logos/nba/${id}/global/L/logo.svg` : "";
 }
 
-function TeamLogo({ team, size }: { team: string; size: string }) {
+function TeamLogo({ team, size, colors }: { team: string; size: string; colors: Colors }) {
   // Remember which URL failed, so a new team/player gets a fresh attempt
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
   if (!url || (failedSrc !== null && failedSrc === url)) {
-    return <div className={`${size} rounded-full flex-shrink-0`} style={{ background: getColor(team) }} />;
+    return <div className={`${size} rounded-full flex-shrink-0`} style={{ background: getColor(team, colors) }} />;
   }
   return (
     <img src={url} alt={team} className={`${size} object-contain flex-shrink-0`} onError={() => setFailedSrc(url)} />
@@ -134,18 +143,23 @@ export default function GamePage({
   params: Promise<{ game_id: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const { game_id } = use(params);
   const sp       = use(searchParams);
   const away     = (sp.away     as string) ?? "";
   const home     = (sp.home     as string) ?? "";
   const [awayColor, homeColor] = pickMatchupColors(teamColorCandidates(away), teamColorCandidates(home));
-  matchupColors = { [away]: awayColor, [home]: homeColor };
-  const time     = (sp.time     as string) ?? "";
-  const status   = (sp.status   as string) ?? "";
-  const winner   = (sp.winner   as string) ?? "";
-  const awayProb = parseFloat((sp.away_prob as string) ?? "50");
-  const homeProb = parseFloat((sp.home_prob as string) ?? "50");
-  const awayScore = sp.away_score ? parseInt(sp.away_score as string) : null;
-  const homeScore = sp.home_score ? parseInt(sp.home_score as string) : null;
+  const colors: Colors = { [away]: awayColor, [home]: homeColor };
+  // Score, clock and live probability from the API once it answers; the link's values until then
+  const [live, setLive] = useState<LiveGame | null>(null);
+  const started  = !!live && live.state !== "pre";
+  const inPlay   = live?.state === "in";
+  const time     = started ? live.status : (sp.time as string) ?? "";
+  const status   = live ? (live.state === "in" ? "Live" : live.state === "post" ? "Final" : "Scheduled") : (sp.status as string) ?? "";
+  const awayProb = inPlay ? live.away_prob : live ? live.pregame_away_prob : parseFloat((sp.away_prob as string) ?? "50");
+  const homeProb = inPlay ? live.home_prob : live ? live.pregame_home_prob : parseFloat((sp.home_prob as string) ?? "50");
+  const winner   = live ? (awayProb >= homeProb ? away : home) : (sp.winner as string) ?? "";
+  const awayScore = started ? live.away_score : sp.away_score ? parseInt(sp.away_score as string) : null;
+  const homeScore = started ? live.home_score : sp.home_score ? parseInt(sp.home_score as string) : null;
 
   const isLive    = status === "Live";
   const isFinal   = status === "Final";
@@ -156,12 +170,30 @@ export default function GamePage({
   const [compare,  setCompare]  = useState<CompareResult | null>(null);
   const [injuries, setInjuries] = useState<InjuryReport | null>(null);
   const [history,  setHistory]  = useState<HistoryPoint[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [loading,  setLoading]  = useState(() => !!away && !!home);
   const [fetchErr, setFetchErr] = useState(false);
   const retriedRef = useRef(false);
 
+  // Live win probability: refreshed every 30 s while the game is on
   useEffect(() => {
-    if (!away || !home) { setLoading(false); return; }
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () => {
+      fetch(`${API}/api/nba/game/${game_id}/live`)
+        .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then((d: LiveGame) => {
+          if (!active) return;
+          setLive(d);
+          if (d.state !== "post") timer = setTimeout(load, d.state === "in" ? 30_000 : 120_000);
+        })
+        .catch(() => { if (active) timer = setTimeout(load, 60_000); });
+    };
+    load();
+    return () => { active = false; clearTimeout(timer); };
+  }, [game_id]);
+
+  useEffect(() => {
+    if (!away || !home) return;
 
     const qa = `team_a=${encodeURIComponent(away)}&team_b=${encodeURIComponent(home)}`;
     retriedRef.current = false;
@@ -245,7 +277,7 @@ export default function GamePage({
 
           {/* Away */}
           <div className="group flex items-center">
-            <Link href={teamHref("nba", away)} title={`${away} team page`} className="flex-shrink-0 pr-2 md:pr-4 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" /></Link>
+            <Link href={teamHref("nba", away)} title={`${away} team page`} className="flex-shrink-0 pr-2 md:pr-4 origin-left transition-transform group-hover:scale-110"><TeamLogo team={away} size="w-10 h-10 md:w-14 md:h-14" colors={colors} /></Link>
             <div>
               <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", away)} className="inline-block transition-transform group-hover:scale-110">{lastName(away)}</Link></p>
               {showScore && awayScore !== null ? (
@@ -258,17 +290,22 @@ export default function GamePage({
 
           {/* Center */}
           <div className="flex flex-col items-center gap-1 px-2 md:px-8">
-            <p className="text-[9px] md:text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win Prob</p>
+            <p className="text-[9px] md:text-[10px] font-semibold text-gray-500 uppercase tracking-widest">{inPlay ? "Live win prob" : started ? "Pre-game win prob" : "Win Prob"}</p>
             <p className="text-lg md:text-2xl font-black tracking-tight whitespace-nowrap">
               <span style={{ color: winner === away ? "#16a34a" : "#6b7280" }}>{awayProb}%</span>
               <span className="text-gray-300 dark:text-gray-700 mx-1 md:mx-2">·</span>
               <span style={{ color: winner === home ? "#16a34a" : "#6b7280" }}>{homeProb}%</span>
             </p>
+            {inPlay && live && (
+              <p className="text-[10px] text-gray-400 whitespace-nowrap">
+                Pre-game {live.pregame_away_prob}% · {live.pregame_home_prob}%
+              </p>
+            )}
           </div>
 
           {/* Home */}
           <div className="group flex items-center flex-row-reverse">
-            <Link href={teamHref("nba", home)} title={`${home} team page`} className="flex-shrink-0 pl-2 md:pl-4 origin-right transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" /></Link>
+            <Link href={teamHref("nba", home)} title={`${home} team page`} className="flex-shrink-0 pl-2 md:pl-4 origin-right transition-transform group-hover:scale-110"><TeamLogo team={home} size="w-10 h-10 md:w-14 md:h-14" colors={colors} /></Link>
             <div className="text-right">
               <p className="text-gray-900 dark:text-white font-bold text-base md:text-xl leading-tight"><Link href={teamHref("nba", home)} className="inline-block transition-transform group-hover:scale-110">{lastName(home)}</Link></p>
               {showScore && homeScore !== null ? (
@@ -282,8 +319,8 @@ export default function GamePage({
 
         {/* Probability bar */}
         <div className="mx-4 md:mx-8 mb-5 h-[3px] flex rounded-full overflow-hidden">
-          <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away) }} />
-          <div className="h-full flex-1" style={{ background: getColor(home) }} />
+          <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away, colors) }} />
+          <div className="h-full flex-1" style={{ background: getColor(home, colors) }} />
         </div>
       </div>
 
@@ -304,8 +341,12 @@ export default function GamePage({
         <>
           {/* ── Win Prob chart + Injuries side by side ── */}
           <div className="grid grid-cols-1 md:grid-cols-[5fr_2fr] gap-3 items-start">
-            {history.length > 0 && (
-              <ProbChart data={history} awayTeam={away} homeTeam={home} />
+            {/* Regular season: how the game swung; playoffs: the series */}
+            {live && live.season_type !== 3 && live.timeline.length > 1 && (
+              <GameProbChart live={live} awayTeam={away} homeTeam={home} colors={colors} />
+            )}
+            {live?.season_type === 3 && history.length > 0 && (
+              <ProbChart data={history} awayTeam={away} homeTeam={home} colors={colors} />
             )}
             {injuries && (
               <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
@@ -366,11 +407,62 @@ export default function GamePage({
   );
 }
 
-function ProbChart({ data, awayTeam, homeTeam }: {
-  data: HistoryPoint[]; awayTeam: string; homeTeam: string;
+function GameProbChart({ live, awayTeam, homeTeam, colors }: { live: LiveGame; awayTeam: string; homeTeam: string; colors: Colors }) {
+  const ac = getColor(awayTeam, colors);
+  const hc = getColor(homeTeam, colors);
+  const end = Math.max(48, live.timeline[live.timeline.length - 1].minute);
+  const ticks = [0, 12, 24, 36, 48].concat(end > 48 ? [end] : []);
+  const tickLabel = (m: number) => (m === 0 ? "Q1" : m < 48 ? `Q${m / 12 + 1}` : m === 48 ? (end > 48 ? "OT" : "End") : "");
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-6 pt-5 pb-4">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Win probability · this game</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">From our pre-game prediction, updated after every basket</p>
+        </div>
+        <div className="flex gap-5">
+          <div className="text-right">
+            <p className="text-[10px] font-bold" style={{ color: ac }}>{getAbbr(awayTeam)}</p>
+            <p className="text-lg font-black leading-none" style={{ color: ac }}>{live.away_prob}%</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold" style={{ color: hc }}>{getAbbr(homeTeam)}</p>
+            <p className="text-lg font-black leading-none" style={{ color: hc }}>{live.home_prob}%</p>
+          </div>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={170}>
+        <LineChart data={live.timeline} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="2 5" stroke="var(--chart-grid)" vertical={false} />
+          <XAxis dataKey="minute" type="number" domain={[0, end]} ticks={ticks} tickFormatter={tickLabel}
+            tick={{ fill: "var(--chart-tick)", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fill: "var(--chart-tick)", fontSize: 10 }}
+            axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} width={40} />
+          <ReferenceLine y={50} stroke="var(--chart-grid)" />
+          <Tooltip
+            contentStyle={{ background: "var(--tooltip-bg)", border: "1px solid var(--tooltip-border)", borderRadius: 8, fontSize: 11, color: "var(--tooltip-text)" }}
+            labelStyle={{ color: "#6b7280", marginBottom: 4 }}
+            labelFormatter={(_, payload) => {
+              const p = payload?.[0]?.payload as LivePoint | undefined;
+              return p ? `${p.label} · ${getAbbr(awayTeam)} ${p.away_score}–${p.home_score} ${getAbbr(homeTeam)}` : "";
+            }}
+            formatter={(v: unknown, name: string | number | undefined) => [
+              `${v}%`, name?.toString() === "away_prob" ? getAbbr(awayTeam) : getAbbr(homeTeam),
+            ]}
+          />
+          <Line type="stepAfter" dataKey="away_prob" stroke={ac} strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line type="stepAfter" dataKey="home_prob" stroke={hc} strokeWidth={2} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function ProbChart({ data, awayTeam, homeTeam, colors }: {
+  data: HistoryPoint[]; awayTeam: string; homeTeam: string; colors: Colors;
 }) {
-  const ac   = getColor(awayTeam);
-  const hc   = getColor(homeTeam);
+  const ac   = getColor(awayTeam, colors);
+  const hc   = getColor(homeTeam, colors);
   const last = data[data.length - 1];
 
   // Approximate pixel y for each endpoint (chart height=150, topMargin=8, domain [0,100])
@@ -386,14 +478,14 @@ function ProbChart({ data, awayTeam, homeTeam }: {
     else           { aOff =  push; bOff = -push; }
   }
 
-  const EndDot = (color: string) => (props: { cx?: number; cy?: number; index?: number }) => {
+  const EndDot = (color: string) => function EndDot(props: { cx?: number; cy?: number; index?: number }) {
     const { cx = 0, cy = 0, index = 0 } = props;
     if (index !== data.length - 1) return <g />;
     return <circle cx={cx} cy={cy} r={5} fill={color} />;
   };
 
   const EndLabel = (team: string, color: string, yOff: number) =>
-    (props: { x?: number; y?: number; index?: number; value?: number }) => {
+    function EndLabel(props: { x?: number; y?: number; index?: number; value?: number }) {
       const { x = 0, y = 0, index = 0, value = 0 } = props;
       if (index !== data.length - 1) return null;
       const adjY = Math.max(16, Number(y) + yOff);  // keep the label inside the chart near 100 %
