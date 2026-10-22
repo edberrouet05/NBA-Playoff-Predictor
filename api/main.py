@@ -1144,12 +1144,15 @@ def get_predictions_log(n: int = 5):
         known = _load_nba_game_features()
         play_dates = _nba_season_play_dates() if any(g["game_id"] not in known for g in games) else {}
         p_away_of: dict[str, float] = {}
+        source_of: dict[str, str] = {}
         rows_a, rows_b, todo = [], [], []
         for g in games:
             frozen = _nba_known_pred(g["game_id"])
             if frozen and (frozen["away_team"], frozen["home_team"]) == (g["away_team"], g["home_team"]):
                 p_away_of[g["game_id"]] = frozen["away_win_prob"] / 100
+                source_of[g["game_id"]] = "frozen"
                 continue
+            source_of[g["game_id"]] = "pregame" if g["game_id"] in known else "current"
             a, b = _nba_game_rows(stats, g["away_team"], g["home_team"], g["date"], g["game_id"], play_dates)
             rows_a.append(a)
             rows_b.append(b)
@@ -1178,6 +1181,7 @@ def get_predictions_log(n: int = 5):
                 "home_win_prob":    round((1 - p_away) * 100, 1),
                 "round":            (ROUND_NAMES.get(g["round"], "Playoffs") if g["season_type"] == 3
                                      else "Play-In" if g["season_type"] == 5 else "Regular Season"),
+                "source":           source_of[g["game_id"]],
             })
 
         if log:
@@ -1188,14 +1192,23 @@ def get_predictions_log(n: int = 5):
         return {"log": []}
 
 
-@app.get("/api/nba/performance")
-def get_nba_performance():
-    """How our pre-game picks did this season: accuracy, log loss / Brier, by confidence, a
+def _sport_season_label(sport: str) -> str:
+    if sport == "nba":
+        year = _nba_season_year()
+        return f"{year - 1}-{str(year)[-2:]}"
+    return str(NFL_CURRENT_SEASON if sport == "nfl" else 2026)
+
+
+def _performance_payload(sport: str, log: list[dict]) -> dict:
+    """How a sport's pre-game picks did this season: accuracy, log loss / Brier, by confidence, a
     calibration curve, accuracy day by day, and — on games with a stored pre-game line — the
-    bookmakers' no-vig probabilities scored the same way, plus our value bets' record."""
-    import math
-    log = get_predictions_log(n=100_000)["log"]
-    games = sorted(log, key=lambda g: (g["date"], str(g["game_id"])))
+    bookmakers' no-vig probabilities scored the same way, plus our value bets' record.
+
+    Only fair picks count: frozen before the game, or the model on the pipeline's pre-game rows.
+    A pick recomputed with today's team ratings (source "current") would know the result."""
+    import datetime, json as _json, math
+    fair = [g for g in log if g.get("source", "pregame") != "current"]
+    games = sorted(fair, key=lambda g: (g["date"], str(g["game_id"])))
     n = len(games)
 
     def scores(rows: list[tuple[float, int]]) -> dict:
@@ -1210,12 +1223,10 @@ def get_nba_performance():
         }
 
     rows = [(g["away_win_prob"] / 100, int(g["actual_winner"] == g["away_team"])) for g in games]
-    frozen = sum(1 for g in games if _nba_known_pred(g["game_id"]))
 
     # By confidence of the pick
-    buckets = [(50, 55), (55, 60), (60, 65), (65, 70), (70, 80), (80, 101)]
     by_conf = []
-    for lo, hi in buckets:
+    for lo, hi in [(50, 55), (55, 60), (60, 65), (65, 70), (70, 80), (80, 101)]:
         sub = [g for g in games if lo <= g["predicted_prob"] < hi]
         if sub:
             by_conf.append({"lo": lo, "hi": min(hi, 100), "n": len(sub),
@@ -1243,11 +1254,23 @@ def get_nba_performance():
         by_day.append({"date": date, "games": len(day), "correct": sum(g["correct"] for g in day),
                        "cum_accuracy": round(correct / total, 4)})
 
-    # Bookmakers, on games with a stored pre-game line
+    # Bookmakers, on games with a stored pre-game line (keyed by the Eastern date; a night game
+    # can carry the next UTC date, so the day before is tried too)
+    def line_for(g: dict) -> dict | None:
+        for back in (0, 1):
+            try:
+                day = (datetime.date.fromisoformat(g["date"]) - datetime.timedelta(days=back)).isoformat()
+            except ValueError:
+                return None
+            line = _pregame_odds.get(_pregame_odds_key(g["away_team"], g["home_team"], day))
+            if line and line.get("away_odds") and line.get("home_odds"):
+                return line
+        return None
+
     market_rows, model_rows, bets = [], [], []
     for g, (p, y) in zip(games, rows):
-        line = _pregame_odds.get(_pregame_odds_key(g["away_team"], g["home_team"], g["date"]))
-        if not line or not line.get("away_odds") or not line.get("home_odds"):
+        line = line_for(g)
+        if not line:
             continue
         ia, ih = 1 / line["away_odds"], 1 / line["home_odds"]
         market_rows.append((ia / (ia + ih), y))
@@ -1264,10 +1287,33 @@ def get_nba_performance():
                                  "units": round(sum(bets), 2),
                                  "roi": round(sum(bets) / len(bets), 4) if bets else None}}
 
-    year = _nba_season_year()
-    return {"season": f"{year - 1}-{str(year)[-2:]}", "n_games": n, "frozen": frozen,
+    # What testing promised: leave-one-season-out accuracy of the served model
+    try:
+        metrics = _json.loads((ROOT / "models" / f"{sport}_metrics.json").read_text(encoding="utf-8"))
+        expected = round(metrics["logistic_regression"]["accuracy"] * 100, 2)
+    except Exception:
+        expected = None
+
+    return {"sport": sport, "season": _sport_season_label(sport), "n_games": n,
+            "frozen": sum(1 for g in games if g.get("source") == "frozen") if sport != "mlb" else None,
+            "excluded": len(log) - n, "expected_accuracy": expected,
             "correct": sum(g["correct"] for g in games), **scores(rows),
             "by_confidence": by_conf, "calibration": calibration, "by_day": by_day, "market": market}
+
+
+@app.get("/api/nba/performance")
+def get_nba_performance():
+    return _performance_payload("nba", get_predictions_log(n=100_000)["log"])
+
+
+@app.get("/api/nfl/performance")
+def get_nfl_performance():
+    return _performance_payload("nfl", get_nfl_predictions_log(n=100_000)["log"])
+
+
+@app.get("/api/mlb/performance")
+def get_mlb_performance():
+    return _performance_payload("mlb", get_mlb_predictions_log(n=100_000)["log"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2299,6 +2345,21 @@ MLB_MODEL_PATH = ROOT / "models" / "mlb_logistic_regression.pkl"
 MLB_STATS_PATH = ROOT / "data" / "mlb" / "mlb_stats_current.csv"
 
 MLB_PITCHER_RATINGS_PATH = ROOT / "data" / "mlb" / "mlb_pitcher_ratings.csv"
+# Pre-game rows of this season's played games (mlb/pipeline.py), keyed by gamePk
+MLB_GAME_FEATURES_PATH = ROOT / "data" / "mlb" / "mlb_game_features_current.csv"
+_mlb_game_features_cache: dict[str, dict[str, dict]] | None = None
+
+
+def _load_mlb_game_features() -> dict[str, dict[str, dict]]:
+    """{gamePk: {team name: model row}} — the state of both teams before each played game."""
+    global _mlb_game_features_cache
+    if _mlb_game_features_cache is None:
+        out: dict[str, dict[str, dict]] = {}
+        if MLB_GAME_FEATURES_PATH.exists():
+            for r in pd.read_csv(MLB_GAME_FEATURES_PATH).to_dict("records"):
+                out.setdefault(str(r["game_pk"]), {})[r["team_name"]] = r
+        _mlb_game_features_cache = out
+    return _mlb_game_features_cache
 MLB_SP_UNKNOWN = 4.40  # FIP for a starter with no history (matches mlb/pipeline.py SP_UNKNOWN)
 # Regular season + postseason (F wild card, D division series, L LCS, W World Series)
 MLB_GAME_TYPES = "R,F,D,L,W"
@@ -2689,11 +2750,23 @@ def get_mlb_predictions_log(n: int = 500):
                 game_id = g.get("gamePk")
                 gid_str = str(game_id)
                 cached  = _mlb_game_pred_cache.get(gid_str)
+                known   = _load_mlb_game_features().get(gid_str, {})
                 if cached:
                     away_win_prob    = cached["away_win_prob"]
                     home_win_prob    = cached["home_win_prob"]
                     predicted_winner = cached["predicted_winner"]
+                    source           = "pregame"   # served before the game by this server
+                elif away_name in known and home_name in known:
+                    # The pipeline's pre-game rows (actual starters, state before the game)
+                    X = pd.DataFrame([known[away_name], known[home_name]])[MLB_FEATURES]
+                    p_a, p_h = (float(v) for v in model.predict_proba(X)[:, 1])
+                    p_away           = p_a / (p_a + p_h)
+                    away_win_prob    = round(p_away * 100, 1)
+                    home_win_prob    = round((1 - p_away) * 100, 1)
+                    predicted_winner = away_name if p_away >= 0.5 else home_name
+                    source           = "pregame"
                 else:
+                    source = "current"   # recomputed with today's ratings: not a fair pre-game pick
                     away_sp_id  = away_info.get("probablePitcher", {}).get("id")
                     home_sp_id  = home_info.get("probablePitcher", {}).get("id")
                     away_sp_era = starter_eras.get(away_sp_id) if away_sp_id else None
@@ -2725,6 +2798,7 @@ def get_mlb_predictions_log(n: int = 500):
                     "home_score":       home_score,
                     "away_win_prob":    away_win_prob,
                     "home_win_prob":    home_win_prob,
+                    "source":           source,
                 })
 
         result = {"log": log}
@@ -3659,6 +3733,9 @@ def get_nfl_predictions_log(n: int = 500):
                     if pred is None:
                         continue
                     away_win_prob, home_win_prob, predicted_winner = pred
+                # frozen before kickoff / pipeline's pre-game rows / today's team state
+                source = ("frozen" if gid_str in _nfl_frozen_preds
+                          else "pregame" if cached or gid_str in _load_nfl_game_features() else "current")
 
                 predicted_prob = away_win_prob if predicted_winner == away_name else home_win_prob
                 actual_winner  = away_name if away_score > home_score else home_name
@@ -3677,6 +3754,7 @@ def get_nfl_predictions_log(n: int = 500):
                     "home_score":       home_score,
                     "away_win_prob":    away_win_prob,
                     "home_win_prob":    home_win_prob,
+                    "source":           source,
                 })
 
         log.reverse()  # most recent first

@@ -5,6 +5,7 @@ Walks every regular-season game since 2019 in date order, recording each team's
 state BEFORE the game, and outputs:
   data/mlb/mlb_stats_current.csv       — live team table (season stats + model state)
   data/mlb/mlb_pitcher_ratings.csv     — current FIP rating for every starter (API lookups)
+  data/mlb/mlb_game_features_current.csv — pre-game rows of this season's played games
   data/processed/mlb_training_data.csv — labelled rows for model training
 
 Features (one row per team per game, mirrored for the opponent):
@@ -354,7 +355,9 @@ def build_features(all_teams: dict[int, str]) -> tuple[pd.DataFrame, dict[int, T
                              "bp_era": st.bullpen_era(), "bp_ip3": st.bullpen_ip_before(g["date"])}
 
             home_won = g["home_score"] > g["away_score"]
-            if season in TRAIN_SEASONS and g["home_score"] != g["away_score"]:
+            # Training seasons, plus this season's played games: their pre-game rows let the API
+            # score this season's predictions without using later data
+            if (season in TRAIN_SEASONS or season == CURRENT_SEASON) and g["home_score"] != g["away_score"]:
                 for tid, oid, is_home in ((hid, aid, 1), (aid, hid, 0)):
                     t, o = side[tid], side[oid]
                     rows.append({
@@ -582,9 +585,13 @@ if __name__ == "__main__":
     all_teams = get_all_teams()
     _progress(f"\nActive MLB teams : {len(all_teams)}")
 
-    train_df, state, sps = build_features(all_teams)
+    rows_df, state, sps = build_features(all_teams)
+    train_df = rows_df[rows_df["season"].isin(TRAIN_SEASONS)]
     out = PROCESSED / "mlb_training_data.csv"
     train_df.to_csv(out, index=False)
+    cur_df = rows_df[rows_df["season"] == CURRENT_SEASON]
+    cur_df.to_csv(MLB_DIR / "mlb_game_features_current.csv", index=False)
+    _progress(f"  Saved: mlb_game_features_current.csv  ({len(cur_df) // 2} played games, pre-game values)")
 
     pr = pd.DataFrame([
         {"pitcher_id": pid, "name": sps.name.get(pid, ""), "sp_fip": round(sps.fip(pid), 3),

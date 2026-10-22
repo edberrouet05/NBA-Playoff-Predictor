@@ -150,6 +150,12 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       isActive: (p) => p === "/mlb/standings",
     },
     {
+      href: "/mlb/performance",
+      Icon: IconTarget,
+      label: "Record",
+      isActive: (p) => p === "/mlb/performance",
+    },
+    {
       href: "/mlb/stats",
       Icon: IconStats,
       label: "Stats",
@@ -174,6 +180,12 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       Icon: IconPower,
       label: "Power",
       isActive: (p) => p === "/nfl/power",
+    },
+    {
+      href: "/nfl/performance",
+      Icon: IconTarget,
+      label: "Record",
+      isActive: (p) => p === "/nfl/performance",
     },
     {
       href: "/nfl/stats",
