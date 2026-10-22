@@ -540,7 +540,7 @@ function WhyPanel({ factors, awayTeam, homeTeam, colors }: { factors: Factor[]; 
   if (!shown.length) return null;
   const maxAbs = Math.max(...shown.map(f => Math.abs(f.impact)));
   return (
-    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1">Why the model leans this way</p>
       <p className="text-xs text-gray-400 mb-4">Each bar is that factor&apos;s share of the pre-game edge. Values are from each team&apos;s side.</p>
       <div className="flex justify-between text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-2">
@@ -591,7 +591,7 @@ function BoxScore({ live, awayTeam, homeTeam, colors }: { live: LiveGame; awayTe
   const players = side === "away" ? live.away_players : live.home_players;
   const firstBench = players.findIndex(p => !p.starter);
   return (
-    <div className="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
       <div className="flex items-center justify-between mb-3 gap-3">
         <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Players · this game</p>
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
