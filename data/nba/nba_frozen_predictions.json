@@ -223,5 +223,77 @@
   "home_win_prob": 26.6,
   "predicted_winner": "Portland Trail Blazers",
   "tipoff": "2026-10-24T02:00Z"
+ },
+ "401909853": {
+  "away_team": "Miami Heat",
+  "away_win_prob": 35.3,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Charlotte Hornets",
+  "home_win_prob": 64.7,
+  "predicted_winner": "Charlotte Hornets",
+  "tipoff": "2026-10-24T22:00Z"
+ },
+ "401909854": {
+  "away_team": "Brooklyn Nets",
+  "away_win_prob": 14.6,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Cleveland Cavaliers",
+  "home_win_prob": 85.4,
+  "predicted_winner": "Cleveland Cavaliers",
+  "tipoff": "2026-10-24T23:30Z"
+ },
+ "401909855": {
+  "away_team": "Milwaukee Bucks",
+  "away_win_prob": 17.5,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Philadelphia 76ers",
+  "home_win_prob": 82.5,
+  "predicted_winner": "Philadelphia 76ers",
+  "tipoff": "2026-10-24T23:30Z"
+ },
+ "401909856": {
+  "away_team": "Houston Rockets",
+  "away_win_prob": 47.3,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Atlanta Hawks",
+  "home_win_prob": 52.7,
+  "predicted_winner": "Atlanta Hawks",
+  "tipoff": "2026-10-25T00:30Z"
+ },
+ "401909857": {
+  "away_team": "Washington Wizards",
+  "away_win_prob": 36.8,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Chicago Bulls",
+  "home_win_prob": 63.2,
+  "predicted_winner": "Chicago Bulls",
+  "tipoff": "2026-10-25T00:00Z"
+ },
+ "401909858": {
+  "away_team": "San Antonio Spurs",
+  "away_win_prob": 80.9,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Dallas Mavericks",
+  "home_win_prob": 19.1,
+  "predicted_winner": "San Antonio Spurs",
+  "tipoff": "2026-10-25T00:00Z"
+ },
+ "401909859": {
+  "away_team": "New Orleans Pelicans",
+  "away_win_prob": 21.8,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Denver Nuggets",
+  "home_win_prob": 78.2,
+  "predicted_winner": "Denver Nuggets",
+  "tipoff": "2026-10-25T01:00Z"
+ },
+ "401909860": {
+  "away_team": "Golden State Warriors",
+  "away_win_prob": 26.7,
+  "frozen_at": "2026-10-24T06:19:45Z",
+  "home_team": "Phoenix Suns",
+  "home_win_prob": 73.3,
+  "predicted_winner": "Phoenix Suns",
+  "tipoff": "2026-10-25T02:00Z"
  }
 }
