@@ -966,10 +966,10 @@
  },
  "401873019": {
   "away_team": "Denver Broncos",
-  "away_win_prob": 71.5,
-  "frozen_at": "2026-10-25T16:50:47Z",
+  "away_win_prob": 71.9,
+  "frozen_at": "2026-10-25T19:01:36Z",
   "home_team": "Arizona Cardinals",
-  "home_win_prob": 28.5,
+  "home_win_prob": 28.1,
   "kickoff": "2026-10-25T20:05Z",
   "predicted_winner": "Denver Broncos"
  },
