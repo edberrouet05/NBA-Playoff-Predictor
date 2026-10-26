@@ -352,10 +352,10 @@
  },
  "401909867": {
   "away_team": "Memphis Grizzlies",
-  "away_win_prob": 51.1,
-  "frozen_at": "2026-10-25T06:38:25Z",
+  "away_win_prob": 54.0,
+  "frozen_at": "2026-10-26T00:32:19Z",
   "home_team": "Sacramento Kings",
-  "home_win_prob": 48.9,
+  "home_win_prob": 46.0,
   "predicted_winner": "Memphis Grizzlies",
   "tipoff": "2026-10-26T01:00Z"
  }
