@@ -475,5 +475,113 @@
   "home_win_prob": 62.6,
   "predicted_winner": "Los Angeles Lakers",
   "tipoff": "2026-10-28T03:00Z"
+ },
+ "401909881": {
+  "away_team": "Miami Heat",
+  "away_win_prob": 32.5,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Atlanta Hawks",
+  "home_win_prob": 67.5,
+  "predicted_winner": "Atlanta Hawks",
+  "tipoff": "2026-10-28T23:00Z"
+ },
+ "401909882": {
+  "away_team": "Washington Wizards",
+  "away_win_prob": 16.7,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Cleveland Cavaliers",
+  "home_win_prob": 83.3,
+  "predicted_winner": "Cleveland Cavaliers",
+  "tipoff": "2026-10-28T23:00Z"
+ },
+ "401909883": {
+  "away_team": "Charlotte Hornets",
+  "away_win_prob": 33.5,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Detroit Pistons",
+  "home_win_prob": 66.5,
+  "predicted_winner": "Detroit Pistons",
+  "tipoff": "2026-10-28T23:00Z"
+ },
+ "401909884": {
+  "away_team": "Philadelphia 76ers",
+  "away_win_prob": 68.8,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Indiana Pacers",
+  "home_win_prob": 31.2,
+  "predicted_winner": "Philadelphia 76ers",
+  "tipoff": "2026-10-28T23:00Z"
+ },
+ "401909885": {
+  "away_team": "Orlando Magic",
+  "away_win_prob": 31.4,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Toronto Raptors",
+  "home_win_prob": 68.6,
+  "predicted_winner": "Toronto Raptors",
+  "tipoff": "2026-10-28T23:30Z"
+ },
+ "401909886": {
+  "away_team": "New York Knicks",
+  "away_win_prob": 71.7,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Chicago Bulls",
+  "home_win_prob": 28.3,
+  "predicted_winner": "New York Knicks",
+  "tipoff": "2026-10-29T00:00Z"
+ },
+ "401909887": {
+  "away_team": "Houston Rockets",
+  "away_win_prob": 67.5,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Milwaukee Bucks",
+  "home_win_prob": 32.5,
+  "predicted_winner": "Houston Rockets",
+  "tipoff": "2026-10-29T00:00Z"
+ },
+ "401909888": {
+  "away_team": "Golden State Warriors",
+  "away_win_prob": 25.9,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Minnesota Timberwolves",
+  "home_win_prob": 74.1,
+  "predicted_winner": "Minnesota Timberwolves",
+  "tipoff": "2026-10-29T00:00Z"
+ },
+ "401909889": {
+  "away_team": "Denver Nuggets",
+  "away_win_prob": 57.7,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "New Orleans Pelicans",
+  "home_win_prob": 42.3,
+  "predicted_winner": "Denver Nuggets",
+  "tipoff": "2026-10-29T00:00Z"
+ },
+ "401909890": {
+  "away_team": "San Antonio Spurs",
+  "away_win_prob": 75.8,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Utah Jazz",
+  "home_win_prob": 24.2,
+  "predicted_winner": "San Antonio Spurs",
+  "tipoff": "2026-10-29T01:00Z"
+ },
+ "401909891": {
+  "away_team": "Oklahoma City Thunder",
+  "away_win_prob": 68.2,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "Dallas Mavericks",
+  "home_win_prob": 31.8,
+  "predicted_winner": "Oklahoma City Thunder",
+  "tipoff": "2026-10-29T01:30Z"
+ },
+ "401909892": {
+  "away_team": "Los Angeles Lakers",
+  "away_win_prob": 58.2,
+  "frozen_at": "2026-10-28T07:15:08Z",
+  "home_team": "LA Clippers",
+  "home_win_prob": 41.8,
+  "predicted_winner": "Los Angeles Lakers",
+  "tipoff": "2026-10-29T02:30Z"
  }
 }
