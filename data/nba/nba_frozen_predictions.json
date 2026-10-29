@@ -577,11 +577,11 @@
  },
  "401909892": {
   "away_team": "Los Angeles Lakers",
-  "away_win_prob": 58.2,
-  "frozen_at": "2026-10-28T07:15:08Z",
+  "away_win_prob": 47.1,
+  "frozen_at": "2026-10-29T01:54:30Z",
   "home_team": "LA Clippers",
-  "home_win_prob": 41.8,
-  "predicted_winner": "Los Angeles Lakers",
+  "home_win_prob": 52.9,
+  "predicted_winner": "LA Clippers",
   "tipoff": "2026-10-29T02:30Z"
  }
 }
