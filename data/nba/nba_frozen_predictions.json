@@ -583,5 +583,32 @@
   "home_win_prob": 52.9,
   "predicted_winner": "LA Clippers",
   "tipoff": "2026-10-29T02:30Z"
+ },
+ "401909893": {
+  "away_team": "Cleveland Cavaliers",
+  "away_win_prob": 44.7,
+  "frozen_at": "2026-10-29T07:34:51Z",
+  "home_team": "Atlanta Hawks",
+  "home_win_prob": 55.3,
+  "predicted_winner": "Atlanta Hawks",
+  "tipoff": "2026-10-30T00:00Z"
+ },
+ "401909894": {
+  "away_team": "Sacramento Kings",
+  "away_win_prob": 25.3,
+  "frozen_at": "2026-10-29T07:34:51Z",
+  "home_team": "New Orleans Pelicans",
+  "home_win_prob": 74.7,
+  "predicted_winner": "New Orleans Pelicans",
+  "tipoff": "2026-10-30T00:00Z"
+ },
+ "401909895": {
+  "away_team": "Memphis Grizzlies",
+  "away_win_prob": 23.8,
+  "frozen_at": "2026-10-29T07:34:51Z",
+  "home_team": "Portland Trail Blazers",
+  "home_win_prob": 76.2,
+  "predicted_winner": "Portland Trail Blazers",
+  "tipoff": "2026-10-30T02:00Z"
  }
 }
