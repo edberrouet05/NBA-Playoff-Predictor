@@ -999,5 +999,122 @@
   "home_win_prob": 46.0,
   "kickoff": "2026-10-26T00:20Z",
   "predicted_winner": "Kansas City Chiefs"
+ },
+ "401873024": {
+  "away_team": "Arizona Cardinals",
+  "away_win_prob": 25.8,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Dallas Cowboys",
+  "home_win_prob": 74.2,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Dallas Cowboys"
+ },
+ "401873025": {
+  "away_team": "Atlanta Falcons",
+  "away_win_prob": 40.8,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Tampa Bay Buccaneers",
+  "home_win_prob": 59.2,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Tampa Bay Buccaneers"
+ },
+ "401873026": {
+  "away_team": "Baltimore Ravens",
+  "away_win_prob": 19.3,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Buffalo Bills",
+  "home_win_prob": 80.7,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Buffalo Bills"
+ },
+ "401873027": {
+  "away_team": "Cleveland Browns",
+  "away_win_prob": 34.9,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Pittsburgh Steelers",
+  "home_win_prob": 65.1,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Pittsburgh Steelers"
+ },
+ "401873028": {
+  "away_team": "Indianapolis Colts",
+  "away_win_prob": 20.5,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Jacksonville Jaguars",
+  "home_win_prob": 79.5,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Jacksonville Jaguars"
+ },
+ "401873029": {
+  "away_team": "Las Vegas Raiders",
+  "away_win_prob": 52.9,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "New York Jets",
+  "home_win_prob": 47.1,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Las Vegas Raiders"
+ },
+ "401873030": {
+  "away_team": "Minnesota Vikings",
+  "away_win_prob": 45.7,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Detroit Lions",
+  "home_win_prob": 54.3,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Detroit Lions"
+ },
+ "401873031": {
+  "away_team": "Tennessee Titans",
+  "away_win_prob": 13.4,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Cincinnati Bengals",
+  "home_win_prob": 86.6,
+  "kickoff": "2026-11-01T18:00Z",
+  "predicted_winner": "Cincinnati Bengals"
+ },
+ "401873032": {
+  "away_team": "Los Angeles Chargers",
+  "away_win_prob": 28.7,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Los Angeles Rams",
+  "home_win_prob": 71.3,
+  "kickoff": "2026-11-01T21:05Z",
+  "predicted_winner": "Los Angeles Rams"
+ },
+ "401873033": {
+  "away_team": "Kansas City Chiefs",
+  "away_win_prob": 48.0,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Denver Broncos",
+  "home_win_prob": 52.0,
+  "kickoff": "2026-11-01T21:25Z",
+  "predicted_winner": "Denver Broncos"
+ },
+ "401873034": {
+  "away_team": "New England Patriots",
+  "away_win_prob": 72.7,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Miami Dolphins",
+  "home_win_prob": 27.3,
+  "kickoff": "2026-11-01T21:25Z",
+  "predicted_winner": "New England Patriots"
+ },
+ "401873035": {
+  "away_team": "Philadelphia Eagles",
+  "away_win_prob": 39.7,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Washington Commanders",
+  "home_win_prob": 60.3,
+  "kickoff": "2026-11-02T01:20Z",
+  "predicted_winner": "Washington Commanders"
+ },
+ "401873036": {
+  "away_team": "Chicago Bears",
+  "away_win_prob": 41.0,
+  "frozen_at": "2026-10-30T02:44:55Z",
+  "home_team": "Seattle Seahawks",
+  "home_win_prob": 59.0,
+  "kickoff": "2026-11-03T01:15Z",
+  "predicted_winner": "Seattle Seahawks"
  }
 }
