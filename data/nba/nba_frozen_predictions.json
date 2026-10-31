@@ -136,10 +136,10 @@
  },
  "401909286": {
   "away_team": "Denver Nuggets",
-  "away_win_prob": 58.4,
-  "frozen_at": "2026-10-30T07:39:12Z",
+  "away_win_prob": 60.1,
+  "frozen_at": "2026-10-31T01:43:45Z",
   "home_team": "Phoenix Suns",
-  "home_win_prob": 41.6,
+  "home_win_prob": 39.9,
   "predicted_winner": "Denver Nuggets",
   "tipoff": "2026-10-31T02:00Z"
  },
