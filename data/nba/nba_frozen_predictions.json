@@ -766,10 +766,10 @@
  },
  "401909903": {
   "away_team": "Boston Celtics",
-  "away_win_prob": 64.1,
-  "frozen_at": "2026-11-01T07:59:06Z",
+  "away_win_prob": 62.7,
+  "frozen_at": "2026-11-01T15:27:40Z",
   "home_team": "Orlando Magic",
-  "home_win_prob": 35.9,
+  "home_win_prob": 37.3,
   "predicted_winner": "Boston Celtics",
   "tipoff": "2026-11-01T20:30Z"
  },
