@@ -1074,28 +1074,28 @@
  },
  "401873032": {
   "away_team": "Los Angeles Chargers",
-  "away_win_prob": 29.4,
-  "frozen_at": "2026-11-01T15:27:43Z",
+  "away_win_prob": 28.5,
+  "frozen_at": "2026-11-01T20:28:54Z",
   "home_team": "Los Angeles Rams",
-  "home_win_prob": 70.6,
+  "home_win_prob": 71.5,
   "kickoff": "2026-11-01T21:05Z",
   "predicted_winner": "Los Angeles Rams"
  },
  "401873033": {
   "away_team": "Kansas City Chiefs",
-  "away_win_prob": 48.1,
-  "frozen_at": "2026-11-01T15:27:43Z",
+  "away_win_prob": 45.8,
+  "frozen_at": "2026-11-01T20:28:54Z",
   "home_team": "Denver Broncos",
-  "home_win_prob": 51.9,
+  "home_win_prob": 54.2,
   "kickoff": "2026-11-01T21:25Z",
   "predicted_winner": "Denver Broncos"
  },
  "401873034": {
   "away_team": "New England Patriots",
-  "away_win_prob": 71.3,
-  "frozen_at": "2026-11-01T15:27:43Z",
+  "away_win_prob": 72.1,
+  "frozen_at": "2026-11-01T20:28:54Z",
   "home_team": "Miami Dolphins",
-  "home_win_prob": 28.7,
+  "home_win_prob": 27.9,
   "kickoff": "2026-11-01T21:25Z",
   "predicted_winner": "New England Patriots"
  },
