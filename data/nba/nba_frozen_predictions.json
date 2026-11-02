@@ -793,10 +793,10 @@
  },
  "401909906": {
   "away_team": "Toronto Raptors",
-  "away_win_prob": 41.1,
-  "frozen_at": "2026-11-01T07:59:06Z",
+  "away_win_prob": 42.6,
+  "frozen_at": "2026-11-02T01:41:45Z",
   "home_team": "Los Angeles Lakers",
-  "home_win_prob": 58.9,
+  "home_win_prob": 57.4,
   "predicted_winner": "Los Angeles Lakers",
   "tipoff": "2026-11-02T02:00Z"
  }
