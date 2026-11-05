@@ -10,9 +10,9 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "arizona cardinals|seattle seahawks|2026-11-08": {
-  "away_odds": 5.5,
-  "home_odds": 1.12,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 4.1,
+  "home_odds": 1.25,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "atlanta falcons|tampa bay buccaneers|2026-11-01": {
   "away_odds": 2.16,
@@ -55,9 +55,19 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "buffalo bills|minnesota vikings|2026-11-09": {
-  "away_odds": 1.68,
-  "home_odds": 2.1,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.57,
+  "home_odds": 2.51,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "buffalo bills|new york jets|2026-11-15": {
+  "away_odds": 1.22,
+  "home_odds": 4.3,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "carolina panthers|new orleans saints|2026-11-15": {
+  "away_odds": 1.75,
+  "home_odds": 1.9,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "chicago bears|atlanta falcons|2026-10-18": {
   "away_odds": 1.82,
@@ -75,9 +85,9 @@
   "saved_at": "2026-11-01T15:27:38Z"
  },
  "cincinnati bengals|atlanta falcons|2026-11-08": {
-  "away_odds": 1.57,
-  "home_odds": 2.4,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.58,
+  "home_odds": 2.48,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "cincinnati bengals|miami dolphins|2026-10-11": {
   "away_odds": 1.27,
@@ -85,9 +95,9 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "cleveland browns|new orleans saints|2026-11-08": {
-  "away_odds": 2.15,
-  "home_odds": 1.7,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 2.4,
+  "home_odds": 1.62,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "cleveland browns|new york jets|2026-10-11": {
   "away_odds": 2.24,
@@ -105,14 +115,19 @@
   "saved_at": "2026-10-11T14:40:27Z"
  },
  "dallas cowboys|indianapolis colts|2026-11-08": {
-  "away_odds": 1.44,
-  "home_odds": 2.75,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.41,
+  "home_odds": 3.03,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "dallas mavericks|san antonio spurs|2026-11-04": {
+  "away_odds": 5.73,
+  "home_odds": 1.17,
+  "saved_at": "2026-11-05T02:32:02Z"
  },
  "denver broncos|carolina panthers|2026-11-08": {
-  "away_odds": 1.7,
-  "home_odds": 2.15,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.68,
+  "home_odds": 2.26,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "denver broncos|los angeles chargers|2026-10-11": {
   "away_odds": 1.54,
@@ -120,9 +135,9 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "denver nuggets|golden state warriors|2026-12-25": {
-  "away_odds": 1.73,
-  "home_odds": 2.1,
-  "saved_at": "2026-11-01T15:27:39Z"
+  "away_odds": 1.75,
+  "home_odds": 2.05,
+  "saved_at": "2026-11-05T02:32:02Z"
  },
  "detroit lions|arizona cardinals|2026-10-11": {
   "away_odds": 1.41,
@@ -130,19 +145,24 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "detroit lions|miami dolphins|2026-11-08": {
-  "away_odds": 1.25,
-  "home_odds": 4.0,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.32,
+  "home_odds": 3.51,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "green bay packers|new england patriots|2026-11-08": {
-  "away_odds": 2.1,
-  "home_odds": 1.56,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 2.46,
+  "home_odds": 1.59,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "houston texans|cleveland browns|2026-11-15": {
+  "away_odds": 1.45,
+  "home_odds": 2.5,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "houston texans|los angeles chargers|2026-11-08": {
-  "away_odds": 1.5,
-  "home_odds": 2.5,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.42,
+  "home_odds": 2.98,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "houston texans|tennessee titans|2026-10-11": {
   "away_odds": 1.31,
@@ -160,9 +180,19 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "jacksonville jaguars|baltimore ravens|2026-11-05": {
-  "away_odds": 2.2,
-  "home_odds": 1.67,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.2,
+  "home_odds": 4.85,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "jacksonville jaguars|tennessee titans|2026-11-15": {
+  "away_odds": 1.17,
+  "home_odds": 4.1,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "kansas city chiefs|atlanta falcons|2026-11-15": {
+  "away_odds": 1.55,
+  "home_odds": 2.45,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "kansas city chiefs|denver broncos|2026-11-01": {
   "away_odds": 1.93,
@@ -180,9 +210,14 @@
   "saved_at": "2026-11-01T15:27:38Z"
  },
  "las vegas raiders|san francisco 49ers|2026-11-08": {
-  "away_odds": 4.75,
-  "home_odds": 1.16,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 4.52,
+  "home_odds": 1.22,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "los angeles chargers|baltimore ravens|2026-11-16": {
+  "away_odds": 1.9,
+  "home_odds": 1.75,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "los angeles chargers|kansas city chiefs|2026-10-18": {
   "away_odds": 4.1,
@@ -204,25 +239,55 @@
   "home_odds": 1.92,
   "saved_at": "2026-10-11T14:40:27Z"
  },
+ "los angeles lakers|sacramento kings|2026-11-04": {
+  "away_odds": 1.17,
+  "home_odds": 5.64,
+  "saved_at": "2026-11-05T02:32:02Z"
+ },
+ "los angeles rams|arizona cardinals|2026-11-15": {
+  "away_odds": 1.24,
+  "home_odds": 3.5,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
  "los angeles rams|washington commanders|2026-11-08": {
-  "away_odds": 1.4,
-  "home_odds": 2.9,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.43,
+  "home_odds": 2.93,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "miami dolphins|indianapolis colts|2026-11-15": {
+  "away_odds": 1.95,
+  "home_odds": 1.72,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "miami heat|boston celtics|2026-12-25": {
-  "away_odds": 2.6,
-  "home_odds": 1.5,
-  "saved_at": "2026-11-01T15:27:39Z"
+  "away_odds": 2.45,
+  "home_odds": 1.53,
+  "saved_at": "2026-11-05T02:32:02Z"
+ },
+ "miami heat|los angeles clippers|2026-11-04": {
+  "away_odds": 1.48,
+  "home_odds": 2.86,
+  "saved_at": "2026-11-05T02:32:02Z"
  },
  "minnesota vikings|detroit lions|2026-11-01": {
   "away_odds": 2.63,
   "home_odds": 1.55,
   "saved_at": "2026-11-01T15:27:38Z"
  },
+ "minnesota vikings|green bay packers|2026-11-15": {
+  "away_odds": 2.18,
+  "home_odds": 1.68,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
  "minnesota vikings|new orleans saints|2026-10-11": {
   "away_odds": 1.78,
   "home_odds": 2.15,
   "saved_at": "2026-10-11T14:43:06Z"
+ },
+ "new england patriots|detroit lions|2026-11-15": {
+  "away_odds": 1.75,
+  "home_odds": 2.07,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "new england patriots|miami dolphins|2026-11-01": {
   "away_odds": 1.28,
@@ -235,9 +300,9 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "new york giants|philadelphia eagles|2026-11-08": {
-  "away_odds": 1.77,
-  "home_odds": 2.05,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 1.57,
+  "home_odds": 2.5,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "new york giants|washington commanders|2026-10-11": {
   "away_odds": 2.61,
@@ -245,9 +310,9 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "new york jets|kansas city chiefs|2026-11-08": {
-  "away_odds": 4.3,
-  "home_odds": 1.19,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 4.53,
+  "home_odds": 1.22,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "new york jets|new england patriots|2026-10-18": {
   "away_odds": 3.6,
@@ -260,19 +325,34 @@
   "saved_at": "2026-11-01T15:27:39Z"
  },
  "philadelphia 76ers|los angeles lakers|2026-12-25": {
-  "away_odds": 2.0,
-  "home_odds": 1.8,
-  "saved_at": "2026-11-01T15:27:39Z"
+  "away_odds": 1.95,
+  "home_odds": 1.85,
+  "saved_at": "2026-11-05T02:32:02Z"
  },
  "philadelphia eagles|washington commanders|2026-11-01": {
   "away_odds": 3.31,
   "home_odds": 1.38,
   "saved_at": "2026-11-01T15:27:38Z"
  },
+ "pittsburgh steelers|cincinnati bengals|2026-11-15": {
+  "away_odds": 2.3,
+  "home_odds": 1.52,
+  "saved_at": "2026-11-05T02:01:37Z"
+ },
+ "portland trail blazers|phoenix suns|2026-11-04": {
+  "away_odds": 1.7,
+  "home_odds": 2.31,
+  "saved_at": "2026-11-05T02:02:00Z"
+ },
  "san antonio spurs|new york knicks|2026-12-25": {
-  "away_odds": 1.73,
-  "home_odds": 2.1,
-  "saved_at": "2026-11-01T15:27:39Z"
+  "away_odds": 1.85,
+  "home_odds": 1.95,
+  "saved_at": "2026-11-05T02:32:02Z"
+ },
+ "san francisco 49ers|dallas cowboys|2026-11-15": {
+  "away_odds": 1.42,
+  "home_odds": 2.5,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "san francisco 49ers|seattle seahawks|2026-10-11": {
   "away_odds": 2.53,
@@ -285,9 +365,9 @@
   "saved_at": "2026-10-11T14:43:06Z"
  },
  "tampa bay buccaneers|chicago bears|2026-11-08": {
-  "away_odds": 3.0,
-  "home_odds": 1.35,
-  "saved_at": "2026-11-01T15:27:38Z"
+  "away_odds": 3.27,
+  "home_odds": 1.36,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "tennessee titans|cincinnati bengals|2026-11-01": {
   "away_odds": 7.44,
@@ -299,10 +379,20 @@
   "home_odds": 1.34,
   "saved_at": "2026-10-11T14:43:06Z"
  },
+ "toronto raptors|denver nuggets|2026-11-04": {
+  "away_odds": 2.66,
+  "home_odds": 1.53,
+  "saved_at": "2026-11-05T02:02:00Z"
+ },
  "toronto raptors|los angeles lakers|2026-11-01": {
   "away_odds": 2.29,
   "home_odds": 1.7,
   "saved_at": "2026-11-01T15:27:39Z"
+ },
+ "washington commanders|new york giants|2026-11-12": {
+  "away_odds": 2.0,
+  "home_odds": 1.8,
+  "saved_at": "2026-11-05T02:01:37Z"
  },
  "washington commanders|san francisco 49ers|2026-10-19": {
   "away_odds": 4.3,

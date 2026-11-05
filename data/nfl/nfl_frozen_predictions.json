@@ -1116,5 +1116,140 @@
   "home_win_prob": 57.8,
   "kickoff": "2026-11-03T01:15Z",
   "predicted_winner": "Seattle Seahawks"
+ },
+ "401873037": {
+  "away_team": "Jacksonville Jaguars",
+  "away_win_prob": 75.0,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Baltimore Ravens",
+  "home_win_prob": 25.0,
+  "kickoff": "2026-11-06T01:15Z",
+  "predicted_winner": "Jacksonville Jaguars"
+ },
+ "401873038": {
+  "away_team": "Cincinnati Bengals",
+  "away_win_prob": 68.4,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Atlanta Falcons",
+  "home_win_prob": 31.6,
+  "kickoff": "2026-11-08T14:30Z",
+  "predicted_winner": "Cincinnati Bengals"
+ },
+ "401873039": {
+  "away_team": "Cleveland Browns",
+  "away_win_prob": 26.4,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "New Orleans Saints",
+  "home_win_prob": 73.6,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "New Orleans Saints"
+ },
+ "401873040": {
+  "away_team": "Dallas Cowboys",
+  "away_win_prob": 57.7,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Indianapolis Colts",
+  "home_win_prob": 42.3,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "Dallas Cowboys"
+ },
+ "401873041": {
+  "away_team": "Denver Broncos",
+  "away_win_prob": 69.2,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Carolina Panthers",
+  "home_win_prob": 30.8,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "Denver Broncos"
+ },
+ "401873042": {
+  "away_team": "Detroit Lions",
+  "away_win_prob": 70.2,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Miami Dolphins",
+  "home_win_prob": 29.8,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "Detroit Lions"
+ },
+ "401873043": {
+  "away_team": "Los Angeles Rams",
+  "away_win_prob": 58.2,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Washington Commanders",
+  "home_win_prob": 41.8,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "Los Angeles Rams"
+ },
+ "401873044": {
+  "away_team": "New York Giants",
+  "away_win_prob": 58.3,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Philadelphia Eagles",
+  "home_win_prob": 41.7,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "New York Giants"
+ },
+ "401873045": {
+  "away_team": "New York Jets",
+  "away_win_prob": 19.8,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Kansas City Chiefs",
+  "home_win_prob": 80.2,
+  "kickoff": "2026-11-08T18:00Z",
+  "predicted_winner": "Kansas City Chiefs"
+ },
+ "401873046": {
+  "away_team": "Houston Texans",
+  "away_win_prob": 63.9,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Los Angeles Chargers",
+  "home_win_prob": 36.1,
+  "kickoff": "2026-11-08T21:05Z",
+  "predicted_winner": "Houston Texans"
+ },
+ "401873047": {
+  "away_team": "Las Vegas Raiders",
+  "away_win_prob": 18.2,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "San Francisco 49ers",
+  "home_win_prob": 81.8,
+  "kickoff": "2026-11-08T21:25Z",
+  "predicted_winner": "San Francisco 49ers"
+ },
+ "401873048": {
+  "away_team": "Arizona Cardinals",
+  "away_win_prob": 25.6,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Seattle Seahawks",
+  "home_win_prob": 74.4,
+  "kickoff": "2026-11-08T21:25Z",
+  "predicted_winner": "Seattle Seahawks"
+ },
+ "401873049": {
+  "away_team": "Green Bay Packers",
+  "away_win_prob": 39.7,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "New England Patriots",
+  "home_win_prob": 60.3,
+  "kickoff": "2026-11-08T21:25Z",
+  "predicted_winner": "New England Patriots"
+ },
+ "401873050": {
+  "away_team": "Tampa Bay Buccaneers",
+  "away_win_prob": 34.1,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Chicago Bears",
+  "home_win_prob": 65.9,
+  "kickoff": "2026-11-09T01:20Z",
+  "predicted_winner": "Chicago Bears"
+ },
+ "401873051": {
+  "away_team": "Buffalo Bills",
+  "away_win_prob": 57.8,
+  "frozen_at": "2026-11-05T02:01:40Z",
+  "home_team": "Minnesota Vikings",
+  "home_win_prob": 42.2,
+  "kickoff": "2026-11-10T01:15Z",
+  "predicted_winner": "Buffalo Bills"
  }
 }
