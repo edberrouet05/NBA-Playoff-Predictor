@@ -1060,5 +1060,23 @@
   "home_win_prob": 47.0,
   "predicted_winner": "Miami Heat",
   "tipoff": "2026-11-05T03:30Z"
+ },
+ "401909936": {
+  "away_team": "Orlando Magic",
+  "away_win_prob": 46.9,
+  "frozen_at": "2026-11-05T08:21:28Z",
+  "home_team": "Phoenix Suns",
+  "home_win_prob": 53.1,
+  "predicted_winner": "Phoenix Suns",
+  "tipoff": "2026-11-06T02:00Z"
+ },
+ "401909937": {
+  "away_team": "Miami Heat",
+  "away_win_prob": 42.4,
+  "frozen_at": "2026-11-05T08:21:28Z",
+  "home_team": "Golden State Warriors",
+  "home_win_prob": 57.6,
+  "predicted_winner": "Golden State Warriors",
+  "tipoff": "2026-11-06T03:00Z"
  }
 }
