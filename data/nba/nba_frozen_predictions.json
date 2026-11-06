@@ -1072,10 +1072,10 @@
  },
  "401909937": {
   "away_team": "Miami Heat",
-  "away_win_prob": 42.4,
-  "frozen_at": "2026-11-05T08:21:28Z",
+  "away_win_prob": 43.0,
+  "frozen_at": "2026-11-06T02:41:22Z",
   "home_team": "Golden State Warriors",
-  "home_win_prob": 57.6,
+  "home_win_prob": 57.0,
   "predicted_winner": "Golden State Warriors",
   "tipoff": "2026-11-06T03:00Z"
  }
