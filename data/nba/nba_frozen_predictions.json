@@ -1198,10 +1198,10 @@
  },
  "401909942": {
   "away_team": "Orlando Magic",
-  "away_win_prob": 36.4,
-  "frozen_at": "2026-11-07T07:40:16Z",
+  "away_win_prob": 31.5,
+  "frozen_at": "2026-11-08T01:41:16Z",
   "home_team": "Golden State Warriors",
-  "home_win_prob": 63.6,
+  "home_win_prob": 68.5,
   "predicted_winner": "Golden State Warriors",
   "tipoff": "2026-11-08T01:30Z"
  },
@@ -1216,10 +1216,10 @@
  },
  "401909944": {
   "away_team": "San Antonio Spurs",
-  "away_win_prob": 64.7,
-  "frozen_at": "2026-11-07T07:40:16Z",
+  "away_win_prob": 66.6,
+  "frozen_at": "2026-11-08T01:41:16Z",
   "home_team": "Portland Trail Blazers",
-  "home_win_prob": 35.3,
+  "home_win_prob": 33.4,
   "predicted_winner": "San Antonio Spurs",
   "tipoff": "2026-11-08T03:00Z"
  }
