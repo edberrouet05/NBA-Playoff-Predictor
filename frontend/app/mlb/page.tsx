@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFitRows } from "../components/useFitRows";
 import Link from "next/link";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
+import { teamHref } from "../components/teamLinks";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -70,7 +71,11 @@ const MLB_LOGO_IDS: Record<string, number> = {
 
 function getAbbr(t: string)  { return MLB_ABBR[t] ?? t.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???"; }
 function getColor(t: string) { return MLB_COLORS[getAbbr(t)] ?? "#555"; }
-function getNick(t: string)  { return t.split(" ").slice(-1)[0]; }
+function getNick(t: string)  {
+  // "Red Sox" / "White Sox" / "Blue Jays": the last word alone is ambiguous or odd
+  const words = t.split(" ");
+  return ["Sox", "Jays"].includes(words[words.length - 1]) ? words.slice(-2).join(" ") : words[words.length - 1];
+}
 
 function getLogoUrl(t: string): string {
   const id = MLB_LOGO_IDS[getAbbr(t)];
@@ -524,6 +529,235 @@ function StreakLeaders() {
   );
 }
 
+// ── Season recap (offseason) ──────────────────────────────────────────────────
+
+interface RecapSeries { round: string; name: string; league: string | null; winner: string; loser: string; wins: number; losses: number }
+interface RecapPick {
+  game_id: number; date: string; away_team: string; home_team: string; predicted_winner: string;
+  predicted_prob: number; actual_winner: string; away_score: number | null; home_score: number | null;
+}
+interface RecapTeam { team: string; n: number; accuracy: number }
+interface SeasonRecapData {
+  season: number;
+  complete: boolean;
+  champion: RecapSeries | null;
+  series: RecapSeries[];
+  best_record: { team: string; w: number; l: number } | null;
+  best_run_diff: { team: string; run_diff: number } | null;
+  model: {
+    n_games: number; correct: number; accuracy: number | null; expected_accuracy: number | null;
+    by_confidence: { lo: number; hi: number; n: number; correct: number; accuracy: number }[];
+    by_month: { month: string; n: number; accuracy: number }[];
+    best_read: RecapTeam[]; worst_read: RecapTeam[];
+    best_calls: RecapPick[]; biggest_upsets: RecapPick[];
+  };
+}
+
+const CARD = "bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl";
+const LABEL = "text-xs text-gray-400 font-semibold uppercase tracking-widest";
+
+// Baseball accuracy lives between ~50% (coin flip) and ~65%: red → green over that range
+function accColor(pct: number): string {
+  const hue = Math.max(0, Math.min(120, ((pct - 48) / 14) * 120));
+  return `hsl(${Math.round(hue)}, 75%, 42%)`;
+}
+
+function AccBar({ label, pct, detail }: { label: string; pct: number; detail: string }) {
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{label}</span>
+        <span className="text-xs font-bold tabular-nums" style={{ color: accColor(pct) }}>
+          {pct.toFixed(1)}% <span className="text-gray-400 font-normal">{detail}</span>
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: accColor(pct) }} />
+      </div>
+    </div>
+  );
+}
+
+function RecapGames({ title, picks, won }: { title: string; picks: RecapPick[]; won: boolean }) {
+  return (
+    <div className={`${CARD} p-5`}>
+      <p className={`${LABEL} mb-4`}>{title}</p>
+      <div className="flex flex-col gap-2.5">
+        {picks.map(e => (
+          <Link key={e.game_id}
+            href={`/mlb/game/${e.game_id}?away=${encodeURIComponent(e.away_team)}&home=${encodeURIComponent(e.home_team)}&status=Final`}
+            className="flex items-center justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl px-2 py-1 -mx-2 transition-colors">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <TeamLogo team={e.actual_winner} size="w-6 h-6" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                  {getNick(e.actual_winner)} won {Math.max(e.away_score ?? 0, e.home_score ?? 0)}-{Math.min(e.away_score ?? 0, e.home_score ?? 0)}
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  {fmtShortDate(e.date)} · {getNick(e.away_team)} @ {getNick(e.home_team)}
+                </p>
+              </div>
+            </div>
+            <span className={`text-xs font-bold flex-shrink-0 ${won ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}
+              title={won ? "Our pre-game win probability for the winner" : "Our pre-game win probability for the winner (the underdog)"}>
+              {won ? `${e.predicted_prob}%` : `${(100 - e.predicted_prob).toFixed(1)}%`}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SeasonRecap({ data }: { data: SeasonRecapData }) {
+  const { champion, model } = data;
+  const rounds = ["Wild Card", "Division Series", "Championship Series"]
+    .map(r => ({ round: r, series: data.series.filter(s => s.round === r) }))
+    .filter(r => r.series.length > 0);
+  const accuracy = (model.accuracy ?? 0) * 100;
+
+  return (
+    <div className="flex flex-col gap-5">
+
+      {/* Champion */}
+      {champion && (
+        <div className={`${CARD} overflow-hidden`}>
+          <div className="h-1.5" style={{ background: getColor(champion.winner) }} />
+          <div className="p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+            <TeamLogo team={champion.winner} size="w-20 h-20" />
+            <div className="flex-1 min-w-0">
+              <p className={LABEL}>{data.season} World Series champions</p>
+              <p className="text-3xl font-black text-gray-900 dark:text-white mt-1">{champion.winner}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Beat the {champion.loser} {champion.wins}-{champion.losses}
+              </p>
+            </div>
+            <div className="flex flex-wrap sm:flex-col gap-2 text-xs">
+              {data.best_record && (
+                <span className="px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                  Best record: <b>{getNick(data.best_record.team)} {data.best_record.w}-{data.best_record.l}</b>
+                </span>
+              )}
+              {data.best_run_diff && (
+                <span className="px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                  Best run diff: <b>{getNick(data.best_run_diff.team)} +{data.best_run_diff.run_diff}</b>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Postseason path */}
+      {rounds.length > 0 && (
+        <div className={`${CARD} p-5`}>
+          <p className={`${LABEL} mb-4`}>Postseason</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {rounds.map(r => (
+              <div key={r.round}>
+                <p className="text-[11px] font-semibold text-gray-500 mb-2">{r.round}</p>
+                <div className="flex flex-col gap-2">
+                  {r.series.map(s => (
+                    <div key={`${s.winner}-${s.loser}`} className="flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <TeamLogo team={s.winner} size="w-5 h-5" />
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">{getNick(s.winner)}</span>
+                        <span className="text-[10px] text-gray-400 truncate">over {getNick(s.loser)}</span>
+                      </div>
+                      <span className="text-xs font-bold tabular-nums text-gray-700 dark:text-gray-300 flex-shrink-0">{s.wins}-{s.losses}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* The model's season */}
+      <div className={`${CARD} p-6`}>
+        <p className={`${LABEL} mb-4`}>Our model&apos;s season</p>
+        <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+          <div>
+            <p className="text-6xl font-black leading-none" style={{ color: accColor(accuracy) }}>{accuracy.toFixed(1)}%</p>
+            <p className="text-sm text-gray-500 mt-1">of winners picked</p>
+          </div>
+          <div className="pb-1">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {model.correct.toLocaleString()}<span className="text-gray-400 font-normal text-lg">/{model.n_games.toLocaleString()}</span>
+            </p>
+            <p className="text-sm text-gray-500">regular-season games</p>
+          </div>
+          {model.expected_accuracy != null && (
+            <div className="pb-1">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{model.expected_accuracy.toFixed(1)}%</p>
+              <p className="text-sm text-gray-500">expected from testing</p>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+          Baseball is the hardest of the big sports to call: even the best team loses about 4 games in 10,
+          so 55-58% over a full season is a good result. Every pick was made before the game.
+        </p>
+        <Link href="/mlb/performance" className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
+          Full record
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
+        </Link>
+      </div>
+
+      {/* By month + by confidence */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className={`${CARD} p-5`}>
+          <p className={`${LABEL} mb-4`}>By month</p>
+          <div className="flex flex-col gap-3">
+            {model.by_month.map(m => (
+              <AccBar key={m.month} label={m.month} pct={m.accuracy * 100} detail={`${m.n} games`} />
+            ))}
+          </div>
+        </div>
+        <div className={`${CARD} p-5`}>
+          <p className={`${LABEL} mb-4`}>By confidence</p>
+          <div className="flex flex-col gap-3">
+            {model.by_confidence.map(c => (
+              <AccBar key={c.lo} label={`${c.lo}-${c.hi}%`} pct={c.accuracy * 100} detail={`${c.correct}/${c.n}`} />
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-4">The surer the model, the more often it was right.</p>
+        </div>
+      </div>
+
+      {/* Teams read best / worst */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {([["Easiest teams to call", model.best_read], ["Hardest teams to call", model.worst_read]] as const).map(([title, rows]) => (
+          <div key={title} className={`${CARD} p-5`}>
+            <p className={`${LABEL} mb-4`}>{title}</p>
+            <div className="flex flex-col gap-2.5">
+              {rows.map(t => (
+                <Link key={t.team} href={teamHref("mlb", t.team)}
+                  className="flex items-center justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl px-2 py-1 -mx-2 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <TeamLogo team={t.team} size="w-6 h-6" />
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{t.team}</span>
+                  </div>
+                  <span className="text-xs font-bold tabular-nums" style={{ color: accColor(t.accuracy * 100) }}>
+                    {(t.accuracy * 100).toFixed(1)}%
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Best calls + biggest upsets */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {model.best_calls.length > 0 && <RecapGames title="Most confident calls" picks={model.best_calls} won />}
+        {model.biggest_upsets.length > 0 && <RecapGames title="Biggest upsets" picks={model.biggest_upsets} won={false} />}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function MLBPage() {
@@ -534,6 +768,8 @@ export default function MLBPage() {
   const [predLog,    setPredLog]    = useState<MLBPredEntry[]>([]);
   const [logLoading, setLogLoading] = useState(true);
   const [logError,   setLogError]   = useState(false);
+  const [recap,      setRecap]      = useState<SeasonRecapData | null>(null);
+  const [recapDone,  setRecapDone]  = useState(false);
 
   useEffect(() => {
     const load = () =>
@@ -558,6 +794,18 @@ export default function MLBPage() {
     return () => clearInterval(id);
   }, []);
 
+  // No games today: once the World Series is over, show the season recap instead
+  const noGames = !loading && !error && games.length === 0;
+  useEffect(() => {
+    if (!noGames) return;
+    fetch(`${API}/api/mlb/season_recap`)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((d: SeasonRecapData) => setRecap(d.complete ? d : null))
+      .catch(() => setRecap(null))
+      .finally(() => setRecapDone(true));
+  }, [noGames]);
+  const offseason = noGames && recap !== null;
+
   return (
     <main className="px-4 md:px-6 pt-4 pb-8">
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
@@ -565,10 +813,19 @@ export default function MLBPage() {
         {/* ── Left: game cards ── */}
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Today&apos;s Games</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Win probability · pitcher matchups · MLB 2026 regular season
-            </p>
+            {offseason ? (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{recap.season} Season Recap</h1>
+                <p className="text-gray-500 text-sm mt-1">The season is over · see you on Opening Day</p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Today&apos;s Games</h1>
+                <p className="text-gray-500 text-sm mt-1">
+                  Win probability · pitcher matchups · MLB 2026 regular season
+                </p>
+              </>
+            )}
           </div>
 
           {error && (
@@ -583,11 +840,19 @@ export default function MLBPage() {
             </div>
           )}
 
-          {!error && !loading && games.length === 0 && (
+          {noGames && !recapDone && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
+              Loading…
+            </div>
+          )}
+
+          {noGames && recapDone && !recap && (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-8 text-center text-gray-400 dark:text-gray-500 text-sm">
               No MLB games scheduled for today.
             </div>
           )}
+
+          {offseason && <SeasonRecap data={recap} />}
 
           {games.length > 0 && (() => {
             const isLiveOrUpcoming = (g: MLBGame) => g.status !== "Final" && g.status !== "Game Over";
@@ -625,7 +890,7 @@ export default function MLBPage() {
         {/* ── Right: insight panels — stay in view while the games list scrolls (wide screens) ── */}
         <div data-sidebar className="flex flex-col gap-4 xl:sticky xl:top-16 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto no-scrollbar xl:pb-1">
           <PredictionsLog log={predLog} loading={logLoading} error={logError} />
-          <ConfidencePicks games={games} loading={loading} />
+          {!offseason && <ConfidencePicks games={games} loading={loading} />}
           <KeyPitchers games={games} />
           <StreakLeaders />
         </div>

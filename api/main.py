@@ -1316,6 +1316,106 @@ def get_mlb_performance():
     return _performance_payload("mlb", get_mlb_predictions_log(n=100_000)["log"])
 
 
+_mlb_recap_cache: dict | None = None
+_mlb_recap_cache_time: float = 0.0
+_MLB_RECAP_TTL = 6 * 3600.0
+_MLB_ROUNDS = {"F": "Wild Card", "D": "Division Series", "L": "Championship Series", "W": "World Series"}
+
+
+def _mlb_postseason_series(season: int) -> list[dict]:
+    """Every postseason series of a season, in round order: winner, loser, games won."""
+    import json, urllib.request
+    url = f"https://statsapi.mlb.com/api/v1/schedule/postseason/series?season={season}&sportId=1"
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=15) as r:
+        data = json.loads(r.read())
+    out = []
+    for s in data.get("series", []):
+        games = [g for g in s.get("games", []) if g.get("status", {}).get("abstractGameState") == "Final"]
+        if not games:
+            continue
+        last = games[-1]
+        sides = [last["teams"]["away"], last["teams"]["home"]]
+        rec = [x.get("leagueRecord", {}) for x in sides]
+        need = (last.get("gamesInSeries", 7) // 2) + 1
+        done = max(r.get("wins", 0) for r in rec) >= need
+        w, l = (0, 1) if rec[0].get("wins", 0) >= rec[1].get("wins", 0) else (1, 0)
+        desc = last.get("seriesDescription", "")
+        out.append({"round": _MLB_ROUNDS.get(last.get("gameType"), desc), "name": desc,
+                    "league": "AL" if desc.startswith("AL") else "NL" if desc.startswith("NL") else None,
+                    "winner": sides[w]["team"]["name"], "loser": sides[l]["team"]["name"],
+                    "wins": rec[w].get("wins", 0), "losses": rec[l].get("wins", 0), "complete": done})
+    order = list(_MLB_ROUNDS.values())
+    return sorted(out, key=lambda s: (order.index(s["round"]) if s["round"] in order else 9, s["league"] or ""))
+
+
+@app.get("/api/mlb/season_recap")
+def get_mlb_season_recap():
+    """The finished season at a glance, for the offseason: champion and postseason series,
+    best records, and how the model's fair pre-game picks did (overall, by month, by team,
+    best calls and biggest upsets)."""
+    import time as _t
+    global _mlb_recap_cache, _mlb_recap_cache_time
+    if _mlb_recap_cache is not None and _t.time() - _mlb_recap_cache_time < _MLB_RECAP_TTL:
+        return _mlb_recap_cache
+
+    season = int(_sport_season_label("mlb"))
+    try:
+        series = _mlb_postseason_series(season)
+    except Exception:
+        series = []
+    final = next((s for s in series if s["round"] == "World Series"), None)
+    complete = bool(final and final["complete"])
+
+    log = get_mlb_predictions_log(n=100_000)["log"]
+    games = [g for g in log if g.get("source", "pregame") != "current"]
+    perf = _performance_payload("mlb", log)
+
+    months: dict[str, list[int]] = {}
+    teams: dict[str, list[int]] = {}
+    for g in sorted(games, key=lambda g: g["date"]):
+        months.setdefault(g["month"], [0, 0])
+        months[g["month"]][0] += g["correct"]
+        months[g["month"]][1] += 1
+        for t in (g["away_team"], g["home_team"]):
+            teams.setdefault(t, [0, 0])
+            teams[t][0] += g["correct"]
+            teams[t][1] += 1
+    by_team = sorted(({"team": t, "n": n, "accuracy": round(c / n, 4)} for t, (c, n) in teams.items()),
+                     key=lambda r: -r["accuracy"])
+
+    def pick(g: dict) -> dict:
+        return {k: g[k] for k in ("game_id", "date", "away_team", "home_team", "predicted_winner",
+                                  "predicted_prob", "actual_winner", "away_score", "home_score")}
+
+    by_prob = sorted(games, key=lambda g: -g["predicted_prob"])
+    try:
+        standings = get_mlb_standings()
+        rows = [t for lg in ("al", "nl") for div in standings.get(lg, []) for t in div["teams"]]
+    except Exception:
+        rows = []
+    best = max(rows, key=lambda t: t["w"], default=None)
+    best_diff = max(rows, key=lambda t: t["run_diff"], default=None)
+
+    result = {
+        "season": season, "complete": complete,
+        "champion": final if complete else None,
+        "series": series,
+        "best_record": {"team": best["name"], "w": best["w"], "l": best["l"]} if best else None,
+        "best_run_diff": {"team": best_diff["name"], "run_diff": best_diff["run_diff"]} if best_diff else None,
+        "model": {
+            "n_games": perf["n_games"], "correct": perf["correct"], "accuracy": perf["accuracy"],
+            "expected_accuracy": perf["expected_accuracy"], "log_loss": perf["log_loss"],
+            "by_confidence": perf["by_confidence"],
+            "by_month": [{"month": m, "n": n, "accuracy": round(c / n, 4)} for m, (c, n) in months.items()],
+            "best_read": by_team[:3], "worst_read": by_team[-3:][::-1],
+            "best_calls": [pick(g) for g in by_prob if g["correct"]][:4],
+            "biggest_upsets": [pick(g) for g in by_prob if not g["correct"]][:4],
+        },
+    }
+    _mlb_recap_cache, _mlb_recap_cache_time = result, _t.time()
+    return result
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  NBA season — power index, season simulation, per-game win probabilities
 #  (team and player pages)
