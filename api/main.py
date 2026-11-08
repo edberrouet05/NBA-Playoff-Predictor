@@ -5332,6 +5332,30 @@ def _search_players(q: str, league: str) -> list[dict]:
     return out
 
 
+_live_now_cache: tuple[float, dict] | None = None
+_LIVE_NOW_TTL = 30.0
+
+
+@app.get("/api/live_now")
+def get_live_now():
+    """Which leagues have a game in progress right now (red dot next to the sport in the header)."""
+    global _live_now_cache
+    if _live_now_cache and _time_mod.time() - _live_now_cache[0] < _LIVE_NOW_TTL:
+        return _live_now_cache[1]
+
+    def live(league: str) -> bool:
+        sport = _TEAM_LEAGUES[league]["sport"]
+        try:
+            data = _espn_json(f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/scoreboard", timeout=8)
+        except Exception:
+            return False
+        return any(((e.get("status") or {}).get("type") or {}).get("state") == "in" for e in data.get("events", []))
+
+    result = dict(zip(_SEARCH_LEAGUES, _parallel(*(lambda lg=lg: live(lg) for lg in _SEARCH_LEAGUES))))
+    _live_now_cache = (_time_mod.time(), result)
+    return result
+
+
 # ── Player index: every rostered player of the three leagues, for fuzzy search ──
 
 _player_index: list[dict] | None = None
