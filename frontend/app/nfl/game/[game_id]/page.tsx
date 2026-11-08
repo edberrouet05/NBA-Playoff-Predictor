@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useRef, useState } from "react";
+import { createContext, use, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { playerHref, teamHref } from "../../../components/teamLinks";
 import { probClass } from "../../../components/PredictionBits";
@@ -119,8 +119,13 @@ function teamColorCandidates(t: string): string[] {
   return [NFL_COLORS[a] ?? "#555", ...(NFL_ALT_COLORS[a] ? [NFL_ALT_COLORS[a]] : [])];
 }
 // Colors for the matchup on screen, set by the page so both teams are clearly distinct
-let matchupColors: Record<string, string> = {};
-function getColor(t: string) { return matchupColors[t] ?? NFL_COLORS[getAbbr(t)] ?? "#555"; }
+function baseColor(t: string) { return NFL_COLORS[getAbbr(t)] ?? "#555"; }
+// This game's two colors (picked so they contrast), shared with every part of the page
+const MatchupColors = createContext<Record<string, string>>({});
+function useTeamColor() {
+  const colors = useContext(MatchupColors);
+  return (t: string) => colors[t] ?? baseColor(t);
+}
 function getNick(t: string) { return t.split(" ").slice(-1)[0]; }
 function getLogoUrl(t: string): string {
   const abbr = getAbbr(t);
@@ -139,6 +144,7 @@ function formatGameTime(iso: string): string {
 // ── Team logo ──────────────────────────────────────────────────────────────────
 
 function TeamLogo({ team, size }: { team: string; size: string }) {
+  const getColor = useTeamColor();
   // Remember which URL failed, so a new team/player gets a fresh attempt
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
@@ -173,6 +179,7 @@ const LOWER_IS_BETTER = new Set(["turnovers"]);
 function WinProbChart({ data, awayTeam, homeTeam }: {
   data: WinProbPoint[]; awayTeam: string; homeTeam: string;
 }) {
+  const getColor = useTeamColor();
   const ac      = getColor(awayTeam);
   const hc      = getColor(homeTeam);
   const first   = data[0];
@@ -196,7 +203,7 @@ function WinProbChart({ data, awayTeam, homeTeam }: {
     .map(d => d.idx);
   const tickLabelByIdx = new Map(data.filter(d => d.label).map(d => [d.idx, d.label]));
 
-  const Dot = (color: string) => (props: { cx?: number; cy?: number; index?: number; payload?: WinProbPoint }) => {
+  const Dot = (color: string) => function Dot(props: { cx?: number; cy?: number; index?: number; payload?: WinProbPoint }) {
     const { cx = 0, cy = 0, index = 0, payload } = props;
     const isLast = index === data.length - 1;
     if (isLast) return <circle cx={cx} cy={cy} r={preOnly ? 6 : 5} fill={color} />;
@@ -205,7 +212,7 @@ function WinProbChart({ data, awayTeam, homeTeam }: {
   };
 
   const EndLabel = (team: string, color: string, yOff: number) =>
-    (props: { x?: number; y?: number; index?: number; value?: number }) => {
+    function EndLabel(props: { x?: number; y?: number; index?: number; value?: number }) {
       const { x = 0, y = 0, index = 0, value = 0 } = props;
       if (index !== data.length - 1) return null;
       // Keep the two-line label (abbr above the value) inside the chart near 100 %
@@ -368,6 +375,7 @@ const FACTOR_LABELS: Record<string, { label: string; desc: string; fmt: (v: numb
 };
 
 function WhyPanel({ factors, awayTeam, homeTeam }: { factors: Factor[]; awayTeam: string; homeTeam: string }) {
+  const getColor = useTeamColor();
   const shown = factors.filter(f => Math.abs(f.impact) >= 0.01).slice(0, 6);
   if (!shown.length) return null;
   const maxAbs = Math.max(...shown.map(f => Math.abs(f.impact)));
@@ -508,6 +516,7 @@ function fmtMeetingDate(d: string) {
 function H2HPanel({ h2h, awayTeam, homeTeam, isFinal }: {
   h2h: HeadToHead; awayTeam: string; homeTeam: string; isFinal: boolean;
 }) {
+  const getColor = useTeamColor();
   const aw = h2h.away_wins ?? 0, hw = h2h.home_wins ?? 0, ties = h2h.ties ?? 0;
   const total = Math.max(1, aw + hw + ties);
   const ah = h2h.at_home;
@@ -624,6 +633,7 @@ function H2HPanel({ h2h, awayTeam, homeTeam, isFinal }: {
 // ── Top performers ─────────────────────────────────────────────────────────────
 
 function Headshot({ src, team }: { src: string | null; team: string }) {
+  const getColor = useTeamColor();
   // Remember which URL failed, so a new team/player gets a fresh attempt
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (!src || (failedSrc !== null && failedSrc === src)) {
@@ -789,7 +799,7 @@ export default function NFLGamePage({
   const away    = g?.away_team ?? awayParam;
   const home    = g?.home_team ?? homeParam;
   const [awayColor, homeColor] = pickMatchupColors(teamColorCandidates(away), teamColorCandidates(home));
-  matchupColors = { [away]: awayColor, [home]: homeColor };
+  const colors = { [away]: awayColor, [home]: homeColor };
   const status  = g?.status    ?? statusParam;
   const isFinal = status.startsWith("Final");
   const isLive  = !isFinal && status !== "Scheduled" && status !== "";
@@ -806,6 +816,7 @@ export default function NFLGamePage({
   const hasChart = g && (g.win_prob_history?.length ?? 0) >= 1;
 
   return (
+    <MatchupColors.Provider value={colors}>
     <main className="px-4 lg:px-8 pt-4 lg:pt-5 pb-8 flex flex-col gap-3">
 
       <Link href="/nfl" className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -894,8 +905,8 @@ export default function NFLGamePage({
         </div>
 
         <div className="mx-4 lg:mx-8 mt-3 mb-4 h-[3px] flex rounded-full overflow-hidden">
-          <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away) }} />
-          <div className="h-full flex-1" style={{ background: getColor(home) }} />
+          <div className="h-full" style={{ width: `${awayProb}%`, background: colors[away] }} />
+          <div className="h-full flex-1" style={{ background: colors[home] }} />
         </div>
       </div>
 
@@ -982,5 +993,6 @@ export default function NFLGamePage({
       )}
 
     </main>
+    </MatchupColors.Provider>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useRef, useState } from "react";
+import { createContext, use, useContext, useEffect, useRef, useState } from "react";
 import { pickMatchupColors } from "../../../components/teamColors";
 import Link from "next/link";
 import { teamHref } from "../../../components/teamLinks";
@@ -98,8 +98,13 @@ function teamColorCandidates(t: string): string[] {
   return [MLB_COLORS[a] ?? "#555", ...(MLB_ALT_COLORS[a] ? [MLB_ALT_COLORS[a]] : [])];
 }
 // Colors for the matchup on screen, set by the page so both teams are clearly distinct
-let matchupColors: Record<string, string> = {};
-function getColor(t: string) { return matchupColors[t] ?? MLB_COLORS[getAbbr(t)] ?? "#555"; }
+function baseColor(t: string) { return MLB_COLORS[getAbbr(t)] ?? "#555"; }
+// This game's two colors (picked so they contrast), shared with every part of the page
+const MatchupColors = createContext<Record<string, string>>({});
+function useTeamColor() {
+  const colors = useContext(MatchupColors);
+  return (t: string) => colors[t] ?? baseColor(t);
+}
 function getNick(t: string)  { return t.split(" ").slice(-1)[0]; }
 
 function getLogoUrl(t: string): string {
@@ -126,6 +131,7 @@ function ordinalSuffix(n: number): string {
 // ── Team logo ──────────────────────────────────────────────────────────────────
 
 function TeamLogo({ team, size }: { team: string; size: string }) {
+  const getColor = useTeamColor();
   // Remember which URL failed, so a new team/player gets a fresh attempt
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const url = getLogoUrl(team);
@@ -169,6 +175,7 @@ function barPcts(a: number, b: number, better: number) {
 function WinProbChart({ data, awayTeam, homeTeam }: {
   data: WinProbPoint[]; awayTeam: string; homeTeam: string;
 }) {
+  const getColor = useTeamColor();
   const ac        = getColor(awayTeam);
   const hc        = getColor(homeTeam);
   const first     = data[0];
@@ -188,14 +195,14 @@ function WinProbChart({ data, awayTeam, homeTeam }: {
   }
 
   // Render dot only on the last point; for pre-game (single point) make it larger
-  const Dot = (color: string) => (props: { cx?: number; cy?: number; index?: number }) => {
+  const Dot = (color: string) => function Dot(props: { cx?: number; cy?: number; index?: number }) {
     const { cx = 0, cy = 0, index = 0 } = props;
     if (index !== data.length - 1) return <g />;
     return <circle cx={cx} cy={cy} r={preOnly ? 6 : 5} fill={color} />;
   };
 
   const EndLabel = (team: string, color: string, yOff: number) =>
-    (props: { x?: number; y?: number; index?: number; value?: number }) => {
+    function EndLabel(props: { x?: number; y?: number; index?: number; value?: number }) {
       const { x = 0, y = 0, index = 0, value = 0 } = props;
       if (index !== data.length - 1) return null;
       const adjY = Math.max(16, Number(y) + yOff);  // keep the label inside the chart near 100 %
@@ -455,7 +462,7 @@ export default function MLBGamePage({
   const away    = g?.away_team  ?? awayParam;
   const home    = g?.home_team  ?? homeParam;
   const [awayColor, homeColor] = pickMatchupColors(teamColorCandidates(away), teamColorCandidates(home));
-  matchupColors = { [away]: awayColor, [home]: homeColor };
+  const colors = { [away]: awayColor, [home]: homeColor };
   const status  = g?.status     ?? statusParam;
   const isLive  = status === "Live" || status === "In Progress";
   const isFinal = status.startsWith("Final") || status === "Game Over" || status === "Completed";
@@ -480,6 +487,7 @@ export default function MLBGamePage({
   const hasStats = g && Object.keys(g.away_stats ?? {}).length > 0;
 
   return (
+    <MatchupColors.Provider value={colors}>
     <main className="px-4 lg:px-8 pt-4 lg:pt-5 pb-8 flex flex-col gap-3">
 
       {/* Back */}
@@ -578,8 +586,8 @@ export default function MLBGamePage({
 
         {/* Probability bar */}
         <div className="mx-4 lg:mx-8 mt-3 h-[3px] flex rounded-full overflow-hidden">
-          <div className="h-full" style={{ width: `${awayProb}%`, background: getColor(away) }} />
-          <div className="h-full flex-1" style={{ background: getColor(home) }} />
+          <div className="h-full" style={{ width: `${awayProb}%`, background: colors[away] }} />
+          <div className="h-full flex-1" style={{ background: colors[home] }} />
         </div>
 
         {/* Pitcher row */}
@@ -677,5 +685,6 @@ export default function MLBGamePage({
       )}
 
     </main>
+    </MatchupColors.Provider>
   );
 }

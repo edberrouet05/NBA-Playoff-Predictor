@@ -117,9 +117,10 @@ export default function MLBPredictionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const todayStr     = new Date().toLocaleDateString("en-CA");
-  const yesterdayStr = new Date(Date.now() - 86400000).toLocaleDateString("en-CA");
-  const weekAgoStr   = new Date(Date.now() - 7 * 86400000).toLocaleDateString("en-CA");
+  const [now] = useState(() => Date.now());   // fixed at first render: the filters stay stable
+  const todayStr     = new Date(now).toLocaleDateString("en-CA");
+  const yesterdayStr = new Date(now - 86400000).toLocaleDateString("en-CA");
+  const weekAgoStr   = new Date(now - 7 * 86400000).toLocaleDateString("en-CA");
 
   const visible = filter === "all"
     ? log
