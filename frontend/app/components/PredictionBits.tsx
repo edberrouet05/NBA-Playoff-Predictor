@@ -22,22 +22,25 @@ export interface ValueFields {
   value_ev?: number | null;
 }
 
-/** Badge shown when the model's probability beats the no-vig market price by ≥ 5 points. */
-export function ValueBadge({ game, awayAbbr, homeAbbr }: {
+/** "Value pick" badge: the model's probability beats the no-vig market price by ≥ 5 points.
+ *  The numbers are in the tooltip. Hidden once the game has started: it is about the pre-game
+ *  price, which can no longer be bet and ignores the score. */
+export function ValueBadge({ game, awayAbbr, homeAbbr, started = false }: {
   game: ValueFields & { away_win_prob: number; home_win_prob: number };
   awayAbbr: string;
   homeAbbr: string;
+  started?: boolean;
 }) {
-  if (!game.value_side || game.value_edge == null) return null;
+  if (started || !game.value_side || game.value_edge == null) return null;
   const away = game.value_side === "away";
   const model  = away ? game.away_win_prob : game.home_win_prob;
   const market = away ? game.away_market_prob : game.home_market_prob;
   const ev = game.value_ev != null ? `${game.value_ev >= 0 ? "+" : ""}${(game.value_ev * 100).toFixed(0)}%` : "—";
   return (
     <span
-      title={`Model ${model}% vs market ${market ?? "—"}% (bookmaker margin removed). Expected return per bet: ${ev}.`}
+      title={`Our model gives ${away ? awayAbbr : homeAbbr} ${model}%, the bookmakers ${market ?? "—"}% (their margin removed). If the model is right, a bet returns ${ev} on average.`}
       className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 cursor-help">
-      Value: {away ? awayAbbr : homeAbbr} +{game.value_edge.toFixed(0)} pts
+      Value pick: {away ? awayAbbr : homeAbbr}
     </span>
   );
 }

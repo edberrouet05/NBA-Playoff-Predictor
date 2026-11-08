@@ -196,7 +196,7 @@ function GameCard({ game }: { game: NFLGame }) {
         {!isFinal && (
           <div className="px-5 py-3 flex items-center justify-between">
             <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
-            <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} />
+            <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} started={isLive || isFinal} />
           </div>
         )}
       </div>
