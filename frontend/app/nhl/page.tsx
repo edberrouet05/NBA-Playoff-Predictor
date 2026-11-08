@@ -185,9 +185,9 @@ function PredictionsLog({ log, loading }: { log: NHLPredEntry[]; loading: boolea
               </Link>
             ))}
           </div>
-          <Link href="/nhl/performance"
+          <Link href="/nhl/predictions"
             className="mt-3 flex items-center justify-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors pt-2 border-t border-gray-100 dark:border-gray-800">
-            Season record
+            See all predictions
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
           </Link>
         </>
