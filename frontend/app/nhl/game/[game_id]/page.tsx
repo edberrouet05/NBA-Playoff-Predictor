@@ -1,6 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { playerHref, teamHref } from "../../../components/teamLinks";
 import { nhlColor, nhlLogo, nhlNick } from "../../nhlTeams";
 
@@ -25,6 +26,7 @@ interface NHLGameDetail {
   goalies: Goalie[]; skaters: { home: Skater[]; away: Skater[] }; goals: Goal[];
   stars: { label: string; id: string; name: string; headshot: string | null }[];
   explanation: Factor[];
+  timeline: { t: number; home: number; goal?: "home" | "away" }[];
   form: { home: Form | null; away: Form | null };
 }
 
@@ -145,6 +147,64 @@ function PeriodTable({ g }: { g: NHLGameDetail }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function ProbChart({ g }: { g: NHLGameDetail }) {
+  if (g.timeline.length < 2) return null;
+  const awayColor = nhlColor(g.away.name), homeColor = nhlColor(g.home.name);
+  const data = g.timeline.map(p => ({ ...p, away: Math.round((100 - p.home) * 10) / 10 }));
+  const end = Math.max(60, data[data.length - 1].t);
+  const last = data[data.length - 1];
+  const periodOf = (t: number) => (t < 20 ? "1st" : t < 40 ? "2nd" : t < 60 ? "3rd" : "OT");
+  const clockOf = (t: number) => {
+    const inPeriod = t >= 60 ? t - 60 : t % 20;
+    return `${Math.floor(inPeriod)}:${String(Math.round((inPeriod % 1) * 60)).padStart(2, "0")}`;
+  };
+  // Goals are drawn as dots on the scoring team's line
+  const goalDot = (side: "home" | "away", color: string) => function GoalDot(props: { cx?: number; cy?: number; payload?: { goal?: string } }) {
+    const { cx = 0, cy = 0, payload } = props;
+    return payload?.goal === side ? <circle cx={cx} cy={cy} r={4} fill={color} stroke="var(--card-bg, #fff)" strokeWidth={1.5} /> : <g />;
+  };
+  const tip = ({ active, payload }: { active?: boolean; payload?: readonly { payload?: unknown }[] }) => {
+    const p = active && payload?.length ? (payload[0].payload as (typeof data)[number]) : null;
+    if (!p) return null;
+    return (
+      <div className="rounded-lg bg-white dark:bg-gray-800 shadow px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200">
+        <p className="text-gray-400">{periodOf(p.t)} · {clockOf(p.t)}{p.goal ? ` · goal ${p.goal === "home" ? g.home.abbr : g.away.abbr}` : ""}</p>
+        <p><b style={{ color: awayColor }}>{g.away.abbr}</b> {p.away}% · <b style={{ color: homeColor }}>{g.home.abbr}</b> {p.home}%</p>
+      </div>
+    );
+  };
+  return (
+    <div className={`${card} p-5`}>
+      <div className="flex items-baseline justify-between mb-3">
+        <p className={cardTitle}>Win probability</p>
+        <p className="text-xs tabular-nums">
+          <b style={{ color: awayColor }}>{g.away.abbr} {last.away}%</b>
+          <span className="text-gray-400 mx-1.5">·</span>
+          <b style={{ color: homeColor }}>{g.home.abbr} {last.home}%</b>
+        </p>
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+          <CartesianGrid stroke="var(--chart-grid, #8882)" vertical={false} />
+          <XAxis dataKey="t" type="number" domain={[0, end]} ticks={[0, 20, 40, 60]}
+            tickFormatter={t => (t === 0 ? "Start" : t === 20 ? "End 1st" : t === 40 ? "End 2nd" : "End 3rd")}
+            tick={{ fill: "var(--chart-tick)", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={v => `${v}%`}
+            tick={{ fill: "var(--chart-tick)", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <ReferenceLine y={50} stroke="var(--chart-tick)" strokeDasharray="4 4" />
+          <ReferenceLine x={20} stroke="#8884" />
+          <ReferenceLine x={40} stroke="#8884" />
+          {end > 60 && <ReferenceLine x={60} stroke="#8884" />}
+          <Tooltip content={tip} />
+          <Line type="stepAfter" dataKey="away" stroke={awayColor} strokeWidth={2} dot={goalDot("away", awayColor)} isAnimationActive={false} />
+          <Line type="stepAfter" dataKey="home" stroke={homeColor} strokeWidth={2} dot={goalDot("home", homeColor)} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+      <p className="text-[11px] text-gray-400 mt-2">Dots mark goals. Starts at our pre-game pick; afterwards it follows the score and the time left.</p>
     </div>
   );
 }
@@ -358,7 +418,12 @@ export default function NHLGamePage({ params }: { params: Promise<{ game_id: str
       {g && (
         <>
           <Scoreboard g={g} />
-          <PeriodTable g={g} />
+          {g.state === "pre" ? <PeriodTable g={g} /> : (
+            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-3 items-start">
+              <ProbChart g={g} />
+              <PeriodTable g={g} />
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
             <WhyPanel g={g} />
             {g.state === "pre" ? <FormCard g={g} /> : <TeamStats g={g} />}

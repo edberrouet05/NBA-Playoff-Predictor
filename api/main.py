@@ -5613,30 +5613,37 @@ def _nhl_pregame(game_id: str, home: str, away: str, date: str, neutral: bool = 
     return _nhl_pair_prob(*rows), source, rows
 
 
-def _nhl_live_prob(p_home: float, home_margin: int, minutes_left: float, overtime: bool = False) -> float:
-    """Win probability during a game. Goals for the rest of regulation are two Poisson
-    processes (Skellam difference) whose strength gap is set so that, before puck drop, the
-    model's pre-game probability comes out; a tie at the end goes to overtime / shootout,
-    won with a probability halfway between a coin flip and the pre-game one."""
-    import math
-    from scipy.stats import skellam
-    q = 0.5 + (p_home - 0.5) / 2
-    if overtime or minutes_left <= 0:
-        if home_margin != 0:
-            return 1.0 if home_margin > 0 else 0.0
-        return q
-
-    def win(s: float, frac: float, m: int) -> float:
-        lam = NHL_GOALS_PER_60 * frac
-        mu_h, mu_a = lam * math.exp(s), lam * math.exp(-s)
-        # Home wins if (home goals − away goals) to come > −m; a tie after them → q
-        return float(skellam.sf(-m, mu_h, mu_a) + q * skellam.pmf(-m, mu_h, mu_a))
-
+def _nhl_strength(p_home: float) -> float:
+    """Log strength gap s that makes the goal model below give the pre-game probability."""
     lo, hi = -2.0, 2.0
     for _ in range(40):
         mid = (lo + hi) / 2
-        lo, hi = (mid, hi) if win(mid, 1.0, 0) < p_home else (lo, mid)
-    p = win((lo + hi) / 2, min(minutes_left / 60, 1.0), home_margin)
+        lo, hi = (mid, hi) if _nhl_goal_model(mid, p_home, 1.0, 0) < p_home else (lo, mid)
+    return (lo + hi) / 2
+
+
+def _nhl_goal_model(s: float, p_home: float, frac: float, home_margin: int) -> float:
+    """P(home wins) with `frac` of regulation left: goals to come are two Poisson processes
+    (Skellam difference) with means NHL_GOALS_PER_60·frac·e^(±s); a tie at the end goes to
+    overtime / shootout, won with a probability halfway between a coin flip and the pre-game one."""
+    import math
+    from scipy.stats import skellam
+    q = 0.5 + (p_home - 0.5) / 2
+    lam = NHL_GOALS_PER_60 * frac
+    mu_h, mu_a = lam * math.exp(s), lam * math.exp(-s)
+    return float(skellam.sf(-home_margin, mu_h, mu_a) + q * skellam.pmf(-home_margin, mu_h, mu_a))
+
+
+def _nhl_live_prob(p_home: float, home_margin: int, minutes_left: float, overtime: bool = False,
+                   strength: float | None = None) -> float:
+    """Win probability during a game (see _nhl_goal_model). `strength`: _nhl_strength(p_home),
+    when the caller already has it."""
+    if overtime or minutes_left <= 0:
+        if home_margin != 0:
+            return 1.0 if home_margin > 0 else 0.0
+        return 0.5 + (p_home - 0.5) / 2
+    s = _nhl_strength(p_home) if strength is None else strength
+    p = _nhl_goal_model(s, p_home, min(minutes_left / 60, 1.0), home_margin)
     return min(max(p, 0.001), 0.999)
 
 
@@ -5873,6 +5880,40 @@ def get_nhl_game(game_id: str):
               "strength": (p.get("strength") or {}).get("text", ""),
               "away_score": p.get("awayScore"), "home_score": p.get("homeScore")}
              for p in data.get("plays", []) if p.get("scoringPlay")]
+    # Win probability through the game: one point per play (score and clock at that moment),
+    # goals marked with the side that scored
+    timeline = []
+    if pre and g["state"] != "pre":
+        p_home = pre[0]
+        strength = _nhl_strength(p_home)
+        timeline.append({"t": 0.0, "home": round(p_home * 100, 1)})
+        prev_margin = 0
+        for play in data.get("plays", []):
+            period = int((play.get("period") or {}).get("number") or 0)
+            try:
+                mm, ss = ((play.get("clock") or {}).get("displayValue") or "0:00").split(":")
+                in_period = int(mm) + int(ss) / 60
+            except ValueError:
+                continue
+            if period < 1 or play.get("homeScore") is None or play.get("awayScore") is None:
+                continue
+            t = round((period - 1) * 20 + in_period, 2)
+            margin = int(play["homeScore"]) - int(play["awayScore"])
+            point = {"t": t, "home": round(_nhl_live_prob(p_home, margin, max(60 - t, 0.0), period > 3, strength) * 100, 1)}
+            if play.get("scoringPlay") and margin != prev_margin:
+                point["goal"] = "home" if margin > prev_margin else "away"
+            prev_margin = margin
+            if timeline[-1]["t"] == t and "goal" not in timeline[-1]:
+                timeline[-1] = point
+            else:
+                timeline.append(point)
+        if g["state"] == "post" and g["home"]["score"] is not None:
+            final = {"t": timeline[-1]["t"], "home": 100.0 if g["home"]["score"] > g["away"]["score"] else 0.0}
+            if "goal" in timeline[-1]:
+                timeline.append(final)
+            else:
+                timeline[-1] = final
+
     stars = [{"label": f.get("displayName", ""), "id": str((f.get("athlete") or {}).get("id", "")),
               "name": (f.get("athlete") or {}).get("displayName", ""),
               "headshot": ((f.get("athlete") or {}).get("headshot") or {}).get("href")}
@@ -5889,7 +5930,7 @@ def get_nhl_game(game_id: str):
                 "gf": r["gf_ewm"], "ga": r["ga_ewm"], "shot_share": r["shot_share"], "sv_pct": r["sv_pct"]}
 
     return {**g, "lines": lines, "stats": stats, "goalies": goalies, "skaters": skaters,
-            "goals": goals, "stars": stars,
+            "goals": goals, "stars": stars, "timeline": timeline,
             "explanation": _nhl_explain(*pre[2]) if pre else [],
             "form": {"home": form(home), "away": form(away)}}
 
