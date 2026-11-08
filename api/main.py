@@ -5332,6 +5332,129 @@ def _search_players(q: str, league: str) -> list[dict]:
     return out
 
 
+# ── Player index: every rostered player of the three leagues, for fuzzy search ──
+
+_player_index: list[dict] | None = None
+_player_index_time: float = 0.0
+_PLAYER_INDEX_TTL = 12 * 3600.0
+_player_index_lock = _threading.Lock()
+
+
+def _norm_name(s: str) -> str:
+    """'Ja'Marr Chase' → 'jamarr chase', 'Luka Dončić' → 'luka doncic', 'Hines-Allen' → 'hines allen'."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+    s = "".join(c for c in s if c not in "'.`’")
+    return " ".join("".join(c if c.isalnum() else " " for c in s).split())
+
+
+def _league_stars(league: str) -> dict[str, float]:
+    """{athlete id: star score}: how high a player sits in the league's stat leaderboards
+    (top 50 of each category, this season or the last one)."""
+    import datetime, re
+    sport = _TEAM_LEAGUES[league]["sport"]
+    year = datetime.date.today().year
+    for season in (year + 1, year, year - 1):
+        try:
+            data = _espn_json(f"https://sports.core.api.espn.com/v2/sports/{sport}/leagues/{league}"
+                              f"/seasons/{season}/types/2/leaders?limit=50")
+        except Exception:
+            continue
+        stars: dict[str, float] = {}
+        for cat in data.get("categories", []):
+            for rank, entry in enumerate(cat.get("leaders", [])):
+                m = re.search(r"/athletes/(\d+)", (entry.get("athlete") or {}).get("$ref", ""))
+                if m:
+                    stars[m.group(1)] = stars.get(m.group(1), 0.0) + (50 - rank) / 50
+        if stars:
+            return stars
+    return {}
+
+
+def _build_player_index() -> list[dict]:
+    from concurrent.futures import ThreadPoolExecutor
+    for league in _SEARCH_LEAGUES:
+        if league not in _team_list_cache:
+            _resolve_espn_team(league, "")   # fills the league's team list
+    jobs = [(league, t) for league in _SEARCH_LEAGUES for t in _team_list_cache.get(league, [])]
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        rosters = list(pool.map(lambda j: _team_roster(_TEAM_LEAGUES[j[0]]["sport"], j[0], j[1]["id"])[0], jobs))
+        stars = dict(zip(_SEARCH_LEAGUES, pool.map(_league_stars, _SEARCH_LEAGUES)))
+    index = []
+    for (league, team), groups in zip(jobs, rosters):
+        for g in groups:
+            for pl in g["players"]:
+                norm = _norm_name(pl["name"])
+                if not norm:
+                    continue
+                index.append({"league": league, "id": pl["id"], "name": pl["name"], "norm": norm,
+                              "tokens": norm.split(), "team": team["abbreviation"], "team_name": team["displayName"],
+                              "position": pl["position"] or None, "headshot": pl["headshot"],
+                              "star": stars[league].get(pl["id"], 0.0)})
+    return index
+
+
+def _get_player_index() -> list[dict] | None:
+    """The index if built (rebuilt in the background every 12 h); None until the first build ends."""
+    global _player_index, _player_index_time
+
+    def build():
+        global _player_index, _player_index_time
+        try:
+            index = _build_player_index()
+            if index:
+                _player_index, _player_index_time = index, _time_mod.time()
+        finally:
+            _player_index_lock.release()
+
+    stale = _player_index is None or _time_mod.time() - _player_index_time > _PLAYER_INDEX_TTL
+    if stale and _player_index_lock.acquire(blocking=False):
+        _threading.Thread(target=build, daemon=True).start()
+    return _player_index
+
+
+def _token_score(q: str, name_tokens: list[str]) -> float:
+    """How well one query word matches a name: 3 whole word, 2 start of a word, up to 1 for a
+    close spelling (typos), 0 for no match."""
+    from difflib import SequenceMatcher
+    best = 0.0
+    for t in name_tokens:
+        if t == q:
+            return 3.0
+        if t.startswith(q):
+            best = max(best, 2.0)
+        elif len(q) >= 4:
+            # Compare with the word cut to about the typed length, so "jamar" ~ "jamarr", "mahomse" ~ "mahomes"
+            r = SequenceMatcher(None, q, t[:len(q) + 1]).ratio()
+            if r >= 0.75:
+                best = max(best, r)
+    return best
+
+
+def _search_index(q: str, index: list[dict]) -> list[dict]:
+    words = _norm_name(q).split()
+    if not words:
+        return []
+    scored = []
+    for pl in index:
+        total = 0.0
+        for w in words:
+            sc = _token_score(w, pl["tokens"])
+            if sc == 0:
+                break
+            total += sc
+        else:
+            # "first last" is the usual order when both are typed; stars break ties between similar names
+            if len(words) > 1 and _token_score(words[0], pl["tokens"][:1]) >= 2:
+                total += 0.5
+            # Star bonus up to 1.5: enough to lift Ja'Marr Chase above other "Jamar…" names,
+            # not enough to beat a real match with a typo-level one
+            scored.append((total + min(pl["star"], 4.0) / 4 * 1.5, pl))
+    scored.sort(key=lambda x: -x[0])
+    return [{"type": "player", **{k: pl[k] for k in ("league", "id", "name", "team", "team_name", "position", "headshot")}}
+            for _, pl in scored[:8]]
+
+
 @app.get("/api/search")
 def search(q: str = ""):
     """Teams and players (NBA, NFL, MLB) matching a name, for the search bar."""
@@ -5342,21 +5465,26 @@ def search(q: str = ""):
     if hit and _time_mod.time() - hit[0] < _SEARCH_TTL:
         return hit[1]
 
-    def players(league: str) -> list[dict]:
-        try:
-            return _search_players(q, league)
-        except Exception:
-            return []
+    index = _get_player_index()
+    if index:
+        teams, found = _search_teams(q), _search_index(q, index)
+    else:
+        # Index still building (just after a restart): ESPN's own player search
+        def players(league: str) -> list[dict]:
+            try:
+                return _search_players(q, league)
+            except Exception:
+                return []
 
-    teams, *by_league = _parallel(lambda: _search_teams(q), *(lambda lg=lg: players(lg) for lg in _SEARCH_LEAGUES))
-    # Keep each league's top hits, then order by ESPN's relevance across leagues
-    found = sorted((p for lst in by_league for p in lst), key=lambda p: -p["relevance"])[:8]
-    for p in found:
-        p.pop("relevance", None)
+        teams, *by_league = _parallel(lambda: _search_teams(q), *(lambda lg=lg: players(lg) for lg in _SEARCH_LEAGUES))
+        found = [p for lst in by_league for p in lst][:8]
+        for p in found:
+            p.pop("relevance", None)
     result = {"query": q, "teams": teams[:5], "players": found}
-    if len(_search_cache) > 500:
-        _search_cache.clear()
-    _search_cache[q] = (_time_mod.time(), result)
+    if index:
+        if len(_search_cache) > 500:
+            _search_cache.clear()
+        _search_cache[q] = (_time_mod.time(), result)
     return result
 
 
@@ -6156,7 +6284,7 @@ def _warm_caches() -> None:
     def run():
         for fn in (get_predictions_log, get_nba_standings, get_nba_projections, get_bracket,
                    get_nfl_predictions_log, get_nfl_standings, get_nfl_projections, get_nfl_power,
-                   get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap):
+                   get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap, _get_player_index):
             try:
                 fn()
             except Exception:
