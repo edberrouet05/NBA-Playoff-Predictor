@@ -181,11 +181,15 @@ jobs:
         if: github.event_name == 'schedule'
         run: |
           if [ "$(date -u +%u)" = "1" ]; then python nhl/train.py; else echo "Not Monday — skipping retrain"; fi
+      - name: Pull state the deployed API stored (this commit redeploys it)
+        env:
+          API_URL: https://nba-playoff-predictor-u8bj.onrender.com
+        run: python scripts/sync_deployed_state.py
       - name: Commit
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/nhl data/processed/nhl_training_data.csv models/nhl_*
+          git add data/nhl data/processed/nhl_training_data.csv models/nhl_* data/pregame_odds.json
           git diff --cached --quiet && { echo "No changes"; exit 0; }
           git commit -m "Refresh NHL data ($(date -u +%F))"
           git pull --rebase

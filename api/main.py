@@ -1351,7 +1351,7 @@ def _performance_payload(sport: str, log: list[dict]) -> dict:
         expected = None
 
     return {"sport": sport, "season": _sport_season_label(sport), "n_games": n,
-            "frozen": sum(1 for g in games if g.get("source") == "frozen") if sport in ("nba", "nfl") else None,
+            "frozen": sum(1 for g in games if g.get("source") == "frozen") if sport in ("nba", "nfl", "nhl") else None,
             "excluded": len(log) - n, "expected_accuracy": expected,
             "correct": sum(g["correct"] for g in games), **scores(rows),
             "by_confidence": by_conf, "calibration": calibration, "by_day": by_day, "market": market}
@@ -5402,8 +5402,76 @@ NHL_MAX_REST = 4
 NHL_GOALS_PER_60 = 3.0    # goals per team per 60 minutes, for the live win probability
 NHL_FRANCHISE_IDS = {"24": "129764"}   # Arizona Coyotes → Utah (as in nhl/pipeline.py)
 
+NHL_FROZEN_PREDS_PATH = ROOT / "data" / "nhl" / "nhl_frozen_predictions.json"
+
 _nhl_model_cache = None
 _nhl_file_cache: dict[str, tuple[float, object]] = {}
+
+
+class FrozenPredictions:
+    """Pre-game predictions written down before the game starts ({game id: entry}), kept in a
+    JSON file. The server adds to it as games are served; the freeze workflow commits it, and
+    merges in what the deployed server stored (a redeploy wipes the server's disk). For a game
+    in two copies, the later freeze wins."""
+
+    def __init__(self, path):
+        self.path = path
+        self.preds: dict[str, dict] = self._load()
+        self._mtime = 0.0
+
+    def _load(self) -> dict[str, dict]:
+        import json as _json
+        try:
+            return _json.loads(self.path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    @staticmethod
+    def merge(into: dict[str, dict], other: dict[str, dict]) -> None:
+        for gid, entry in other.items():
+            mine = into.get(gid)
+            if not mine or entry.get("frozen_at", "") > mine.get("frozen_at", ""):
+                into[gid] = entry
+
+    def save(self) -> None:
+        import json as _json
+        try:
+            self.merge(self.preds, self._load())
+            self.path.write_text(_json.dumps(self.preds, indent=1, sort_keys=True), encoding="utf-8")
+        except Exception:
+            pass
+
+    def refresh(self) -> None:
+        """Pick up entries written to the file by someone else (a pulled commit)."""
+        try:
+            mtime = self.path.stat().st_mtime
+        except OSError:
+            return
+        if mtime != self._mtime:
+            self._mtime = mtime
+            self.merge(self.preds, self._load())
+
+    def get(self, game_id) -> dict | None:
+        self.refresh()
+        return self.preds.get(str(game_id)) if game_id else None
+
+    def record(self, game_id: str, entry: dict) -> None:
+        """Write down (or refresh) the pre-game prediction of a game that has not started."""
+        old = self.preds.get(str(game_id))
+        if old and all(old.get(k) == v for k, v in entry.items()):
+            return
+        self.preds[str(game_id)] = {**entry, "frozen_at": _time_mod.strftime("%Y-%m-%dT%H:%M:%SZ", _time_mod.gmtime())}
+        self.save()
+
+
+_nhl_frozen = FrozenPredictions(NHL_FROZEN_PREDS_PATH)
+
+
+@app.get("/api/nhl/frozen_predictions")
+def get_nhl_frozen_predictions() -> dict[str, dict]:
+    """Every frozen NHL pre-game prediction (read by the workflows so a redeploy loses none)."""
+    _nhl_frozen.refresh()
+    return _nhl_frozen.preds
 
 
 def _load_nhl_model():
@@ -5511,11 +5579,6 @@ def _nhl_with_goalies(rows: tuple[dict, dict], home_goalie: str | None, away_goa
     return h, a
 
 
-# Pre-game probability served while a game was upcoming (with the announced goalies), kept so
-# it doesn't move at puck drop when ESPN stops listing probable starters
-_nhl_pregame_memo: dict[str, tuple[float, str, tuple[dict, dict]]] = {}
-
-
 def _nhl_pregame(game_id: str, home: str, away: str, date: str, neutral: bool = False,
                  goalies: tuple[str | None, str | None] | None = None) -> tuple[float, str, tuple[dict, dict]] | None:
     """(P(home wins), source, rows): the pipeline's pre-game rows when it has the game
@@ -5532,11 +5595,12 @@ def _nhl_pregame(game_id: str, home: str, away: str, date: str, neutral: bool = 
         source = "current"
     if goalies and any(goalies):
         rows = _nhl_with_goalies(rows, *goalies)
-        result = (_nhl_pair_prob(*rows), "pregame", rows)
-        _nhl_pregame_memo[str(game_id)] = result
-        return result
-    if str(game_id) in _nhl_pregame_memo and int(known.get(home, {}).get("completed", 0) or 0) == 0:
-        return _nhl_pregame_memo[str(game_id)]
+        return _nhl_pair_prob(*rows), "pregame", rows
+    frozen = _nhl_frozen.get(game_id)
+    if frozen and {frozen["home_team"], frozen["away_team"]} == {home, away}:
+        # Written down before puck drop (with the announced goalies): that's the pre-game pick
+        rows = _nhl_with_goalies(rows, frozen.get("home_goalie"), frozen.get("away_goalie"))
+        return frozen["home_win_prob"] / 100, "frozen", rows
     return _nhl_pair_prob(*rows), source, rows
 
 
@@ -5637,6 +5701,12 @@ def _nhl_with_probs(g: dict) -> dict:
     if pre is None:
         return out
     p_home, source, rows = pre
+    if g["state"] == "pre" and source != "current":
+        _nhl_frozen.record(g["game_id"], {
+            "away_team": away, "home_team": home,
+            "home_win_prob": round(p_home * 100, 1), "away_win_prob": round((1 - p_home) * 100, 1),
+            "predicted_winner": home if p_home >= 0.5 else away, "puck_drop": g["start_utc"],
+            "home_goalie": g["home"].get("probable"), "away_goalie": g["away"].get("probable")})
     # Starting goalies the pick used: announced (probable), or the team's last starter
     for side, row in (("home", rows[0]), ("away", rows[1])):
         name = row.get("goalie") if isinstance(row.get("goalie"), str) else ""
@@ -5864,9 +5934,13 @@ def get_nhl_predictions_log(n: int = 500):
         probs = _load_nhl_model().predict_proba(X)[:, 1]
         for i, (gid, h, a) in enumerate(pending):
             p_home = float(probs[2 * i]) / (float(probs[2 * i]) + float(probs[2 * i + 1]))
+            frozen = _nhl_frozen.get(gid)
+            source = "pregame"
+            if frozen and frozen["home_team"] == h["team"]:
+                p_home, source = frozen["home_win_prob"] / 100, "frozen"
             log[gid] = {"game_id": gid, "date": h["game_date"], "home_team": h["team"], "away_team": a["team"],
                         "home_score": int(h["team_score"]), "away_score": int(a["team_score"]),
-                        "p_home": p_home, "source": "pregame", "season_type": int(h["season_type"])}
+                        "p_home": p_home, "source": source, "season_type": int(h["season_type"])}
 
     # Games finished since the pipeline last ran (today, yesterday)
     today = datetime.date.fromisoformat(_nhl_today())
@@ -6202,6 +6276,7 @@ _PLAYER_SPLIT_COLS = {
 }
 # Clear labels where ESPN's abbreviations collide (e.g. "YDS" for rushing and receiving)
 _PLAYER_STAT_LABELS = {
+    "shotsTotal": "SOG",
     "passingYards": "Pass YDS", "passingTouchdowns": "Pass TD", "interceptions": "INT", "QBRating": "Rating",
     "completions": "CMP", "passingAttempts": "ATT", "rushingYards": "Rush YDS", "rushingAttempts": "Carries",
     "rushingTouchdowns": "Rush TD", "yardsPerRushAttempt": "YPC", "receivingYards": "Rec YDS",
@@ -6279,7 +6354,9 @@ _PROJ_VOLUME = {
     ("nba", "assists"):        ("minutes",          "Min",      "Ast/min", 0.11, 300, 3,  0.0),
 }
 # Stats the player page's trend chart can switch between (the first is the default)
-_PLAYER_CHART_OPTIONS = {"nba": ["points", "totalRebounds", "assists"]}
+_PLAYER_CHART_OPTIONS = {"nba": ["points", "totalRebounds", "assists"],
+                         # Skaters (goalies keep saves: these columns aren't in their game log)
+                         "nhl": ["points", "goals", "assists", "shotsTotal"]}
 # ESPN's live boxscore names some stats differently from the game log
 _LIVE_STAT_KEYS = {"totalRebounds": "rebounds"}
 _PROJ_OUT_STATUSES = {"Out", "Injured Reserve", "Suspended", "Physically Unable To Perform"}

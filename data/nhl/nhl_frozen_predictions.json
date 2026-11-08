@@ -1,0 +1,46 @@
+{
+ "401892676": {
+  "away_goalie": "Connor Hellebuyck",
+  "away_team": "New Jersey Devils",
+  "away_win_prob": 59.9,
+  "frozen_at": "2026-11-08T21:47:22Z",
+  "home_goalie": "Anthony Stolarz",
+  "home_team": "Toronto Maple Leafs",
+  "home_win_prob": 40.1,
+  "predicted_winner": "New Jersey Devils",
+  "puck_drop": "2026-11-09T00:00Z"
+ },
+ "401892677": {
+  "away_goalie": "Andrei Vasilevskiy",
+  "away_team": "Tampa Bay Lightning",
+  "away_win_prob": 59.6,
+  "frozen_at": "2026-11-08T21:47:22Z",
+  "home_goalie": "Stuart Skinner",
+  "home_team": "Winnipeg Jets",
+  "home_win_prob": 40.4,
+  "predicted_winner": "Tampa Bay Lightning",
+  "puck_drop": "2026-11-08T23:00Z"
+ },
+ "401892678": {
+  "away_goalie": "Dan Vladar",
+  "away_team": "Philadelphia Flyers",
+  "away_win_prob": 48.0,
+  "frozen_at": "2026-11-08T21:47:22Z",
+  "home_goalie": "Devin Cooley",
+  "home_team": "Calgary Flames",
+  "home_win_prob": 52.0,
+  "predicted_winner": "Calgary Flames",
+  "puck_drop": "2026-11-09T00:00Z"
+ },
+ "401892679": {
+  "away_goalie": "Arturs Silovs",
+  "away_team": "Pittsburgh Penguins",
+  "away_win_prob": 34.8,
+  "frozen_at": "2026-11-08T21:47:22Z",
+  "home_goalie": "Laurent Brossoit",
+  "home_team": "Anaheim Ducks",
+  "home_win_prob": 65.2,
+  "predicted_winner": "Anaheim Ducks",
+  "puck_drop": "2026-11-09T01:00Z"
+ }
+}

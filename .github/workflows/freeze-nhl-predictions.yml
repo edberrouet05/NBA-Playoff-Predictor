@@ -1,0 +1,44 @@
+name: Freeze NHL predictions
+
+# Writes down each NHL game's pre-game prediction (with ESPN's probable starting goalies) before
+# puck drop, so the predictions log never re-predicts a played game with later data. Also pulls in
+# what the deployed API froze on its own as pages were served (a redeploy wipes the server's disk).
+# One run before weekend matinees, one before the 7 pm ET wave, one before the West Coast games.
+on:
+  schedule:
+    - cron: "30 16 * 1-6,10-12 *"   # 12:30 pm EDT / 11:30 am EST
+    - cron: "15 22 * 1-6,10-12 *"   # 6:15 pm EDT / 5:15 pm EST
+    - cron: "15 1 * 1-6,10-12 *"    # 9:15 pm EDT / 8:15 pm EST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Freeze
+        env:
+          API_URL: https://nba-playoff-predictor-u8bj.onrender.com
+        run: python nhl/freeze_predictions.py
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/nhl/nhl_frozen_predictions.json data/nba/nba_frozen_predictions.json data/nfl/nfl_frozen_predictions.json data/pregame_odds.json
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "Freeze NHL predictions ($(date -u +%F' '%H:%M))"
+          git pull --rebase
+          git push

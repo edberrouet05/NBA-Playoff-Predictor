@@ -18,7 +18,7 @@ const SPORT: Record<Sport, { start: string; predictions: string; stats: string; 
   mlb: { start: "first pitch", predictions: "/mlb/predictions", stats: "/mlb/stats",
          frozenNote: "the one served before first pitch when we have it" },
   nhl: { start: "puck drop", predictions: "/nhl/predictions", stats: "/nhl/stats",
-         frozenNote: "the model on each team's state the morning of the game" },
+         frozenNote: "the one written down before puck drop when we have it (probable goalies included)" },
 };
 
 // ── Types (mirror /api/{sport}/performance) ────────────────────────────────────

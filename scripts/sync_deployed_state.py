@@ -1,8 +1,8 @@
 """Pull what the deployed API wrote to its own disk into the repo before a workflow commits.
 
 Every commit redeploys the API, and a redeploy wipes the server's disk — so the stored pre-game
-betting lines (data/pregame_odds.json) and frozen NFL / NBA predictions
-(data/{nfl,nba}/{nfl,nba}_frozen_predictions.json) the server saved since the last commit would be lost.
+betting lines (data/pregame_odds.json) and frozen NFL / NBA / NHL predictions
+(data/{nfl,nba,nhl}/*_frozen_predictions.json) the server saved since the last commit would be lost.
 Run this right before `git add` in every workflow that commits.
 
     API_URL=https://… python scripts/sync_deployed_state.py
@@ -43,6 +43,14 @@ def sync(api_url: str) -> None:
         main._merge_nba_frozen_preds(main._nba_frozen_preds, preds)
         main._save_nba_frozen_preds()
         print(f"NBA frozen predictions: {sum(1 for k, v in main._nba_frozen_preds.items() if before.get(k) != v)} new from the server")
+
+    preds = fetch(api_url, "/api/nhl/frozen_predictions")
+    if preds:
+        store = main._nhl_frozen
+        before = dict(store.preds)
+        store.merge(store.preds, preds)
+        store.save()
+        print(f"NHL frozen predictions: {sum(1 for k, v in store.preds.items() if before.get(k) != v)} new from the server")
 
     odds = fetch(api_url, "/api/pregame_odds")
     if odds:
