@@ -68,15 +68,6 @@ function IconTarget() {
   );
 }
 
-function IconPower() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 15l4.5-5 3 3L16 5" />
-      <path d="M11.5 5H16v4.5" />
-    </svg>
-  );
-}
-
 // ── Sport detection ────────────────────────────────────────────────────────────
 
 type Sport = "nba" | "mlb" | "nfl" | "nhl";
@@ -98,42 +89,26 @@ type SidebarLink = {
 };
 
 const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
+  // Three icons per sport: the other pages are tabs inside "Standings" and "Model"
   nba: [
     {
       href: "/",
       Icon: IconGames,
       label: "Games",
-      isActive: (p) => p === "/" || p.startsWith("/game"),
-    },
-    {
-      href: "/bracket",
-      Icon: IconBracket,
-      label: "Bracket",
-      isActive: (p) => p === "/bracket" || p.startsWith("/team"),
+      isActive: (p) => p === "/" || p.startsWith("/game") || p.startsWith("/team")
+        || p.startsWith("/nba/team") || p.startsWith("/nba/player") || p === "/predictions",
     },
     {
       href: "/nba/standings",
       Icon: IconStandings,
       label: "Standings",
-      isActive: (p) => p === "/nba/standings",
-    },
-    {
-      href: "/nba/power",
-      Icon: IconPower,
-      label: "Power",
-      isActive: (p) => p === "/nba/power",
+      isActive: (p) => p === "/nba/standings" || p === "/nba/power" || p === "/bracket",
     },
     {
       href: "/nba/performance",
       Icon: IconTarget,
-      label: "Record",
-      isActive: (p) => p === "/nba/performance",
-    },
-    {
-      href: "/stats",
-      Icon: IconStats,
-      label: "Stats",
-      isActive: (p) => p === "/stats",
+      label: "Model",
+      isActive: (p) => p === "/nba/performance" || p === "/stats",
     },
   ],
   mlb: [
@@ -141,7 +116,8 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       href: "/mlb",
       Icon: IconGames,
       label: "Games",
-      isActive: (p) => p === "/mlb",
+      isActive: (p) => p === "/mlb" || p.startsWith("/mlb/game") || p.startsWith("/mlb/team")
+        || p.startsWith("/mlb/player") || p === "/mlb/predictions",
     },
     {
       href: "/mlb/standings",
@@ -152,14 +128,8 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
     {
       href: "/mlb/performance",
       Icon: IconTarget,
-      label: "Record",
-      isActive: (p) => p === "/mlb/performance",
-    },
-    {
-      href: "/mlb/stats",
-      Icon: IconStats,
-      label: "Stats",
-      isActive: (p) => p === "/mlb/stats",
+      label: "Model",
+      isActive: (p) => p === "/mlb/performance" || p === "/mlb/stats",
     },
   ],
   nfl: [
@@ -167,31 +137,20 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       href: "/nfl",
       Icon: IconGames,
       label: "Games",
-      isActive: (p) => p === "/nfl" || p.startsWith("/nfl/game"),
+      isActive: (p) => p === "/nfl" || p.startsWith("/nfl/game") || p.startsWith("/nfl/team")
+        || p.startsWith("/nfl/player") || p === "/nfl/predictions",
     },
     {
       href: "/nfl/standings",
       Icon: IconStandings,
       label: "Standings",
-      isActive: (p) => p === "/nfl/standings",
-    },
-    {
-      href: "/nfl/power",
-      Icon: IconPower,
-      label: "Power",
-      isActive: (p) => p === "/nfl/power",
+      isActive: (p) => p === "/nfl/standings" || p === "/nfl/power",
     },
     {
       href: "/nfl/performance",
       Icon: IconTarget,
-      label: "Record",
-      isActive: (p) => p === "/nfl/performance",
-    },
-    {
-      href: "/nfl/stats",
-      Icon: IconStats,
-      label: "Stats",
-      isActive: (p) => p === "/nfl/stats",
+      label: "Model",
+      isActive: (p) => p === "/nfl/performance" || p === "/nfl/stats",
     },
   ],
   nhl: [
