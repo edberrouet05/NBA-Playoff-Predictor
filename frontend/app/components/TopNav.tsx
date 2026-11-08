@@ -59,7 +59,7 @@ export default function TopNav() {
           >
             {label}
             {live[key] && (
-              <span className="absolute -top-0.5 -right-2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" aria-label="live" />
+              <span className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" aria-label="live" />
             )}
           </Link>
         );
