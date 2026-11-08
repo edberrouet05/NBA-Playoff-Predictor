@@ -10,7 +10,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // ── Types (mirror /api/nhl/today and /api/nhl/predictions_log) ────────────────
 
-interface Side { name: string; abbr: string; score: number | null; record: string | null; logo: string | null; color: string }
+interface Goalie { name: string; sv: number; status: "probable" | "started" | "last start" }
+interface Side { name: string; abbr: string; score: number | null; record: string | null; logo: string | null; color: string; goalie?: Goalie | null }
 interface NHLGame {
   game_id: string; start_utc: string; date: string;
   state: "pre" | "in" | "post"; status: string; detail: string; period: number; clock: string;
@@ -80,6 +81,13 @@ function GameCard({ game }: { game: NHLGame }) {
           <span className={`text-lg font-bold ${won || isLive ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{s.score}</span>
         )}
         {s.record && !isLive && !isFinal && <span className="text-[11px] text-gray-400">{s.record}</span>}
+        {s.goalie && (
+          <span className="text-[11px] text-gray-500 text-center"
+            title={s.goalie.status === "probable" ? "Probable starting goalie" : s.goalie.status === "started" ? "Starting goalie" : "Last starter (no announced starter yet)"}>
+            G: {s.goalie.name.split(" ").slice(-1)[0]} <span className="text-gray-400">{s.goalie.sv.toFixed(3).replace(/^0/, "")}</span>
+            {s.goalie.status === "last start" && !isFinal && !isLive && <span className="text-gray-400">?</span>}
+          </span>
+        )}
       </div>
     );
   }

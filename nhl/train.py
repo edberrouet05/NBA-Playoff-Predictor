@@ -45,6 +45,8 @@ FEATURES = [
     "elo_diff",
     # Recent form: recency-weighted goal differential, shot share and save percentage
     "margin_ewm_diff", "shot_share_diff", "sv_pct_diff",
+    # The starting goalies: save percentage on the shots each faced before the game
+    "goalie_sv_diff",
 ]
 TARGET   = "win"
 GAME_KEY = "game_id"

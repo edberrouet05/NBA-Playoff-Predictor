@@ -26,6 +26,7 @@ const FEATURE_LABELS: Record<string, { label: string; group: string; desc: strin
   elo_diff:        { label: "Elo Rating Gap",          group: "Team",    desc: "Gap between the two teams' Elo ratings. Elo updates after every game (a win counts more when it is by more goals) and carries over between seasons, pulled 1/3 toward average, so it knows who's good from opening night." },
   shot_share_diff: { label: "Shot Share",              group: "Play",    desc: "Gap in the share of shots on goal each team gets, weighted toward recent games. Teams that outshoot their opponents control play, and that predicts future wins better than goals do." },
   margin_ewm_diff: { label: "Recent Goal Differential", group: "Team",   desc: "Gap in goals scored minus goals allowed per game, weighted toward recent games (a shootout counts as a tie)." },
+  goalie_sv_diff:  { label: "Starting Goalies",        group: "Play",    desc: "Gap between the two starting goalies: each one's save percentage on the shots he faced in his previous games (NHL game logs), pulled toward the league average for goalies with few games. For upcoming games the model uses ESPN's probable starters, so a backup in net lowers his team's chances." },
   sv_pct_diff:     { label: "Goaltending (save %)",    group: "Play",    desc: "Gap in the save percentage of each team's goalies, weighted toward recent games. Its weight is small and negative: hot goaltending tends not to last, so the model leans slightly the other way." },
   rest_diff:       { label: "Rest Gap",                group: "Context", desc: "Difference in days of rest (capped at 4)." },
   b2b:             { label: "Back-to-back",            group: "Context", desc: "Playing the second night of a back-to-back: tired legs, and often the backup goalie." },
@@ -266,7 +267,7 @@ export default function NHLStatsPage() {
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic Regression with L2 regularization + StandardScaler</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on {data.seasons[0]}–{data.seasons[data.seasons.length - 1]} regular-season and playoff games (2 rows per game)</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Leave-one-season-out cross-validation, balanced class weights</li>
-          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, shot share, goal differential, goaltending, rest and back-to-backs, home ice</li>
+          <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> {data.features.length} features: Elo, shot share, goal differential, team and starting goalies, rest and back-to-backs, home ice</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Every feature is computed from games before the one being predicted — no future information leaks into training</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Probability normalized head-to-head: away prob / (away + home prob)</li>
         </ul>

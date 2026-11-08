@@ -5394,7 +5394,10 @@ NHL_STATE_PATH = ROOT / "data" / "nhl" / "nhl_team_state.csv"
 NHL_GAME_FEATURES_PATH = ROOT / "data" / "nhl" / "nhl_game_features_current.csv"
 NHL_BASE = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl"
 # Order must match nhl/train.py FEATURES exactly
-NHL_FEATURES = ["home", "rest_diff", "b2b", "opp_b2b", "elo_diff", "margin_ewm_diff", "shot_share_diff", "sv_pct_diff"]
+NHL_FEATURES = ["home", "rest_diff", "b2b", "opp_b2b", "elo_diff", "margin_ewm_diff", "shot_share_diff", "sv_pct_diff",
+                "goalie_sv_diff"]
+NHL_GOALIES_PATH = ROOT / "data" / "nhl" / "nhl_goalies.csv"
+NHL_LEAGUE_SV = 0.905     # a goalie with no NHL history (as in nhl/pipeline.py)
 NHL_MAX_REST = 4
 NHL_GOALS_PER_60 = 3.0    # goals per team per 60 minutes, for the live win probability
 NHL_FRANCHISE_IDS = {"24": "129764"}   # Arizona Coyotes → Utah (as in nhl/pipeline.py)
@@ -5438,6 +5441,19 @@ def _load_nhl_game_features() -> dict[str, dict[str, dict]]:
     return _nhl_cached_file(NHL_GAME_FEATURES_PATH, build)
 
 
+def _load_nhl_goalies() -> dict[str, dict]:
+    """{normalized name: goalie rating row} from nhl/pipeline.py."""
+    return _nhl_cached_file(NHL_GOALIES_PATH, lambda: {
+        _norm_name(r["name"]): r for r in pd.read_csv(NHL_GOALIES_PATH).to_dict("records")})
+
+
+def _nhl_goalie_sv(name: str | None) -> float | None:
+    if not name:
+        return None
+    r = _load_nhl_goalies().get(_norm_name(name))
+    return float(r["sv_rating"]) if r else NHL_LEAGUE_SV
+
+
 def _nhl_team_names() -> dict[str, str]:
     """{ESPN team id: team name}, old franchise ids included."""
     names = {str(r["team_id"]): name for name, r in _load_nhl_state().items()}
@@ -5470,7 +5486,9 @@ def _nhl_state_rows(home: str, away: str, date: str, neutral: bool = False) -> t
         return {"home": int(is_home and not neutral), "rest_diff": r_t - r_o, "b2b": int(r_t == 1),
                 "opp_b2b": int(r_o == 1), "elo_diff": t["elo"] - o["elo"],
                 "margin_ewm_diff": t["margin_ewm"] - o["margin_ewm"],
-                "shot_share_diff": t["shot_share"] - o["shot_share"], "sv_pct_diff": t["sv_pct"] - o["sv_pct"]}
+                "shot_share_diff": t["shot_share"] - o["shot_share"], "sv_pct_diff": t["sv_pct"] - o["sv_pct"],
+                "goalie_sv": t["goalie_sv"], "opp_goalie_sv": o["goalie_sv"],
+                "goalie_sv_diff": t["goalie_sv"] - o["goalie_sv"], "goalie": t.get("goalie", "")}
     return row(h, a, 1, rh, ra), row(a, h, 0, ra, rh)
 
 
@@ -5481,18 +5499,45 @@ def _nhl_pair_prob(row_h: dict, row_a: dict) -> float:
     return p_h / (p_h + p_a)
 
 
-def _nhl_pregame(game_id: str, home: str, away: str, date: str, neutral: bool = False) -> tuple[float, str, tuple[dict, dict]] | None:
+def _nhl_with_goalies(rows: tuple[dict, dict], home_goalie: str | None, away_goalie: str | None) -> tuple[dict, dict]:
+    """The rows with the goalie gap recomputed for the announced starters."""
+    h, a = dict(rows[0]), dict(rows[1])
+    sv_h = _nhl_goalie_sv(home_goalie) or float(h["goalie_sv"])
+    sv_a = _nhl_goalie_sv(away_goalie) or float(a["goalie_sv"])
+    h.update(goalie_sv=sv_h, opp_goalie_sv=sv_a, goalie_sv_diff=sv_h - sv_a, goalie=home_goalie or h.get("goalie", ""),
+             goalie_probable=int(bool(home_goalie)))
+    a.update(goalie_sv=sv_a, opp_goalie_sv=sv_h, goalie_sv_diff=sv_a - sv_h, goalie=away_goalie or a.get("goalie", ""),
+             goalie_probable=int(bool(away_goalie)))
+    return h, a
+
+
+# Pre-game probability served while a game was upcoming (with the announced goalies), kept so
+# it doesn't move at puck drop when ESPN stops listing probable starters
+_nhl_pregame_memo: dict[str, tuple[float, str, tuple[dict, dict]]] = {}
+
+
+def _nhl_pregame(game_id: str, home: str, away: str, date: str, neutral: bool = False,
+                 goalies: tuple[str | None, str | None] | None = None) -> tuple[float, str, tuple[dict, dict]] | None:
     """(P(home wins), source, rows): the pipeline's pre-game rows when it has the game
     ("pregame"), otherwise today's team state ("current" — for a finished game that knows
-    the result, so the predictions log leaves it out of the record)."""
+    the result, so the predictions log leaves it out of the record). `goalies` = ESPN's
+    probable starters (home, away) for an upcoming game."""
     known = _load_nhl_game_features().get(str(game_id), {})
     if home in known and away in known:
-        rows = (known[home], known[away])
-        return _nhl_pair_prob(*rows), "pregame", rows
-    rows = _nhl_state_rows(home, away, date, neutral)
-    if rows is None:
-        return None
-    return _nhl_pair_prob(*rows), "current", rows
+        rows, source = (known[home], known[away]), "pregame"
+    else:
+        rows = _nhl_state_rows(home, away, date, neutral)
+        if rows is None:
+            return None
+        source = "current"
+    if goalies and any(goalies):
+        rows = _nhl_with_goalies(rows, *goalies)
+        result = (_nhl_pair_prob(*rows), "pregame", rows)
+        _nhl_pregame_memo[str(game_id)] = result
+        return result
+    if str(game_id) in _nhl_pregame_memo and int(known.get(home, {}).get("completed", 0) or 0) == 0:
+        return _nhl_pregame_memo[str(game_id)]
+    return _nhl_pair_prob(*rows), source, rows
 
 
 def _nhl_live_prob(p_home: float, home_margin: int, minutes_left: float, overtime: bool = False) -> float:
@@ -5557,8 +5602,10 @@ def _nhl_parse_event(ev: dict) -> dict | None:
             score = None
         rec = next((r.get("summary") for r in c.get("records", []) or c.get("record", []) or []
                     if r.get("type") == "total" or r.get("name") == "overall"), None)
+        probable = next(((x.get("athlete") or {}).get("displayName") for x in c.get("probables", []) or []
+                         if x.get("name") == "probableStartingGoalie"), None)
         return {"name": names.get(NHL_FRANCHISE_IDS.get(tid, tid), t.get("displayName", "")),
-                "abbr": t.get("abbreviation", ""), "id": tid, "score": score, "record": rec,
+                "abbr": t.get("abbreviation", ""), "id": tid, "score": score, "record": rec, "probable": probable,
                 "logo": t.get("logo") or ((t.get("logos") or [{}])[0].get("href")),
                 "color": "#" + (t.get("color") or "555555")}
 
@@ -5583,12 +5630,20 @@ def _nhl_parse_event(ev: dict) -> dict | None:
 def _nhl_with_probs(g: dict) -> dict:
     """Adds our pre-game probabilities (and live ones while the game is on) to a game."""
     home, away = g["home"]["name"], g["away"]["name"]
-    pre = _nhl_pregame(g["game_id"], home, away, g["date"], g["neutral"])
+    goalies = (g["home"].get("probable"), g["away"].get("probable")) if g["state"] == "pre" else None
+    pre = _nhl_pregame(g["game_id"], home, away, g["date"], g["neutral"], goalies)
     out = {**g, "home_win_prob": None, "away_win_prob": None, "predicted_winner": None,
            "live_home_prob": None, "live_away_prob": None, "source": None}
     if pre is None:
         return out
-    p_home, source, _ = pre
+    p_home, source, rows = pre
+    # Starting goalies the pick used: announced (probable), or the team's last starter
+    for side, row in (("home", rows[0]), ("away", rows[1])):
+        name = row.get("goalie") if isinstance(row.get("goalie"), str) else ""
+        out[side] = {**out[side], "goalie": {
+            "name": name, "sv": round(float(row["goalie_sv"]), 3),
+            "status": "started" if int(row.get("goalie_confirmed", 0) or 0) == 1 else
+                      "probable" if row.get("goalie_probable") else "last start"} if name else None}
     out.update(home_win_prob=round(p_home * 100, 1), away_win_prob=round((1 - p_home) * 100, 1),
                predicted_winner=home if p_home >= 0.5 else away, source=source)
     hs, as_ = g["home"]["score"], g["away"]["score"]
@@ -5640,7 +5695,7 @@ def _nhl_explain(row_h: dict, row_a: dict) -> list[dict]:
     scaler, clf = pipe.named_steps["scaler"], pipe.named_steps["clf"]
     labels = {"elo_diff": "Elo rating", "margin_ewm_diff": "Recent goal differential",
               "shot_share_diff": "Shot share", "sv_pct_diff": "Goaltending (save %)",
-              "home": "Home ice", "rest_diff": "Rest", "b2b": "Back-to-back"}
+              "home": "Home ice", "rest_diff": "Rest", "b2b": "Back-to-back", "goalie_sv_diff": "Starting goalies"}
     impacts: dict[str, float] = {}
     for i, f in enumerate(NHL_FEATURES):
         d = (float(row_h[f]) - float(row_a[f])) / scaler.scale_[i]
@@ -5668,9 +5723,19 @@ def get_nhl_game(game_id: str):
     g = _nhl_parse_event(ev)
     if g is None:
         raise HTTPException(status_code=404, detail="Game not found")
+    if g["state"] == "pre":
+        # The summary doesn't list probable starting goalies; the day's scoreboard does
+        try:
+            day_game = next((x for x in _nhl_day(g["date"]) if x["game_id"] == game_id), None)
+        except Exception:
+            day_game = None
+        if day_game:
+            for side in ("home", "away"):
+                g[side]["probable"] = day_game[side].get("probable")
     g = _nhl_with_probs(g)
     home, away = g["home"]["name"], g["away"]["name"]
-    pre = _nhl_pregame(game_id, home, away, g["date"], g["neutral"])
+    pre = _nhl_pregame(game_id, home, away, g["date"], g["neutral"],
+                       (g["home"].get("probable"), g["away"].get("probable")) if g["state"] == "pre" else None)
 
     # Score by period
     lines = {c.get("homeAway"): [int(float(x.get("displayValue") or 0)) for x in c.get("linescores", [])]

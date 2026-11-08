@@ -8,7 +8,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // ── Types (mirror /api/nhl/game/{id}) ─────────────────────────────────────────
 
-interface Side { name: string; abbr: string; score: number | null; record: string | null; logo: string | null; color: string }
+interface Goalie { name: string; sv: number; status: "probable" | "started" | "last start" }
+interface Side { name: string; abbr: string; score: number | null; record: string | null; logo: string | null; color: string; goalie?: Goalie | null }
 interface Factor { feature: string; label: string; impact: number }
 interface Goalie { id: string; name: string; side: "home" | "away"; saves: string; shots_against: string; save_pct: string; toi: string; headshot: string | null }
 interface Skater { id: string; name: string; side: string; position: string; goals: number; assists: number; shots: number; plus_minus: string; toi: string; headshot: string | null }
@@ -71,6 +72,12 @@ function Scoreboard({ g }: { g: NHLGameDetail }) {
           {showScore ? (
             <p className={`text-3xl font-black tabular-nums ${final && !won ? "text-gray-400" : "text-gray-900 dark:text-white"}`}>{s.score}</p>
           ) : s.record && <p className="text-xs text-gray-400">{s.record}</p>}
+          {!showScore && s.goalie && (
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              {s.goalie.status === "probable" ? "Probable goalie" : "Last starter"}: <b className="text-gray-700 dark:text-gray-300">{s.goalie.name}</b>{" "}
+              <span className="text-gray-400">{s.goalie.sv.toFixed(3).replace(/^0/, "")}</span>
+            </p>
+          )}
         </div>
       </Link>
     );

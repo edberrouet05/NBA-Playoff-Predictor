@@ -19,6 +19,8 @@ Features (one row per team per game, mirrored for the opponent):
     seasons and shrunk toward 0
   - Recency-weighted shot share (shots for / all shots): who controls play, less noisy than goals
   - Recency-weighted save percentage of the team's goalies
+  - The starting goalies: each one's save percentage on the shots he faced before the game
+    (NHL game logs), pulled toward the league average; upcoming games use the last starter
   - Rest days (capped) and second night of a back-to-back
   - Home ice (neutral sites — 2020 bubble, international games — count as away for both)
 
@@ -61,6 +63,12 @@ TRAIN_SEASONS  = list(range(2015, CURRENT_SEASON))       # 2014-15 … last seas
 
 SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard"
 TEAMS_URL  = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams"
+# NHL's own APIs: every goalie of a season, then each one's game log (who started, shots, goals)
+GOALIES_URL  = ("https://api.nhle.com/stats/rest/en/goalie/summary?limit=-1"
+                "&cayenneExp=seasonId={season_id}%20and%20gameTypeId={game_type}")
+GAME_LOG_URL = "https://api-web.nhle.com/v1/player/{player_id}/game-log/{season_id}/{game_type}"
+# NHL abbreviations → ESPN's (Arizona / Phoenix history goes to Utah, as above)
+NHL_TO_ESPN = {"LAK": "LA", "NJD": "NJ", "SJS": "SJ", "TBL": "TB", "UTA": "UTAH", "ARI": "UTAH", "PHX": "UTAH"}
 UA = {"User-Agent": "Mozilla/5.0"}
 
 # Season types kept: 2 regular season, 3 playoffs
@@ -78,6 +86,11 @@ FORM_DECAY   = 0.95   # per-game weight decay (~14-game half-life): hockey resul
 SEASON_DECAY = 0.50   # extra decay at a season boundary
 PRIOR_GAMES  = 8.0    # pseudo-games of an average team → shrinks early-season noise
 LEAGUE_SV    = 0.905  # prior save percentage
+
+# Goalie rating: save percentage on the shots he faced before the game, pulled toward the league
+# average with GOALIE_PRIOR_SHOTS shots (≈ 30 games); older seasons count less
+GOALIE_PRIOR_SHOTS = 900.0
+GOALIE_SEASON_DECAY = 0.6
 
 MAX_REST = 4          # rest days are capped: opening night / long breaks count as fully rested
 
@@ -195,6 +208,52 @@ def load_games(teams: dict[str, dict]) -> list[dict]:
     return games
 
 
+def _season_id(season: int) -> str:
+    return f"{season - 1}{season}"
+
+
+def _goalie_season(args: tuple[int, int]) -> list[dict]:
+    """Every goalie appearance of one season and game type (2 regular season, 3 playoffs).
+    Past seasons are cached for good."""
+    season, game_type = args
+    path = RAW_DIR / f"goalies_{season}_{game_type}.json"
+    if path.exists() and season < CURRENT_SEASON:
+        return json.loads(path.read_text(encoding="utf-8"))
+    sid = _season_id(season)
+    try:
+        goalies = _get_json(GOALIES_URL.format(season_id=sid, game_type=game_type)).get("data", [])
+    except Exception:
+        return []
+
+    def log(g: dict) -> list[dict]:
+        try:
+            games = _get_json(GAME_LOG_URL.format(player_id=g["playerId"], season_id=sid, game_type=game_type))
+        except Exception:
+            return []
+        return [{"goalie_id": str(g["playerId"]), "name": g.get("goalieFullName", ""),
+                 "date": x.get("gameDate", ""), "team": NHL_TO_ESPN.get(x.get("teamAbbrev"), x.get("teamAbbrev")),
+                 "started": int(x.get("gamesStarted") or 0), "shots": int(x.get("shotsAgainst") or 0),
+                 "goals": int(x.get("goalsAgainst") or 0)}
+                for x in games.get("gameLog", [])]
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        rows = [r for chunk in ex.map(log, goalies) for r in chunk]
+    path.write_text(json.dumps(rows), encoding="utf-8")
+    return rows
+
+
+def load_goalie_games() -> dict[tuple[str, str], list[dict]]:
+    """{(date, ESPN team abbr): that team's goalie appearances in its game of the day}."""
+    jobs = [(s, t) for s in range(FIRST_SEASON, CURRENT_SEASON + 1) for t in (2, 3)]
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        chunks = list(ex.map(_goalie_season, jobs))
+    out: dict[tuple[str, str], list[dict]] = {}
+    for chunk in chunks:
+        for r in chunk:
+            out.setdefault((r["date"], r["team"]), []).append(r)
+    return out
+
+
 # ── Rolling state trackers ──────────────────────────────────────────────────────
 
 class Elo:
@@ -219,6 +278,45 @@ class Elo:
         shift = ELO_K * mult * ((1.0 if margin > 0 else 0.0) - exp_home)
         self.rating[home] += shift
         self.rating[away] -= shift
+
+
+class Goalies:
+    """Each goalie's shots faced and saves, carried across seasons (older seasons count less)."""
+    def __init__(self):
+        self.shots: dict[str, float] = {}
+        self.saves: dict[str, float] = {}
+        self.season: dict[str, int] = {}
+        self.name: dict[str, str] = {}
+        self.team: dict[str, str] = {}
+        self.last_start: dict[str, str] = {}
+
+    def rating(self, goalie_id: str | None, season: int) -> float:
+        """Save percentage before this game, pulled toward the league average."""
+        if goalie_id is None:
+            return LEAGUE_SV
+        if goalie_id in self.season and self.season[goalie_id] != season:
+            self.shots[goalie_id] *= GOALIE_SEASON_DECAY
+            self.saves[goalie_id] *= GOALIE_SEASON_DECAY
+        self.season[goalie_id] = season
+        shots, saves = self.shots.get(goalie_id, 0.0), self.saves.get(goalie_id, 0.0)
+        return (saves + GOALIE_PRIOR_SHOTS * LEAGUE_SV) / (shots + GOALIE_PRIOR_SHOTS)
+
+    def update(self, g: dict, season: int, date: str) -> None:
+        gid = g["goalie_id"]
+        self.rating(gid, season)
+        self.shots[gid] = self.shots.get(gid, 0.0) + g["shots"]
+        self.saves[gid] = self.saves.get(gid, 0.0) + g["shots"] - g["goals"]
+        self.name[gid], self.team[gid] = g["name"], g["team"]
+        if g["started"]:
+            self.last_start[gid] = date
+
+
+def _starter(appearances: dict, date: str, abbr: str) -> dict | None:
+    """The team's starting goalie that day (the NHL game log uses the same date as ESPN's ET
+    date for all but 2 of 31,000 team-games; a game finished tonight may not be logged yet)."""
+    rows = appearances.get((date, abbr), [])
+    start = next((r for r in rows if r["started"]), None)
+    return {**start, "_rows": rows} if start else None
 
 
 class Form:
@@ -275,12 +373,18 @@ def _rest(prev_date: str | None, date: str) -> int:
     return max(1, min(days, MAX_REST))
 
 
-def build_features(games: list[dict], teams: dict[str, dict]):
+def build_features(games: list[dict], teams: dict[str, dict], appearances: dict):
     """Walk every game chronologically, emitting pre-game feature rows (two per game), then
-    updating all rolling state with the result.
+    updating all rolling state with the result. `appearances` is load_goalie_games(): who
+    started in goal (upcoming games: the team's last starter).
 
-    Returns (rows DataFrame, Elo, Form, current-season records, last game dates)."""
-    elo, form = Elo(), Form()
+    Returns (rows DataFrame, Elo, Form, Goalies, current-season records, last game dates)."""
+    elo, form, goalies = Elo(), Form(), Goalies()
+    for team_rows in appearances.values():
+        for r in team_rows:
+            goalies.name.setdefault(r["goalie_id"], r["name"])
+    last_starter: dict[str, str] = {}   # team → goalie id of its last starter
+    abbr_of = {t["name"]: t["abbr"] for t in teams.values()}
     last_played: dict[str, str] = {}    # team → date of its last completed game
     last_listed: dict[str, str] = {}    # team → date of its previous game on the schedule
     record: dict[str, dict] = {}        # current regular season: W, L, OTL, streak, GF, GA
@@ -299,9 +403,15 @@ def build_features(games: list[dict], teams: dict[str, dict]):
         rest_h, rest_a = _rest(prev.get(home), date), _rest(prev.get(away), date)
 
         margin_home = g["home"]["score"] - g["away"]["score"] if completed else None
-        for team, opp, is_home, e_t, e_o, f_t, f_o, r_t, r_o in (
-                (home, away, 1, elo_h, elo_a, f_h, f_a, rest_h, rest_a),
-                (away, home, 0, elo_a, elo_h, f_a, f_h, rest_a, rest_h)):
+        # Starting goalies: from the game logs once played, else each team's last starter
+        start_h = _starter(appearances, date, abbr_of[home]) if completed else None
+        start_a = _starter(appearances, date, abbr_of[away]) if completed else None
+        gid_h = start_h["goalie_id"] if start_h else last_starter.get(home)
+        gid_a = start_a["goalie_id"] if start_a else last_starter.get(away)
+        gsv_h, gsv_a = goalies.rating(gid_h, season), goalies.rating(gid_a, season)
+        for team, opp, is_home, e_t, e_o, f_t, f_o, r_t, r_o, gid_t, gsv_t, gsv_o in (
+                (home, away, 1, elo_h, elo_a, f_h, f_a, rest_h, rest_a, gid_h, gsv_h, gsv_a),
+                (away, home, 0, elo_a, elo_h, f_a, f_h, rest_a, rest_h, gid_a, gsv_a, gsv_h)):
             rows.append({
                 "season": season, "season_type": g["season_type"], "game_date": date,
                 "start_utc": g["start_utc"], "game_id": g["game_id"],
@@ -316,6 +426,10 @@ def build_features(games: list[dict], teams: dict[str, dict]):
                 "sv_pct_diff": round(f_t["sv_pct"] - f_o["sv_pct"], 4),
                 "rest_days": r_t, "opp_rest_days": r_o, "rest_diff": r_t - r_o,
                 "b2b": int(r_t == 1), "opp_b2b": int(r_o == 1),
+                "goalie_id": gid_t, "goalie": goalies.name.get(gid_t, "") if gid_t else "",
+                "goalie_confirmed": int((start_h if is_home else start_a) is not None),
+                "goalie_sv": round(gsv_t, 4), "opp_goalie_sv": round(gsv_o, 4),
+                "goalie_sv_diff": round(gsv_t - gsv_o, 4),
                 "completed": int(completed),
                 "overtime": int(completed and g["period"] > 3),
                 "team_score": (g["home"]["score"] if is_home else g["away"]["score"]) if completed else None,
@@ -333,6 +447,11 @@ def build_features(games: list[dict], teams: dict[str, dict]):
         form.update(home, {**_box(g["home"], g["away"], shootout, margin_home > 0), "sos": f_a["margin"]})
         form.update(away, {**_box(g["away"], g["home"], shootout, margin_home < 0), "sos": f_h["margin"]})
         last_played[home] = last_played[away] = date
+        for team, start in ((home, start_h), (away, start_a)):
+            if start:
+                for r in start["_rows"]:
+                    goalies.update(r, season, date)
+                last_starter[team] = start["goalie_id"]
         if season == CURRENT_SEASON and g["season_type"] == 2:
             for team, m in ((home, margin_home), (away, -margin_home)):
                 r = record.setdefault(team, {"wins": 0, "losses": 0, "otl": 0, "streak": 0, "gf": 0, "ga": 0})
@@ -347,10 +466,11 @@ def build_features(games: list[dict], teams: dict[str, dict]):
                 goals = g["home"]["score"] if team == home else g["away"]["score"]
                 r["gf"] += goals
                 r["ga"] += goals - m
-    return pd.DataFrame(rows), elo, form, record, last_played
+    return pd.DataFrame(rows), elo, form, goalies, record, last_played
 
 
-def team_table(teams: dict[str, dict], elo: Elo, form: Form, record: dict, last_played: dict) -> pd.DataFrame:
+def team_table(teams: dict[str, dict], elo: Elo, form: Form, record: dict, last_played: dict,
+               goalies: Goalies, last_starter: dict[str, str]) -> pd.DataFrame:
     """Live team table for the API: model state plus display stats."""
     rows = []
     for tid, t in teams.items():
@@ -370,6 +490,9 @@ def team_table(teams: dict[str, dict], elo: Elo, form: Form, record: dict, last_
             "gf_ewm": round(f["gf"], 2), "ga_ewm": round(f["ga"], 2),
             "sf_ewm": round(f["sf"], 1), "sa_ewm": round(f["sa"], 1),
             "goal_diff": r["gf"] - r["ga"],
+            # Last starting goalie (the API uses ESPN's probable starter when it has one)
+            "goalie_id": last_starter.get(name, ""), "goalie": goalies.name.get(last_starter.get(name, ""), ""),
+            "goalie_sv": round(goalies.rating(last_starter.get(name), CURRENT_SEASON), 4),
             "win_streak": r["streak"],
             "last_game_date": last_played.get(name, ""),
             "state_date": TODAY.isoformat(),
@@ -390,7 +513,12 @@ if __name__ == "__main__":
     _progress(f"  {len(games):,} games ({done:,} played)")
 
     _progress("\nBuilding features game by game...")
-    rows, elo, form, record, last_played = build_features(games, teams)
+    _progress("Goalie game logs (NHL API)...")
+    appearances = load_goalie_games()
+    _progress(f"  {len(appearances):,} team-games with goalie data")
+    rows, elo, form, goalies, record, last_played = build_features(games, teams, appearances)
+    played = rows[rows["completed"] == 1]
+    _progress(f"  Starting goalie found for {played['goalie_id'].notna().mean():.1%} of played team-games")
 
     train = rows[rows["season"].isin(TRAIN_SEASONS) & (rows["completed"] == 1)].drop(columns=["completed"])
     train_path = PROCESSED / "nhl_training_data.csv"
@@ -403,7 +531,17 @@ if __name__ == "__main__":
     cur.to_csv(cur_path, index=False)
     _progress(f"  Current-season rows: {len(cur):,} ({int(cur['completed'].sum()) // 2} played) -> {cur_path.name}")
 
-    table = team_table(teams, elo, form, record, last_played)
+    # Goalie ratings for the API (today's probable starters are rated with these)
+    goalie_rows = [{"goalie_id": gid, "name": goalies.name.get(gid, ""), "team": goalies.team.get(gid, ""),
+                    "sv_rating": round(goalies.rating(gid, CURRENT_SEASON), 4),
+                    "shots": round(goalies.shots.get(gid, 0.0), 1), "last_start": goalies.last_start.get(gid, "")}
+                   for gid in goalies.shots if goalies.last_start.get(gid, "") >= f"{CURRENT_SEASON - 2}-08-01"]
+    goalie_path = NHL_DIR / "nhl_goalies.csv"
+    pd.DataFrame(goalie_rows).sort_values("sv_rating", ascending=False).to_csv(goalie_path, index=False)
+    _progress(f"  {len(goalie_rows)} goalies rated -> {goalie_path.name}")
+
+    last_starter = {t: g for t, g in played.sort_values("start_utc")[["team", "goalie_id"]].itertuples(index=False)}
+    table = team_table(teams, elo, form, record, last_played, goalies, last_starter)
     state_path = NHL_DIR / "nhl_team_state.csv"
     table.to_csv(state_path, index=False)
     _progress(f"  -> {state_path.name}")
