@@ -20,6 +20,19 @@ interface LogGame extends GameSide {
   game_id: string; date: string; at_vs: string; opponent: string; opponent_abbr: string;
   opponent_logo: string | null; result: string | null; score: string; stats: string[];
 }
+interface Projection {
+  value: number; low: number; high: number; opp: string; at_vs: string; date: string;
+  live: boolean; live_value?: number | null; live_clock?: string | null;
+  status: string | null; method: "volume" | "average";
+  opp_adj_pct: number; script_adj_pct: number; pace_adj_pct: number; rest_adj_pct: number;
+  // NFL context: defense vs his position group, QB change, volume freed by injured teammates
+  def_position: string | null; qb_adj_pct: number; qb_from: string | null; qb_to: string | null;
+  vacated_adj_pct: number; vacated_names: string[];
+  recent: number; prior: number | null; prior_label: string | null;
+  // method === "volume" (NFL yards, NBA points / rebounds / assists): projected volume × efficiency
+  volume?: number; volume_label?: string; efficiency?: number; efficiency_label?: string;
+  season_efficiency?: number | null; prior_efficiency?: number;
+}
 interface PlayerData {
   league: League;
   player: {
@@ -35,19 +48,9 @@ interface PlayerData {
   form: { label: string; season: number; last5: number | null }[];
   chart: { label: string; kind: "bar" | "line"; points: ChartPoint[] };
   best_game: (ChartPoint & { label: string }) | null;
-  projection: {
-    value: number; low: number; high: number; opp: string; at_vs: string; date: string;
-    live: boolean; live_value?: number | null; live_clock?: string | null;
-    status: string | null; method: "volume" | "average";
-    opp_adj_pct: number; script_adj_pct: number; pace_adj_pct: number; rest_adj_pct: number;
-    // NFL context: defense vs his position group, QB change, volume freed by injured teammates
-    def_position: string | null; qb_adj_pct: number; qb_from: string | null; qb_to: string | null;
-    vacated_adj_pct: number; vacated_names: string[];
-    recent: number; prior: number | null; prior_label: string | null;
-    // method === "volume" (NFL yards): projected volume × projected efficiency
-    volume?: number; volume_label?: string; efficiency?: number; efficiency_label?: string;
-    season_efficiency?: number | null; prior_efficiency?: number;
-  } | null;
+  projection: Projection | null;
+  // Every stat the trend chart can switch to (NBA: points, rebounds, assists)
+  charts?: { key: string; label: string; chart: PlayerData["chart"]; best_game: PlayerData["best_game"]; projection: Projection | null }[];
   last_game: (GameSide & {
     game_id: string; date: string; at_vs: string; opponent: string; opponent_abbr: string;
     opponent_logo: string | null; result: string | null; score: string; line: { label: string; value: string }[];
@@ -212,10 +215,15 @@ function FormCard({ d }: { d: PlayerData }) {
 }
 
 function TrendCard({ d }: { d: PlayerData }) {
-  const pts = d.chart.points;
+  const views = d.charts?.length ? d.charts
+    : [{ key: "main", label: d.chart.label, chart: d.chart, best_game: d.best_game, projection: d.projection }];
+  const [sel, setSel] = useState(views[0].key);
+  const view = views.find(v => v.key === sel) ?? views[0];
+  const chart = view.chart, bestGame = view.best_game;
+  const pts = chart.points;
   if (pts.length < 2) return null;
   const color = d.team?.color ?? "#555";
-  const proj = d.chart.kind === "bar" ? d.projection : null;
+  const proj = chart.kind === "bar" ? view.projection : null;
   const avg = pts.reduce((s, p) => s + p.value, 0) / pts.length;
   const short = (team: string) => team.split(" ").pop() ?? team;
   const pct = (v: number) => `${v > 0 ? "+" : ""}${v}%`;
@@ -246,13 +254,13 @@ function TrendCard({ d }: { d: PlayerData }) {
     if (p?.proj && proj) return (
       <div className="rounded-lg bg-white dark:bg-gray-800 shadow px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 max-w-[15rem]">
         <p className="font-bold">
-          Projection: {proj.value} {d.chart.label}
+          Projection: {proj.value} {chart.label}
           {proj.live && <span className="ml-1.5 text-[10px] font-bold text-red-500">● LIVE</span>}
         </p>
         <p className="text-gray-400">{fmtDate(proj.date)} {proj.at_vs} {short(proj.opp)}</p>
         {liveNow != null && (
           <p className="mt-1 font-semibold text-gray-900 dark:text-white">
-            Now: {liveNow} {d.chart.label}{proj.live_clock ? <span className="font-normal text-gray-400"> · {proj.live_clock}</span> : null}
+            Now: {liveNow} {chart.label}{proj.live_clock ? <span className="font-normal text-gray-400"> · {proj.live_clock}</span> : null}
           </p>
         )}
         {proj.method === "volume" ? (
@@ -284,7 +292,7 @@ function TrendCard({ d }: { d: PlayerData }) {
     );
     return p ? (
       <div className="rounded-lg bg-white dark:bg-gray-800 shadow px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200">
-        <p className="font-bold">{p.value} {d.chart.label}</p>
+        <p className="font-bold">{p.value} {chart.label}</p>
         <p className="text-gray-400">{fmtDate(p.date)} {p.at_vs} {p.opp}{p.result ? ` · ${p.result} ${p.score}` : ""}</p>
       </div>
     ) : null;
@@ -292,11 +300,24 @@ function TrendCard({ d }: { d: PlayerData }) {
   return (
     <div className={`${card} h-full`}>
       <div className="flex items-baseline justify-between mb-2">
-        <p className={cardTitle}>{d.chart.label} by game</p>
+        <div className="flex items-center gap-3">
+          <p className={cardTitle}>{chart.label} by game</p>
+          {views.length > 1 && (
+            <div className="inline-flex gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+              {views.map(v => (
+                <button key={v.key} onClick={() => setSel(v.key)}
+                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-colors ${
+                    v.key === view.key ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"}`}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <p className="text-[11px] text-gray-400">{d.game_log.title}</p>
       </div>
       <ResponsiveContainer width="100%" height={170}>
-        {d.chart.kind === "line" ? (
+        {chart.kind === "line" ? (
           <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
             <XAxis dataKey="i" hide />
             <YAxis domain={["auto", "auto"]} tick={{ fill: "var(--chart-tick)", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -321,17 +342,17 @@ function TrendCard({ d }: { d: PlayerData }) {
           </BarChart>
         )}
       </ResponsiveContainer>
-      {d.best_game && (
+      {bestGame && (
         <p className="mt-2 text-xs text-gray-500">
-          Best game: <span className="font-bold text-gray-900 dark:text-white">{d.best_game.value} {d.best_game.label}</span>{" "}
-          {d.best_game.at_vs} {d.best_game.opp}, {fmtDate(d.best_game.date, true)}
-          {d.chart.kind === "bar" && <span className="text-gray-400"> · dashed line = season average ({avg.toFixed(1)})</span>}
+          Best game: <span className="font-bold text-gray-900 dark:text-white">{bestGame.value} {bestGame.label}</span>{" "}
+          {bestGame.at_vs} {bestGame.opp}, {fmtDate(bestGame.date, true)}
+          {chart.kind === "bar" && <span className="text-gray-400"> · dashed line = season average ({avg.toFixed(1)})</span>}
         </p>
       )}
       {proj && (
         <p className="mt-1 text-xs text-gray-500">
           {proj.live && <span className="mr-1.5 text-[10px] font-bold text-red-500">● LIVE</span>}
-          Projection {proj.at_vs} {short(proj.opp)}: <span className="font-bold text-gray-900 dark:text-white">{proj.value} {d.chart.label}</span>
+          Projection {proj.at_vs} {short(proj.opp)}: <span className="font-bold text-gray-900 dark:text-white">{proj.value} {chart.label}</span>
           {proj.method === "volume" && (
             <span className="text-gray-400"> ({proj.volume} {proj.volume_label?.toLowerCase()} × {proj.efficiency} {proj.efficiency_label})</span>
           )}

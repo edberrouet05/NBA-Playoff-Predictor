@@ -6275,7 +6275,13 @@ _PROJ_VOLUME = {
     ("nfl", "rushingYards"):   ("rushingAttempts",  "Carries",  "YPC",     4.3,  80,  2,  0.30),
     ("nfl", "passingYards"):   ("passingAttempts",  "Attempts", "Y/A",     6.9,  150, 2, -0.20),
     ("nba", "points"):         ("minutes",          "Min",      "Pts/min", 0.47, 300, 3,  0.0),
+    ("nba", "totalRebounds"):  ("minutes",          "Min",      "Reb/min", 0.18, 300, 3,  0.0),
+    ("nba", "assists"):        ("minutes",          "Min",      "Ast/min", 0.11, 300, 3,  0.0),
 }
+# Stats the player page's trend chart can switch between (the first is the default)
+_PLAYER_CHART_OPTIONS = {"nba": ["points", "totalRebounds", "assists"]}
+# ESPN's live boxscore names some stats differently from the game log
+_LIVE_STAT_KEYS = {"totalRebounds": "rebounds"}
 _PROJ_OUT_STATUSES = {"Out", "Injured Reserve", "Suspended", "Physically Unable To Perform"}
 _NBA_B2B_HOURS = 30       # next game this soon after the last one = second night of a back-to-back
 _NBA_B2B_ADJ = -0.04      # minutes lost on the second night
@@ -6291,7 +6297,8 @@ def _last_season_totals(career_cats: list[dict], stats: list[str], current_seaso
     """({stat: total, 'gamesPlayed': n}, season label) for the latest season before the current one.
     Reads totals ('points') or per-game averages ('avgPoints' × games played)."""
     def column(names: list[str], stat: str) -> tuple[int, bool] | None:
-        avg = "avg" + stat[0].upper() + stat[1:]
+        # Per-game column: 'points' → 'avgPoints'; NBA 'totalRebounds' → 'avgRebounds'
+        avg = {"totalRebounds": "avgRebounds"}.get(stat, "avg" + stat[0].upper() + stat[1:])
         if stat in names:
             return names.index(stat), False
         return (names.index(avg), True) if avg in names else None
@@ -6530,6 +6537,8 @@ def _player_projection(league: str, chart_stat: str, chart: list[dict], career_c
                         "vacated_adj_pct": round(vacated * 100), "vacated_names": ctx["vacated_names"]})
         elif league == "nba":
             pace, opp = _nba_matchup_adj(team_name, next_game["opponent"])
+            if chart_stat != "points":
+                opp = 0.0   # points allowed say little about rebounds or assists
             try:
                 gap = (datetime.fromisoformat(next_game["date"].replace("Z", "+00:00"))
                        - datetime.fromisoformat(games[-1]["date"].replace("Z", "+00:00"))).total_seconds() / 3600
@@ -6576,6 +6585,13 @@ def _player_projection(league: str, chart_stat: str, chart: list[dict], career_c
 def _live_player_stat(sport: str, league: str, event_id: str, athlete_id: str, stat: str) -> dict | None:
     """{'value', 'clock'} for one player's stat in a game in progress, from ESPN's live boxscore.
     0 when he has not recorded it yet; None when the boxscore cannot be read."""
+    live = _live_player_stats(sport, league, event_id, athlete_id, [stat])
+    return {"value": live["values"][stat], "clock": live["clock"]} if live else None
+
+
+def _live_player_stats(sport: str, league: str, event_id: str, athlete_id: str, stats: list[str]) -> dict | None:
+    """{'values': {stat: value}, 'clock'} from one read of ESPN's live boxscore (0 for a stat he
+    has not recorded yet); None when the boxscore cannot be read."""
     url = f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/summary?event={event_id}"
     data = None
     for attempt in range(2):   # ESPN's TLS handshake sometimes stalls once — retry
@@ -6587,17 +6603,19 @@ def _live_player_stat(sport: str, league: str, event_id: str, athlete_id: str, s
                 return None
     clock = (((data.get("header") or {}).get("competitions") or [{}])[0].get("status") or {}) \
         .get("type", {}).get("shortDetail", "")
+    values = {stat: 0.0 for stat in stats}
     for team in (data.get("boxscore") or {}).get("players", []):
         for cat in team.get("statistics", []):
             keys = cat.get("keys") or []
-            if stat not in keys:
-                continue
             for a in cat.get("athletes", []):
-                if str((a.get("athlete") or {}).get("id")) == athlete_id:
-                    st = a.get("stats") or []
-                    v = _stat_num(st[keys.index(stat)]) if keys.index(stat) < len(st) else None
-                    return {"value": v or 0.0, "clock": clock}
-    return {"value": 0.0, "clock": clock}
+                if str((a.get("athlete") or {}).get("id")) != athlete_id:
+                    continue
+                st = a.get("stats") or []
+                for stat in stats:
+                    key = _LIVE_STAT_KEYS.get(stat, stat)
+                    if key in keys and keys.index(key) < len(st):
+                        values[stat] = _stat_num(st[keys.index(key)]) or 0.0
+    return {"values": values, "clock": clock}
 
 
 @app.get("/api/player/{league}/{athlete_id}")
@@ -6705,19 +6723,32 @@ def get_player_page(league: str, athlete_id: str):
                 "last5":  round(sum(last_v) / len(last_v), 1) if last_v else None,
             })
 
-    # Trend chart + best game
-    ci = col(chart_stat)
-    chart, best = [], None
-    if ci is not None:
+    # Trend charts + best game, one per stat the chart can show (the first is the default)
+    def stat_chart(stat: str) -> tuple[list[dict], dict | None]:
+        ci = col(stat)
+        points, best = [], None
+        if ci is None:
+            return points, best
         for g in games:
             v = _stat_num(g["stats"][ci]) if ci < len(g["stats"]) else None
             if v is None:
                 continue
-            chart.append({"date": g["date"], "opp": g["opponent_abbr"], "at_vs": g["at_vs"], "value": v,
-                          "result": g["result"], "score": g["score"]})
-        if chart and chart_kind == "bar":
-            b = max(chart, key=lambda x: x["value"])
-            best = {**b, "label": _PLAYER_STAT_LABELS.get(chart_stat) or (labels[ci] if ci < len(labels) else chart_stat)}
+            points.append({"date": g["date"], "opp": g["opponent_abbr"], "at_vs": g["at_vs"], "value": v,
+                           "result": g["result"], "score": g["score"]})
+        if points and chart_kind == "bar":
+            b = max(points, key=lambda x: x["value"])
+            best = {**b, "label": stat_label(stat)}
+        return points, best
+
+    def stat_label(stat: str) -> str:
+        ci = col(stat)
+        return _PLAYER_STAT_LABELS.get(stat) or (labels[ci] if ci is not None and ci < len(labels) else stat)
+
+    chart_stats = [x for x in _PLAYER_CHART_OPTIONS.get(league, [chart_stat]) if col(x) is not None] or [chart_stat]
+    chart_stat = chart_stats[0]
+    ci = col(chart_stat)
+    charts = {stat: stat_chart(stat) for stat in chart_stats}
+    chart, best = charts[chart_stat]
 
     # ── Splits (home/away, wins/losses, month…): small categories only
     split_names = splits_raw.get("names") or []
@@ -6788,17 +6819,21 @@ def get_player_page(league: str, athlete_id: str):
                          "date": next_game["date"]},
                 team_name)
 
-    projection = None
+    projections: dict[str, dict | None] = {stat: None for stat in chart_stats}
     if chart_kind == "bar":
         current_season = st.get("displayName", "").replace(" Regular Season", "").strip()
         if league == "nfl":
             _fetch_nfl_injury_report()   # cached; fills the per-player status lookup
-        projection = _player_projection(league, chart_stat, chart, cats, current_season, next_game,
-                                        games, names, athlete_id, team_name, ath.get("displayName", ""))
-        if projection and projection["live"]:
-            live = _live_player_stat(sport, league, next_game["game_id"], athlete_id, chart_stat)
-            projection["live_value"] = live["value"] if live else None
-            projection["live_clock"] = live["clock"] if live else None
+        for stat in chart_stats:
+            projections[stat] = _player_projection(league, stat, charts[stat][0], cats, current_season, next_game,
+                                                    games, names, athlete_id, team_name, ath.get("displayName", ""))
+        live_stats = [stat for stat, pr in projections.items() if pr and pr["live"]]
+        if live_stats:
+            live = _live_player_stats(sport, league, next_game["game_id"], athlete_id, live_stats)
+            for stat in live_stats:
+                projections[stat]["live_value"] = live["values"][stat] if live else None
+                projections[stat]["live_clock"] = live["clock"] if live else None
+    projection = projections[chart_stat]
 
     ov_stats = overview.get("statistics") or {}
     team = ath.get("team") or {}
@@ -6833,6 +6868,11 @@ def get_player_page(league: str, athlete_id: str):
                   "kind": chart_kind, "points": chart},
         "best_game": best,
         "projection": projection,
+        # Every stat the chart can switch to (NBA: points, rebounds, assists)
+        "charts": [{"key": stat, "label": stat_label(stat),
+                    "chart": {"label": stat_label(stat), "kind": chart_kind, "points": charts[stat][0]},
+                    "best_game": charts[stat][1], "projection": projections[stat]}
+                   for stat in chart_stats],
         "last_game": last_game,
         "next_game": next_game,
         "game_log": {"title": st.get("displayName", ""), "labels": labels, "games": list(reversed(games))},
