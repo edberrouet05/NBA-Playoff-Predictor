@@ -9,7 +9,7 @@ const MIN_CALIBRATION_GAMES = 30;
 
 // Season record page shared by the NBA, NFL and MLB ("Record" in each sidebar)
 
-export type Sport = "nba" | "nfl" | "mlb";
+export type Sport = "nba" | "nfl" | "mlb" | "nhl";
 const SPORT: Record<Sport, { start: string; predictions: string; stats: string; frozenNote: string }> = {
   nba: { start: "tip-off", predictions: "/predictions", stats: "/stats",
          frozenNote: "the one written down before tip-off when we have it (injury report included)" },
@@ -17,6 +17,8 @@ const SPORT: Record<Sport, { start: string; predictions: string; stats: string; 
          frozenNote: "the one written down before kickoff when we have it (injury report included)" },
   mlb: { start: "first pitch", predictions: "/mlb/predictions", stats: "/mlb/stats",
          frozenNote: "the one served before first pitch when we have it" },
+  nhl: { start: "puck drop", predictions: "/nhl/predictions", stats: "/nhl/stats",
+         frozenNote: "the model on each team's state the morning of the game" },
 };
 
 // ── Types (mirror /api/{sport}/performance) ────────────────────────────────────

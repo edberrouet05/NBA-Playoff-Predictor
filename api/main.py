@@ -1249,7 +1249,7 @@ def get_predictions_log(n: int = 5):
 
 
 def _sport_season_label(sport: str) -> str:
-    if sport == "nba":
+    if sport in ("nba", "nhl"):     # both run from fall to June: "2026-27"
         year = _nba_season_year()
         return f"{year - 1}-{str(year)[-2:]}"
     return str(NFL_CURRENT_SEASON if sport == "nfl" else 2026)
@@ -1351,7 +1351,7 @@ def _performance_payload(sport: str, log: list[dict]) -> dict:
         expected = None
 
     return {"sport": sport, "season": _sport_season_label(sport), "n_games": n,
-            "frozen": sum(1 for g in games if g.get("source") == "frozen") if sport != "mlb" else None,
+            "frozen": sum(1 for g in games if g.get("source") == "frozen") if sport in ("nba", "nfl") else None,
             "excluded": len(log) - n, "expected_accuracy": expected,
             "correct": sum(g["correct"] for g in games), **scores(rows),
             "by_confidence": by_conf, "calibration": calibration, "by_day": by_day, "market": market}
@@ -4962,6 +4962,25 @@ _TEAM_LEAGUES = {
         "leaders": [("pointsPerGame", "Points"), ("reboundsPerGame", "Rebounds"), ("assistsPerGame", "Assists"),
                     ("stealsPerGame", "Steals"), ("blocksPerGame", "Blocks"), ("3PointMadePerGame", "3-pointers")],
     },
+    "nhl": {
+        "sport": "hockey", "unit": "goals", "close": 1, "blowout": 3,
+        "stats": [
+            ("offensive", "avgGoals", "Goals / game", False),
+            ("defensive", "avgGoalsAgainst", "Goals against / game", False),
+            ("offensive", "avgShots", "Shots / game", False),
+            ("defensive", "avgShotsAgainst", "Shots against / game", False),
+            ("offensive", "shootingPct", "Shooting %", False),
+            ("defensive", "savePct", "Save %", False),
+            ("offensive", "powerPlayPct", "Power play %", False),
+            ("defensive", "penaltyKillPct", "Penalty kill %", False),
+            ("offensive", "faceoffPercent", "Faceoff %", False),
+            ("defensive", "hits", "Hits", True),
+            ("defensive", "blockedShots", "Blocked shots", True),
+            ("defensive", "shutouts", "Shutouts", False),
+        ],
+        "leaders": [("points", "Points"), ("goals", "Goals"), ("assists", "Assists"), ("plusMinus", "Plus / minus"),
+                    ("savePct", "Save %"), ("wins", "Goalie wins")],
+    },
 }
 # Our abbreviations (frontend) → ESPN's
 _TEAM_ABBR_ALIASES = {
@@ -5148,6 +5167,7 @@ _ROSTER_POS_ORDER = {
             "CB", "S", "SAF", "DB", "PK", "K", "P", "LS"],
     "mlb": ["SP", "RP", "P", "C", "1B", "2B", "3B", "SS", "IF", "LF", "CF", "RF", "OF", "DH"],
     "nba": ["PG", "SG", "G", "SF", "F", "PF", "C"],
+    "nhl": ["C", "LW", "RW", "F", "D", "G"],
 }
 
 
@@ -5257,6 +5277,13 @@ def _team_model_block(league: str, team_name: str) -> dict | None:
 
 def _team_next_game_prob(league: str, game: dict, team_name: str) -> float | None:
     """Our pre-game win probability for the team's next game, when we can produce one."""
+    if league == "nhl":
+        try:
+            home, away = (team_name, game["opponent"]) if game["home"] else (game["opponent"], team_name)
+            pre = _nhl_pregame(game["game_id"], home, away, _nba_et_date(game["date"]))
+            return None if pre is None else round((pre[0] if game["home"] else 1 - pre[0]) * 100, 1)
+        except Exception:
+            return None
     if league == "nba":
         try:
             return _nba_game_probs(team_name, [{**game, "completed": False}])[0]
@@ -5281,7 +5308,7 @@ def _team_next_game_prob(league: str, game: dict, team_name: str) -> float | Non
 
 _search_cache: dict[str, tuple[float, dict]] = {}
 _SEARCH_TTL = 600.0
-_SEARCH_LEAGUES = ("nba", "nfl", "mlb")
+_SEARCH_LEAGUES = ("nba", "nfl", "mlb", "nhl")
 
 
 def _search_teams(q: str) -> list[dict]:
@@ -5356,7 +5383,474 @@ def get_live_now():
     return result
 
 
-# ── Player index: every rostered player of the three leagues, for fuzzy search ──
+# ═══════════════════════════════════════════════════════════════════════════════
+#  NHL — today's games, game page, standings, predictions log, model
+# ═══════════════════════════════════════════════════════════════════════════════
+# Data: nhl/pipeline.py (team state + leak-free pre-game rows of this season's games),
+# live scores from ESPN's public site API.
+
+NHL_MODEL_PATH = ROOT / "models" / "nhl_logistic_regression.pkl"
+NHL_STATE_PATH = ROOT / "data" / "nhl" / "nhl_team_state.csv"
+NHL_GAME_FEATURES_PATH = ROOT / "data" / "nhl" / "nhl_game_features_current.csv"
+NHL_BASE = "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl"
+# Order must match nhl/train.py FEATURES exactly
+NHL_FEATURES = ["home", "rest_diff", "b2b", "opp_b2b", "elo_diff", "margin_ewm_diff", "shot_share_diff", "sv_pct_diff"]
+NHL_MAX_REST = 4
+NHL_GOALS_PER_60 = 3.0    # goals per team per 60 minutes, for the live win probability
+NHL_FRANCHISE_IDS = {"24": "129764"}   # Arizona Coyotes → Utah (as in nhl/pipeline.py)
+
+_nhl_model_cache = None
+_nhl_file_cache: dict[str, tuple[float, object]] = {}
+
+
+def _load_nhl_model():
+    global _nhl_model_cache
+    if _nhl_model_cache is None:
+        import pickle
+        with open(NHL_MODEL_PATH, "rb") as f:
+            _nhl_model_cache = pickle.load(f)
+    return _nhl_model_cache
+
+
+def _nhl_cached_file(path, build):
+    """Parse a data file once per version on disk (the daily refresh replaces it)."""
+    mtime = path.stat().st_mtime if path.exists() else 0.0
+    hit = _nhl_file_cache.get(str(path))
+    if hit is None or hit[0] != mtime:
+        hit = (mtime, build() if mtime else {})
+        _nhl_file_cache[str(path)] = hit
+    return hit[1]
+
+
+def _load_nhl_state() -> dict[str, dict]:
+    """{team name: team state row} from nhl/pipeline.py."""
+    return _nhl_cached_file(NHL_STATE_PATH, lambda: {
+        r["team_name"]: r for r in pd.read_csv(NHL_STATE_PATH).to_dict("records")})
+
+
+def _load_nhl_game_features() -> dict[str, dict[str, dict]]:
+    """{game id: {team name: pre-game row}} for this season's games."""
+    def build():
+        out: dict[str, dict[str, dict]] = {}
+        for r in pd.read_csv(NHL_GAME_FEATURES_PATH).to_dict("records"):
+            out.setdefault(str(r["game_id"]), {})[r["team"]] = r
+        return out
+    return _nhl_cached_file(NHL_GAME_FEATURES_PATH, build)
+
+
+def _nhl_team_names() -> dict[str, str]:
+    """{ESPN team id: team name}, old franchise ids included."""
+    names = {str(r["team_id"]): name for name, r in _load_nhl_state().items()}
+    for old, new in NHL_FRANCHISE_IDS.items():
+        if new in names:
+            names[old] = names[new]
+    return names
+
+
+def _nhl_rest(last_game: str, date: str) -> int:
+    import datetime
+    if not isinstance(last_game, str) or not last_game:
+        return NHL_MAX_REST
+    try:
+        days = (datetime.date.fromisoformat(date) - datetime.date.fromisoformat(last_game)).days
+    except ValueError:
+        return NHL_MAX_REST
+    return max(1, min(days, NHL_MAX_REST)) if days > 0 else NHL_MAX_REST
+
+
+def _nhl_state_rows(home: str, away: str, date: str, neutral: bool = False) -> tuple[dict, dict] | None:
+    """Feature rows for a game from today's team state."""
+    state = _load_nhl_state()
+    h, a = state.get(home), state.get(away)
+    if h is None or a is None:
+        return None
+    rh, ra = _nhl_rest(h.get("last_game_date"), date), _nhl_rest(a.get("last_game_date"), date)
+
+    def row(t: dict, o: dict, is_home: int, r_t: int, r_o: int) -> dict:
+        return {"home": int(is_home and not neutral), "rest_diff": r_t - r_o, "b2b": int(r_t == 1),
+                "opp_b2b": int(r_o == 1), "elo_diff": t["elo"] - o["elo"],
+                "margin_ewm_diff": t["margin_ewm"] - o["margin_ewm"],
+                "shot_share_diff": t["shot_share"] - o["shot_share"], "sv_pct_diff": t["sv_pct"] - o["sv_pct"]}
+    return row(h, a, 1, rh, ra), row(a, h, 0, ra, rh)
+
+
+def _nhl_pair_prob(row_h: dict, row_a: dict) -> float:
+    """P(home wins) from the two mirrored rows, normalized like training."""
+    X = pd.DataFrame([row_h, row_a])[NHL_FEATURES]
+    p_h, p_a = (float(v) for v in _load_nhl_model().predict_proba(X)[:, 1])
+    return p_h / (p_h + p_a)
+
+
+def _nhl_pregame(game_id: str, home: str, away: str, date: str, neutral: bool = False) -> tuple[float, str, tuple[dict, dict]] | None:
+    """(P(home wins), source, rows): the pipeline's pre-game rows when it has the game
+    ("pregame"), otherwise today's team state ("current" — for a finished game that knows
+    the result, so the predictions log leaves it out of the record)."""
+    known = _load_nhl_game_features().get(str(game_id), {})
+    if home in known and away in known:
+        rows = (known[home], known[away])
+        return _nhl_pair_prob(*rows), "pregame", rows
+    rows = _nhl_state_rows(home, away, date, neutral)
+    if rows is None:
+        return None
+    return _nhl_pair_prob(*rows), "current", rows
+
+
+def _nhl_live_prob(p_home: float, home_margin: int, minutes_left: float, overtime: bool = False) -> float:
+    """Win probability during a game. Goals for the rest of regulation are two Poisson
+    processes (Skellam difference) whose strength gap is set so that, before puck drop, the
+    model's pre-game probability comes out; a tie at the end goes to overtime / shootout,
+    won with a probability halfway between a coin flip and the pre-game one."""
+    import math
+    from scipy.stats import skellam
+    q = 0.5 + (p_home - 0.5) / 2
+    if overtime or minutes_left <= 0:
+        if home_margin != 0:
+            return 1.0 if home_margin > 0 else 0.0
+        return q
+
+    def win(s: float, frac: float, m: int) -> float:
+        lam = NHL_GOALS_PER_60 * frac
+        mu_h, mu_a = lam * math.exp(s), lam * math.exp(-s)
+        # Home wins if (home goals − away goals) to come > −m; a tie after them → q
+        return float(skellam.sf(-m, mu_h, mu_a) + q * skellam.pmf(-m, mu_h, mu_a))
+
+    lo, hi = -2.0, 2.0
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if win(mid, 1.0, 0) < p_home else (lo, mid)
+    p = win((lo + hi) / 2, min(minutes_left / 60, 1.0), home_margin)
+    return min(max(p, 0.001), 0.999)
+
+
+def _nhl_minutes_left(period: int, clock: str) -> float:
+    """Regulation minutes left from the period and the period clock ("12:34")."""
+    try:
+        mm, ss = (clock or "0:00").split(":")
+        in_period = int(mm) + int(ss) / 60
+    except ValueError:
+        in_period = 0.0
+    if period <= 0:
+        return 60.0
+    if period > 3:
+        return 0.0
+    return (3 - period) * 20 + in_period
+
+
+def _nhl_parse_event(ev: dict) -> dict | None:
+    """One scoreboard / summary event → our game dict (teams by current name)."""
+    import datetime, zoneinfo
+    comp = (ev.get("competitions") or [{}])[0]
+    sides = {c.get("homeAway"): c for c in comp.get("competitors", [])}
+    if "home" not in sides or "away" not in sides:
+        return None
+    names = _nhl_team_names()
+    status = comp.get("status") or ev.get("status") or {}
+    st = status.get("type", {})
+    state = st.get("state", "pre")
+
+    def side(c: dict) -> dict:
+        t = c.get("team", {})
+        tid = str(t.get("id"))
+        try:
+            score = int(c["score"]) if c.get("score") not in (None, "") else None
+        except (TypeError, ValueError):
+            score = None
+        rec = next((r.get("summary") for r in c.get("records", []) or c.get("record", []) or []
+                    if r.get("type") == "total" or r.get("name") == "overall"), None)
+        return {"name": names.get(NHL_FRANCHISE_IDS.get(tid, tid), t.get("displayName", "")),
+                "abbr": t.get("abbreviation", ""), "id": tid, "score": score, "record": rec,
+                "logo": t.get("logo") or ((t.get("logos") or [{}])[0].get("href")),
+                "color": "#" + (t.get("color") or "555555")}
+
+    start = ev.get("date", "")
+    try:
+        date = datetime.datetime.fromisoformat(start.replace("Z", "+00:00")).astimezone(
+            zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+    except ValueError:
+        date = ""
+    season = ev.get("season") or {}
+    return {
+        "game_id": str(ev.get("id")), "start_utc": start, "date": date,
+        "state": state, "status": {"pre": "Scheduled", "in": "Live", "post": "Final"}.get(state, "Scheduled"),
+        "detail": st.get("shortDetail", ""), "period": int(status.get("period") or 0),
+        "clock": status.get("displayClock", ""), "neutral": bool(comp.get("neutralSite")),
+        "season_type": int(season.get("type") or 2),
+        "venue": (comp.get("venue") or {}).get("fullName", ""),
+        "home": side(sides["home"]), "away": side(sides["away"]),
+    }
+
+
+def _nhl_with_probs(g: dict) -> dict:
+    """Adds our pre-game probabilities (and live ones while the game is on) to a game."""
+    home, away = g["home"]["name"], g["away"]["name"]
+    pre = _nhl_pregame(g["game_id"], home, away, g["date"], g["neutral"])
+    out = {**g, "home_win_prob": None, "away_win_prob": None, "predicted_winner": None,
+           "live_home_prob": None, "live_away_prob": None, "source": None}
+    if pre is None:
+        return out
+    p_home, source, _ = pre
+    out.update(home_win_prob=round(p_home * 100, 1), away_win_prob=round((1 - p_home) * 100, 1),
+               predicted_winner=home if p_home >= 0.5 else away, source=source)
+    hs, as_ = g["home"]["score"], g["away"]["score"]
+    if g["state"] == "in" and hs is not None and as_ is not None:
+        live = _nhl_live_prob(p_home, hs - as_, _nhl_minutes_left(g["period"], g["clock"]), g["period"] > 3)
+        out.update(live_home_prob=round(live * 100, 1), live_away_prob=round((1 - live) * 100, 1))
+    return out
+
+
+_nhl_day_cache: dict[str, tuple[float, list[dict]]] = {}
+_NHL_DAY_TTL = 20.0
+
+
+def _nhl_day(date: str) -> list[dict]:
+    """Every NHL game of an ET date (YYYY-MM-DD) with our probabilities."""
+    hit = _nhl_day_cache.get(date)
+    ttl = _NHL_DAY_TTL if date >= _nhl_today() else 3600.0
+    if hit and _time_mod.time() - hit[0] < ttl:
+        return hit[1]
+    data = _espn_json(f"{NHL_BASE}/scoreboard?dates={date.replace('-', '')}&limit=100")
+    games = []
+    for ev in data.get("events", []):
+        g = _nhl_parse_event(ev)
+        if g and g["season_type"] in (2, 3) and "Postponed" not in g["detail"]:
+            games.append(_nhl_with_probs(g))
+    games.sort(key=lambda g: (g["start_utc"], g["game_id"]))
+    _nhl_day_cache[date] = (_time_mod.time(), games)
+    return games
+
+
+def _nhl_today() -> str:
+    import datetime, zoneinfo
+    return datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+
+
+@app.get("/api/nhl/today")
+def get_nhl_today(date: str | None = None):
+    """Today's NHL games (ET) with our pre-game win probabilities, live ones while playing."""
+    day = date or _nhl_today()
+    try:
+        return {"date": day, "games": _nhl_day(day)}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"ESPN scoreboard unavailable: {e}")
+
+
+def _nhl_explain(row_h: dict, row_a: dict) -> list[dict]:
+    """Each feature's push toward the home team (coefficient × standardized difference)."""
+    pipe = _load_nhl_model()
+    scaler, clf = pipe.named_steps["scaler"], pipe.named_steps["clf"]
+    labels = {"elo_diff": "Elo rating", "margin_ewm_diff": "Recent goal differential",
+              "shot_share_diff": "Shot share", "sv_pct_diff": "Goaltending (save %)",
+              "home": "Home ice", "rest_diff": "Rest", "b2b": "Back-to-back"}
+    impacts: dict[str, float] = {}
+    for i, f in enumerate(NHL_FEATURES):
+        d = (float(row_h[f]) - float(row_a[f])) / scaler.scale_[i]
+        # "b2b" and "opp_b2b" are the same fact seen from each side: one factor
+        key = "b2b" if f == "opp_b2b" else f
+        impacts[key] = impacts.get(key, 0.0) + float(clf.coef_[0][i]) * d / 2
+    out = [{"feature": f, "label": labels[f], "impact": round(v, 4)} for f, v in impacts.items()]
+    return sorted(out, key=lambda x: -abs(x["impact"]))
+
+
+@app.get("/api/nhl/game/{game_id}")
+def get_nhl_game(game_id: str):
+    """One game: score by period, live / pre-game probabilities, why the model leans the way it
+    does, team stats, scoring summary, goalies and top skaters."""
+    if not game_id.isdigit():
+        raise HTTPException(status_code=404, detail="Unknown game")
+    try:
+        data = _espn_json(f"{NHL_BASE}/summary?event={game_id}")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Game not found")
+    header = data.get("header", {})
+    comp = (header.get("competitions") or [{}])[0]
+    ev = {"id": game_id, "date": comp.get("date", ""), "season": header.get("season"),
+          "competitions": [{**comp, "venue": (data.get("gameInfo") or {}).get("venue")}]}
+    g = _nhl_parse_event(ev)
+    if g is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    g = _nhl_with_probs(g)
+    home, away = g["home"]["name"], g["away"]["name"]
+    pre = _nhl_pregame(game_id, home, away, g["date"], g["neutral"])
+
+    # Score by period
+    lines = {c.get("homeAway"): [int(float(x.get("displayValue") or 0)) for x in c.get("linescores", [])]
+             for c in comp.get("competitors", [])}
+
+    # Team stats side by side
+    wanted = ["shotsTotal", "powerPlayGoals", "powerPlayOpportunities", "faceoffPercent", "hits",
+              "blockedShots", "takeaways", "giveaways", "penaltyMinutes"]
+    team_stats: dict[str, dict[str, str]] = {}
+    labels: dict[str, str] = {}
+    for t in (data.get("boxscore") or {}).get("teams", []):
+        tid = str(t.get("team", {}).get("id"))
+        side = "home" if tid == g["home"]["id"] else "away"
+        for s in t.get("statistics", []):
+            if s.get("name") in wanted:
+                team_stats.setdefault(s["name"], {})[side] = s.get("displayValue", "")
+                labels[s["name"]] = s.get("label", s["name"])
+    stats = [{"key": k, "label": labels[k], "away": team_stats[k].get("away", ""), "home": team_stats[k].get("home", "")}
+             for k in wanted if k in team_stats]
+
+    # Players: goalies and the skaters who did the most
+    goalies, skaters = [], {"home": [], "away": []}
+    for team in (data.get("boxscore") or {}).get("players", []):
+        tid = str(team.get("team", {}).get("id"))
+        side = "home" if tid == g["home"]["id"] else "away"
+        for grp in team.get("statistics", []):
+            keys = grp.get("keys", [])
+            for a in grp.get("athletes", []):
+                st = dict(zip(keys, a.get("stats", [])))
+                ath = a.get("athlete", {})
+                base = {"id": str(ath.get("id")), "name": ath.get("displayName", ""), "side": side,
+                        "position": (ath.get("position") or {}).get("abbreviation", ""),
+                        "headshot": (ath.get("headshot") or {}).get("href")}
+                if grp.get("name") == "goalies":
+                    goalies.append({**base, "saves": st.get("saves"), "shots_against": st.get("shotsAgainst"),
+                                    "save_pct": st.get("savePct"), "toi": st.get("timeOnIce")})
+                else:
+                    num = lambda k: int(float(st.get(k) or 0)) if str(st.get(k) or "0").lstrip("-").replace(".", "").isdigit() else 0
+                    skaters[side].append({**base, "goals": num("goals"), "assists": num("assists"),
+                                          "shots": num("shotsTotal"), "plus_minus": st.get("plusMinus"),
+                                          "toi": st.get("timeOnIce"), "hits": num("hits")})
+    for side in skaters:
+        skaters[side].sort(key=lambda p: (-(p["goals"] + p["assists"]), -p["goals"], -p["shots"]))
+        skaters[side] = skaters[side][:6]
+
+    # Scoring summary and the three stars
+    team_side = {g["home"]["id"]: "home", g["away"]["id"]: "away"}
+    goals = [{"period": (p.get("period") or {}).get("displayValue", ""), "clock": (p.get("clock") or {}).get("displayValue", ""),
+              "side": team_side.get(str((p.get("team") or {}).get("id")), ""), "text": p.get("text", ""),
+              "strength": (p.get("strength") or {}).get("text", ""),
+              "away_score": p.get("awayScore"), "home_score": p.get("homeScore")}
+             for p in data.get("plays", []) if p.get("scoringPlay")]
+    stars = [{"label": f.get("displayName", ""), "id": str((f.get("athlete") or {}).get("id", "")),
+              "name": (f.get("athlete") or {}).get("displayName", ""),
+              "headshot": ((f.get("athlete") or {}).get("headshot") or {}).get("href")}
+             for f in comp.get("status", {}).get("featuredAthletes", []) if f.get("name", "").endswith("Star")]
+
+    state = _load_nhl_state()
+
+    def form(team: str) -> dict | None:
+        r = state.get(team)
+        if r is None:
+            return None
+        return {"record": f"{r['wins']}-{r['losses']}-{r['otl']}", "points": int(r["points"]),
+                "goal_diff": int(r["goal_diff"]), "streak": int(r["win_streak"]), "elo": r["elo"],
+                "gf": r["gf_ewm"], "ga": r["ga_ewm"], "shot_share": r["shot_share"], "sv_pct": r["sv_pct"]}
+
+    return {**g, "lines": lines, "stats": stats, "goalies": goalies, "skaters": skaters,
+            "goals": goals, "stars": stars,
+            "explanation": _nhl_explain(*pre[2]) if pre else [],
+            "form": {"home": form(home), "away": form(away)}}
+
+
+@app.get("/api/nhl/standings")
+def get_nhl_standings():
+    """Standings by division from the season's results (W-L-OTL, points), with each team's Elo."""
+    state = _load_nhl_state()
+    divisions: dict[str, list[dict]] = {}
+    for name, r in state.items():
+        gp = int(r["games_played"])
+        divisions.setdefault(r["division"], []).append({
+            "team": name, "abbr": r["abbr"], "conference": r["conference"], "gp": gp,
+            "w": int(r["wins"]), "l": int(r["losses"]), "otl": int(r["otl"]), "pts": int(r["points"]),
+            "pts_pct": round(r["points"] / (2 * gp), 3) if gp else 0.0,
+            "goal_diff": int(r["goal_diff"]), "streak": int(r["win_streak"]), "elo": r["elo"]})
+    order = ["Atlantic", "Metropolitan", "Central", "Pacific"]
+    out = []
+    for div in order:
+        teams = sorted(divisions.get(div, []), key=lambda t: (-t["pts"], t["gp"], -t["w"], -t["goal_diff"]))
+        for i, t in enumerate(teams):
+            t["rank"] = i + 1
+        out.append({"division": div, "conference": "East" if div in ("Atlantic", "Metropolitan") else "West",
+                    "teams": teams})
+    elo_rank = sorted(state, key=lambda n: -state[n]["elo"])
+    for d in out:
+        for t in d["teams"]:
+            t["elo_rank"] = elo_rank.index(t["team"]) + 1
+    return {"season": _sport_season_label("nhl"), "divisions": out}
+
+
+_nhl_log_cache: tuple[float, list[dict]] | None = None
+_NHL_LOG_TTL = 600.0
+
+
+@app.get("/api/nhl/predictions_log")
+def get_nhl_predictions_log(n: int = 500):
+    """This season's finished games with our pre-game pick (the pipeline's pre-game rows, plus
+    games finished since the last refresh), newest first."""
+    import calendar, datetime
+    global _nhl_log_cache
+    if _nhl_log_cache is not None and (_time_mod.time() - _nhl_log_cache[0] < _NHL_LOG_TTL
+                                       or _serve_stale("nhl_log", get_nhl_predictions_log)):
+        return {"log": _nhl_log_cache[1][:n]}
+
+    log: dict[str, dict] = {}
+    rows = _load_nhl_game_features()
+    pending = []
+    for gid, teams in rows.items():
+        if len(teams) != 2:
+            continue
+        home, away = teams.values()      # the pipeline writes the home team's row first
+        if int(home["completed"]) == 1:
+            pending.append((gid, home, away))
+    if pending:
+        X = pd.DataFrame([r for _, h, a in pending for r in (h, a)])[NHL_FEATURES]
+        probs = _load_nhl_model().predict_proba(X)[:, 1]
+        for i, (gid, h, a) in enumerate(pending):
+            p_home = float(probs[2 * i]) / (float(probs[2 * i]) + float(probs[2 * i + 1]))
+            log[gid] = {"game_id": gid, "date": h["game_date"], "home_team": h["team"], "away_team": a["team"],
+                        "home_score": int(h["team_score"]), "away_score": int(a["team_score"]),
+                        "p_home": p_home, "source": "pregame", "season_type": int(h["season_type"])}
+
+    # Games finished since the pipeline last ran (today, yesterday)
+    today = datetime.date.fromisoformat(_nhl_today())
+    for back in (0, 1):
+        day = (today - datetime.timedelta(days=back)).isoformat()
+        try:
+            games = _nhl_day(day)
+        except Exception:
+            continue
+        for g in games:
+            if g["state"] != "post" or g["game_id"] in log or g["home_win_prob"] is None:
+                continue
+            if g["home"]["score"] is None or g["away"]["score"] is None:
+                continue
+            log[g["game_id"]] = {"game_id": g["game_id"], "date": g["date"], "home_team": g["home"]["name"],
+                                 "away_team": g["away"]["name"], "home_score": g["home"]["score"],
+                                 "away_score": g["away"]["score"], "p_home": g["home_win_prob"] / 100,
+                                 "source": g["source"], "season_type": g["season_type"]}
+
+    out = []
+    for e in log.values():
+        p_home = e["p_home"]
+        home_prob, away_prob = round(p_home * 100, 1), round((1 - p_home) * 100, 1)
+        predicted = e["home_team"] if p_home >= 0.5 else e["away_team"]
+        actual = e["home_team"] if e["home_score"] > e["away_score"] else e["away_team"]
+        out.append({"game_id": e["game_id"], "date": e["date"],
+                    "month": calendar.month_name[int(e["date"][5:7])],
+                    "away_team": e["away_team"], "home_team": e["home_team"],
+                    "predicted_winner": predicted, "predicted_prob": max(home_prob, away_prob),
+                    "actual_winner": actual, "correct": predicted == actual,
+                    "away_score": e["away_score"], "home_score": e["home_score"],
+                    "away_win_prob": away_prob, "home_win_prob": home_prob, "source": e["source"],
+                    "round": "Playoffs" if e["season_type"] == 3 else "Regular Season"})
+    out.sort(key=lambda e: (e["date"], e["game_id"]), reverse=True)
+    _nhl_log_cache = (_time_mod.time(), out)
+    return {"log": out[:n]}
+
+
+@app.get("/api/nhl/performance")
+def get_nhl_performance():
+    return _performance_payload("nhl", get_nhl_predictions_log(n=100_000)["log"])
+
+
+@app.get("/api/nhl/stats")
+def get_nhl_model_stats():
+    return _model_stats_payload("nhl", NHL_FEATURES)
+
+
+# ── Player index: every rostered player of the four leagues, for fuzzy search ──
 
 _player_index: list[dict] | None = None
 _player_index_time: float = 0.0
@@ -5550,6 +6044,10 @@ def get_team_page(league: str, team: str):
                                     lambda: _team_schedule(sport, league, tid, season - 1, 3))
         if any(g["completed"] for g in prev):
             season, games, post = season - 1, prev, prev_post
+    if league == "nhl":
+        for lst in (games, post):
+            for g in lst:
+                g["win_prob"] = _team_next_game_prob(league, g, t["displayName"])
     if league == "nba":
         # Every NBA game gets our probability: the NBA game page is built from it
         for lst in (games, post):
@@ -5575,6 +6073,11 @@ def get_team_page(league: str, team: str):
               if season == cur_year else {})
     if not record.get("total") or record.get("total") == "0-0":
         record = {"total": _record_str([g for g in games if g["completed"]])}
+    if league == "nhl" and season == cur_year:
+        # Wins-losses-overtime losses, from the season's results
+        st = _load_nhl_state().get(t["displayName"])
+        if st is not None and st["games_played"]:
+            record = {**record, "total": f"{st['wins']}-{st['losses']}-{st['otl']}"}
 
     result = {
         "league": league,
@@ -5587,7 +6090,7 @@ def get_team_page(league: str, team: str):
             "standing": info.get("standingSummary", "") if season == cur_year else "",
         },
         "season": {"year": season, "is_current": season == cur_year,
-                   "label": f"{season - 1}-{str(season)[-2:]}" if league == "nba" else str(season)},
+                   "label": f"{season - 1}-{str(season)[-2:]}" if league in ("nba", "nhl") else str(season)},
         "record": record,
         "next_game": next_game,
         "facts": _team_facts(games, cfg),
@@ -5617,6 +6120,8 @@ _PLAYER_FOCUS = {
     "mlb_bat": (["hits", "homeRuns", "RBIs", "runs"], "OPS", "line"),
     "mlb_pit": (["innings", "strikeouts", "earnedRuns", "walks"], "strikeouts", "bar"),
     "nba":     (["points", "totalRebounds", "assists", "threePointFieldGoalsMade-threePointFieldGoalsAttempted"], "points", "bar"),
+    "nhl_skater": (["goals", "assists", "points", "shotsTotal"], "points", "bar"),
+    "nhl_goalie": (["saves", "goalsAgainst", "savePct", "shotsAgainst"], "saves", "bar"),
 }
 # Columns to show in split tables (names from ESPN's /splits payload)
 _PLAYER_SPLIT_COLS = {
@@ -5627,6 +6132,8 @@ _PLAYER_SPLIT_COLS = {
     "mlb_bat": ["atBats", "hits", "homeRuns", "RBIs", "avg", "OPS"],
     "mlb_pit": ["ERA", "innings", "strikeouts", "walks", "opponentAvg"],
     "nba":     ["gamesPlayed", "avgPoints", "avgRebounds", "avgAssists", "fieldGoalPct", "threePointFieldGoalPct"],
+    "nhl_skater": ["games", "goals", "assists", "points", "plusMinus", "shotsTotal"],
+    "nhl_goalie": ["gameStarted", "wins", "losses", "overtimeLosses", "avgGoalsAgainst", "savePct"],
 }
 # Clear labels where ESPN's abbreviations collide (e.g. "YDS" for rushing and receiving)
 _PLAYER_STAT_LABELS = {
@@ -5647,6 +6154,8 @@ _PLAYER_LIVE_TTL = 60.0
 def _player_kind(league: str, names: list[str]) -> str:
     if league == "nba":
         return "nba"
+    if league == "nhl":
+        return "nhl_goalie" if "saves" in names else "nhl_skater"
     if league == "mlb":
         return "mlb_bat" if "atBats" in names else "mlb_pit"
     first = names[0] if names else ""
@@ -6308,7 +6817,8 @@ def _warm_caches() -> None:
     def run():
         for fn in (get_predictions_log, get_nba_standings, get_nba_projections, get_bracket,
                    get_nfl_predictions_log, get_nfl_standings, get_nfl_projections, get_nfl_power,
-                   get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap, _get_player_index):
+                   get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap,
+                   get_nhl_predictions_log, _get_player_index):
             try:
                 fn()
             except Exception:

@@ -69,9 +69,9 @@ interface PlayerData {
 const card = "bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5";
 const cardTitle = "text-[10px] font-semibold text-gray-500 uppercase tracking-widest";
 
-/** Link to our page for one of his games (NFL, NBA), or null. */
+/** Link to our page for one of his games (NFL, NHL, NBA), or null. */
 function playedGameHref(d: PlayerData, g: GameSide & { game_id: string; date: string; opponent: string }): string | null {
-  if (d.league === "nfl") return `/nfl/game/${g.game_id}`;
+  if (d.league === "nfl" || d.league === "nhl") return `/${d.league}/game/${g.game_id}`;
   const team = g.team_name ?? d.team?.name;
   if (d.league !== "nba" || !team) return null;
   return nbaGameHref(g.game_id, {
@@ -353,7 +353,7 @@ function GamesCard({ d }: { d: PlayerData }) {
   if (!last && !next) return null;
   const color = d.team?.color ?? "#555";
   const nextHref = !next ? null
-    : d.league === "nfl" ? `/nfl/game/${next.game_id}`
+    : d.league === "nfl" || d.league === "nhl" ? `/${d.league}/game/${next.game_id}`
     : d.league === "nba" && d.team ? nbaGameHref(next.game_id, {
         team: d.team.name, opponent: next.opponent, home: next.home, date: next.date, winProb: next.win_prob,
         teamScore: null, oppScore: null, status: next.live ? "Live" : "Scheduled",

@@ -8,7 +8,7 @@ import { playerHref, teamHref } from "./teamLinks";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type League = "nba" | "nfl" | "mlb";
+type League = "nba" | "nfl" | "mlb" | "nhl";
 interface TeamHit { type: "team"; league: League; id: string; name: string; abbr: string; logo: string | null }
 interface PlayerHit {
   type: "player"; league: League; id: string; name: string;

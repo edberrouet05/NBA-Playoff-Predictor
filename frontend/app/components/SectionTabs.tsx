@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 // Tabs at the top of the pages grouped under one sidebar icon: "Standings" (standings, power
 // index, playoff bracket) and "Model" (season record, how the model was tested).
 
-export type Sport = "nba" | "nfl" | "mlb";
+export type Sport = "nba" | "nfl" | "mlb" | "nhl";
 export type Section = "standings" | "model";
 
 interface Tab { href: string; label: string }
@@ -30,7 +30,7 @@ function tabsFor(sport: Sport, section: Section, bracketSeason: boolean): Tab[] 
   if (sport === "nfl") {
     return [{ href: "/nfl/standings", label: "Standings" }, { href: "/nfl/power", label: "Power index" }];
   }
-  return [{ href: "/mlb/standings", label: "Standings" }];
+  return [{ href: `/${sport}/standings`, label: "Standings" }];
 }
 
 export function SectionTabs({ sport, section }: { sport: Sport; section: Section }) {

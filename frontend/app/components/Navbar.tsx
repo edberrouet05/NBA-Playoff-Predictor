@@ -16,34 +16,6 @@ function IconGames() {
   );
 }
 
-function IconBracket() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 4h4v3H2M2 11h4v3H2" />
-      <path d="M6 5.5h3v5H6M9 8h4v3H9M13 9.5h3" />
-    </svg>
-  );
-}
-
-function IconMatchup() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 6h14M12 3l4 3-4 3" />
-      <path d="M16 12H2M6 9l-4 3 4 3" />
-    </svg>
-  );
-}
-
-function IconStats() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
-      <rect x="2" y="10" width="4" height="6" rx="1" />
-      <rect x="7" y="6" width="4" height="10" rx="1" />
-      <rect x="12" y="2" width="4" height="14" rx="1" />
-    </svg>
-  );
-}
-
 function IconStandings() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -158,25 +130,20 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
       href: "/nhl",
       Icon: IconGames,
       label: "Games",
-      isActive: (p) => p === "/nhl",
+      isActive: (p) => p === "/nhl" || p.startsWith("/nhl/game") || p.startsWith("/nhl/team")
+        || p.startsWith("/nhl/player") || p === "/nhl/predictions",
     },
     {
-      href: "/nhl/bracket",
-      Icon: IconBracket,
-      label: "Bracket",
-      isActive: (p) => p === "/nhl/bracket",
+      href: "/nhl/standings",
+      Icon: IconStandings,
+      label: "Standings",
+      isActive: (p) => p === "/nhl/standings",
     },
     {
-      href: "/nhl/matchup",
-      Icon: IconMatchup,
-      label: "Matchup",
-      isActive: (p) => p === "/nhl/matchup",
-    },
-    {
-      href: "/nhl/stats",
-      Icon: IconStats,
-      label: "Stats",
-      isActive: (p) => p === "/nhl/stats",
+      href: "/nhl/performance",
+      Icon: IconTarget,
+      label: "Model",
+      isActive: (p) => p === "/nhl/performance" || p === "/nhl/stats",
     },
   ],
 };

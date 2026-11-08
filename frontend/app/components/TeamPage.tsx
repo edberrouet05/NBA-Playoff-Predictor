@@ -8,7 +8,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // ── Types (mirror get_team_page in api/main.py) ────────────────────────────────
 
-export type League = "nfl" | "mlb" | "nba";
+export type League = "nfl" | "mlb" | "nba" | "nhl";
 
 interface TeamGame {
   game_id: string; date: string; season_type: "reg" | "post"; label: string;
@@ -56,8 +56,8 @@ interface TeamPageData {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const LEAGUE_TEAMS: Record<League, number> = { nfl: 32, mlb: 30, nba: 30 };
-const SCORE_WORD: Record<League, string> = { nfl: "Points", mlb: "Runs", nba: "Points" };
+const LEAGUE_TEAMS: Record<League, number> = { nfl: 32, mlb: 30, nba: 30, nhl: 32 };
+const SCORE_WORD: Record<League, string> = { nfl: "Points", mlb: "Runs", nba: "Points", nhl: "Goals" };
 
 function logoUrl(league: League, espnAbbr: string) {
   return `https://a.espncdn.com/i/teamlogos/${league}/500/${espnAbbr.toLowerCase()}.png`;
@@ -80,9 +80,9 @@ function fmtMonth(ym: string) {
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "short" });
 }
 
-/** Link to our game page (NFL, NBA). The NBA page is built from the matchup and our probability. */
+/** Link to our game page (NFL, NHL, NBA). The NBA page is built from the matchup and our probability. */
 function gameHref(d: TeamPageData, g: TeamGame): string | null {
-  if (d.league === "nfl") return `/nfl/game/${g.game_id}`;
+  if (d.league === "nfl" || d.league === "nhl") return `/${d.league}/game/${g.game_id}`;
   if (d.league !== "nba") return null;
   const status = g.completed ? "Final" : new Date(g.date) <= new Date() ? "Live" : "Scheduled";
   return nbaGameHref(g.game_id, {
@@ -323,7 +323,7 @@ function FactsCard({ d }: { d: TeamPageData }) {
   const f = d.facts as Facts;
   if (!f.games) return null;
   const word = SCORE_WORD[d.league];
-  const closeLabel = d.league === "mlb" ? "One-run games" : `Games decided by ≤ ${f.close.threshold}`;
+  const closeLabel = d.league === "mlb" || d.league === "nhl" ? `One-${d.league === "mlb" ? "run" : "goal"} games` : `Games decided by ≤ ${f.close.threshold}`;
   const rows: [string, string][] = [
     [`${word} scored / game`, `${f.points_for}`],
     [`${word} allowed / game`, `${f.points_against}`],

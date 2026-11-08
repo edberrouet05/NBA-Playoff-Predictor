@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const SPORT_LINKS = [
-  { href: "/",    label: "NBA", key: "nba", match: (p: string) => !p.startsWith("/mlb") && !p.startsWith("/nfl") },
+  { href: "/",    label: "NBA", key: "nba", match: (p: string) => !p.startsWith("/mlb") && !p.startsWith("/nfl") && !p.startsWith("/nhl") },
   { href: "/mlb", label: "MLB", key: "mlb", match: (p: string) =>  p.startsWith("/mlb") },
   { href: "/nfl", label: "NFL", key: "nfl", match: (p: string) =>  p.startsWith("/nfl") },
-  { href: "#",    label: "NHL", key: "nhl", match: () => false, disabled: true },
+  { href: "/nhl", label: "NHL", key: "nhl", match: (p: string) =>  p.startsWith("/nhl") },
 ];
 
 // Which leagues have a game on right now, refreshed every minute
@@ -35,19 +35,8 @@ export default function TopNav() {
   const links = [...SPORT_LINKS].sort((a, b) => Number(!!live[b.key]) - Number(!!live[a.key]));
   return (
     <div className="flex items-center gap-3 sm:gap-4 ml-1 sm:ml-2">
-      {links.map(({ href, label, key, match, disabled }) => {
+      {links.map(({ href, label, key, match }) => {
         const active = match(path);
-        if (disabled) {
-          return (
-            <span
-              key={label}
-              className="hidden sm:inline text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide cursor-default select-none"
-              title="Coming soon"
-            >
-              {label}
-            </span>
-          );
-        }
         return (
           <Link
             key={label}

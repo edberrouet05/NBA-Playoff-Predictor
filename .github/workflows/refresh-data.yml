@@ -3,18 +3,20 @@ name: Refresh model data
 # MLB: pipeline every morning during the season, retrain on Mondays.
 # NFL: pipeline + retrain every Tuesday during the season (after Monday Night Football).
 # NBA: pipeline every morning during the season (after the night's games), retrain on Mondays.
+# NHL: same as the NBA, half an hour later.
 # Updated CSVs / models are committed back to the repo, which redeploys the API.
 on:
   schedule:
     - cron: "0 10 * 3-11 *"        # MLB — 10:00 UTC daily, March–November
     - cron: "0 11 * 1,2,9-12 2"    # NFL — 11:00 UTC Tuesdays, September–February
     - cron: "0 9 * 1-6,10-12 *"    # NBA — 09:00 UTC daily, October–June
+    - cron: "30 9 * 1-6,10-12 *"   # NHL — 09:30 UTC daily, October–June
   workflow_dispatch:
     inputs:
       sport:
         description: "Sport to refresh"
         type: choice
-        options: [mlb, nfl, nba, all]
+        options: [mlb, nfl, nba, nhl, all]
         default: all
       retrain:
         description: "Retrain the models after the pipeline"
@@ -148,5 +150,43 @@ jobs:
           git add data/nba data/processed/nba_training_data.csv models/nba_* data/pregame_odds.json data/nfl/nfl_frozen_predictions.json
           git diff --cached --quiet && { echo "No changes"; exit 0; }
           git commit -m "Refresh NBA data ($(date -u +%F))"
+          git pull --rebase
+          git push
+
+  nhl:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '30 9 * 1-6,10-12 *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.sport == 'nhl' || inputs.sport == 'all'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Cache ESPN scoreboards (past seasons never change)
+        uses: actions/cache@v4
+        with:
+          path: data/nhl/raw
+          key: nhl-raw-${{ github.run_id }}
+          restore-keys: nhl-raw-
+      - name: Pipeline
+        run: python nhl/pipeline.py
+      - name: Train (manual run)
+        if: github.event_name == 'workflow_dispatch' && inputs.retrain
+        run: python nhl/train.py
+      - name: Train (scheduled — Mondays only)
+        if: github.event_name == 'schedule'
+        run: |
+          if [ "$(date -u +%u)" = "1" ]; then python nhl/train.py; else echo "Not Monday — skipping retrain"; fi
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/nhl data/processed/nhl_training_data.csv models/nhl_*
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "Refresh NHL data ($(date -u +%F))"
           git pull --rebase
           git push
