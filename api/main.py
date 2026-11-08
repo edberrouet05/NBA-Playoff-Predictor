@@ -288,6 +288,16 @@ def _serve_stale(key: str, endpoint) -> bool:
     return True
 
 
+def _parallel(*calls):
+    """Run independent zero-argument calls on threads and return their results in order
+    (most pages wait on several ESPN requests that do not depend on each other).
+    An exception is re-raised from the result that failed."""
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+        futures = [pool.submit(c) for c in calls]
+        return [f.result() for f in futures]
+
+
 # ── Compare cache (keyed by team pair, 30-min TTL) ───────────────────────────
 
 _compare_cache: dict[str, dict] = {}
@@ -762,14 +772,16 @@ def _espn_nba_season_games(season: int | None = None) -> list[dict]:
     import datetime
     today = datetime.date.today()
     year = season or _nba_season_year()
-    out: list[dict] = []
-    for y, m in [(year - 1, m) for m in (10, 11, 12)] + [(year, m) for m in range(1, 7)]:
-        if (y, m) > (today.year, today.month):
-            break
+    months = [(y, m) for y, m in [(year - 1, m) for m in (10, 11, 12)] + [(year, m) for m in range(1, 7)]
+              if (y, m) <= (today.year, today.month)]
+
+    def month(y: int, m: int) -> list[dict]:
         try:
-            out.extend(_espn_nba_month(y, m))
+            return _espn_nba_month(y, m)
         except Exception:
-            continue
+            return []
+
+    out = [g for lst in _parallel(*(lambda y=y, m=m: month(y, m) for y, m in months)) for g in lst] if months else []
     return sorted(out, key=lambda g: (g["date"], g["game_id"]))
 
 
@@ -814,7 +826,7 @@ def get_bracket():
     global _bracket_cache, _bracket_cache_time
 
     now = _time_mod.time()
-    if _bracket_cache is not None and (now - _bracket_cache_time) < _BRACKET_CACHE_TTL:
+    if _bracket_cache is not None and ((now - _bracket_cache_time) < _BRACKET_CACHE_TTL or _serve_stale("bracket", get_bracket)):
         return _bracket_cache
 
     try:
@@ -1059,11 +1071,18 @@ def get_today_games():
         raise HTTPException(status_code=502, detail=str(e))
 
 
+_schedule_cache: dict[int, tuple[float, dict]] = {}
+_SCHEDULE_TTL = 15.0   # live scores stay fresh; repeated loads skip ESPN
+
+
 @app.get("/api/schedule")
 def get_schedule(days: int = 7):
     """Return the next `days` days of games with predictions (max 14)."""
     import datetime
     days = min(days, 14)
+    hit = _schedule_cache.get(days)
+    if hit and _time_mod.time() - hit[0] < _SCHEDULE_TTL:
+        return hit[1]
     model, stats_by_name = _load_model(), _load_stats_by_name()
     schedule = []
     for i in range(days):
@@ -1076,7 +1095,9 @@ def get_schedule(days: int = 7):
         except Exception:
             continue
 
-    return {"schedule": schedule}
+    result = {"schedule": schedule}
+    _schedule_cache[days] = (_time_mod.time(), result)
+    return result
 
 
 
@@ -5279,19 +5300,23 @@ def get_team_page(league: str, team: str):
 
     tid = t["id"]
     base = f"https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/teams/{tid}"
-    info = _espn_json(base).get("team", {})
-    cur = _espn_json(f"{base}/schedule").get("season") or {}
+    info, sched, (roster_groups, roster_by_id) = _parallel(
+        lambda: _espn_json(base).get("team", {}),
+        lambda: _espn_json(f"{base}/schedule"),
+        lambda: _team_roster(sport, league, tid))
+    cur = sched.get("season") or {}
     cur_year = int(cur.get("year") or datetime.date.today().year)
 
     # Use the latest season with completed regular-season games (e.g. NBA preseason → last season)
     season = cur_year
-    cur_reg = _team_schedule(sport, league, tid, season, 2)
+    cur_reg, post = _parallel(lambda: _team_schedule(sport, league, tid, season, 2),
+                              lambda: _team_schedule(sport, league, tid, season, 3))
     games = cur_reg
     if not any(g["completed"] for g in games):
-        prev = _team_schedule(sport, league, tid, season - 1, 2)
+        prev, prev_post = _parallel(lambda: _team_schedule(sport, league, tid, season - 1, 2),
+                                    lambda: _team_schedule(sport, league, tid, season - 1, 3))
         if any(g["completed"] for g in prev):
-            season, games = season - 1, prev
-    post = _team_schedule(sport, league, tid, season, 3)
+            season, games, post = season - 1, prev, prev_post
     if league == "nba":
         # Every NBA game gets our probability: the NBA game page is built from it
         for lst in (games, post):
@@ -5308,7 +5333,10 @@ def get_team_page(league: str, team: str):
     if next_game:
         next_game = {**next_game, "win_prob": _team_next_game_prob(league, next_game, t["displayName"])}
 
-    roster_groups, roster_by_id = _team_roster(sport, league, tid)
+    stats, leaders, model_block = _parallel(
+        lambda: _team_stats(sport, league, tid, season, cfg),
+        lambda: _team_leaders(sport, league, tid, season, cfg, roster_by_id),
+        lambda: _team_model_block(league, t["displayName"]))
     logos = info.get("logos") or t.get("logos") or []
     record = ({i.get("type"): i.get("summary") for i in (info.get("record") or {}).get("items", [])}
               if season == cur_year else {})
@@ -5330,12 +5358,12 @@ def get_team_page(league: str, team: str):
         "record": record,
         "next_game": next_game,
         "facts": _team_facts(games, cfg),
-        "stats": _team_stats(sport, league, tid, season, cfg),
+        "stats": stats,
         # ESPN ranks NBA team stats within the division, other leagues league-wide
         "stats_rank_scope": "division" if league == "nba" else "league",
-        "leaders": _team_leaders(sport, league, tid, season, cfg, roster_by_id),
+        "leaders": leaders,
         "roster": roster_groups,
-        "model": _team_model_block(league, t["displayName"]),
+        "model": model_block,
         "games": games,
         "postseason": post,
     }
@@ -5780,18 +5808,18 @@ def get_player_page(league: str, athlete_id: str):
 
     sport = _TEAM_LEAGUES[league]["sport"]
     base = f"https://site.web.api.espn.com/apis/common/v3/sports/{sport}/{league}/athletes/{athlete_id}"
-    try:
-        ath = _espn_json(base).get("athlete", {})
-    except Exception:
-        raise HTTPException(status_code=404, detail="Player not found")
-
-    def safe(path: str) -> dict:
+    def safe(path: str) -> dict | None:
         try:
             return _espn_json(base + path)
         except Exception:
-            return {}
+            return None
 
-    overview, gamelog, splits_raw, career_raw = safe("/overview"), safe("/gamelog"), safe("/splits"), safe("/stats")
+    results = _parallel(*(lambda path=path: safe(path)
+                          for path in ("", "/overview", "/gamelog", "/splits", "/stats")))
+    if results[0] is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    ath = results[0].get("athlete", {})
+    overview, gamelog, splits_raw, career_raw = (r or {} for r in results[1:])
 
     names = gamelog.get("names") or []
     labels = gamelog.get("labels") or []
@@ -6045,7 +6073,7 @@ def _warm_caches() -> None:
     """Fill the slowest caches on a background thread, so the first visitor after a deploy or a
     restart does not wait for them (the MLB log alone takes several seconds)."""
     def run():
-        for fn in (get_predictions_log, get_nba_standings, get_nba_projections,
+        for fn in (get_predictions_log, get_nba_standings, get_nba_projections, get_bracket,
                    get_nfl_predictions_log, get_nfl_standings, get_nfl_projections, get_nfl_power,
                    get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap):
             try:
