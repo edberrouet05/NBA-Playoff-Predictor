@@ -2318,8 +2318,17 @@ def get_pregame_odds() -> dict[str, dict]:
     return _pregame_odds
 
 
+# Odds API names that differ from ESPN's beyond accents and periods
+_ODDS_TEAM_ALIASES = {"utah hockey club": "utah mammoth"}
+
+
 def _normalize_team(name: str) -> str:
-    return name.lower().strip()
+    """Team name as a key shared by ESPN and the Odds API: lowercase, no accents, no periods
+    ('Montréal Canadiens' = 'Montreal Canadiens', 'St Louis Blues' = 'St. Louis Blues')."""
+    import unicodedata
+    n = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower().replace(".", "")
+    n = " ".join(n.split())
+    return _ODDS_TEAM_ALIASES.get(n, n)
 
 
 _BOOKMAKER_PRIORITY = [
@@ -5734,11 +5743,17 @@ def _nhl_day(date: str) -> list[dict]:
     if hit and _time_mod.time() - hit[0] < ttl:
         return hit[1]
     data = _espn_json(f"{NHL_BASE}/scoreboard?dates={date.replace('-', '')}&limit=100")
+    parsed = [g for g in (_nhl_parse_event(ev) for ev in data.get("events", []))
+              if g and g["season_type"] in (2, 3) and "Postponed" not in g["detail"]]
+    odds = _fetch_odds_today("icehockey_nhl", [g["start_utc"] for g in parsed if g["state"] == "pre"])
     games = []
-    for ev in data.get("events", []):
-        g = _nhl_parse_event(ev)
-        if g and g["season_type"] in (2, 3) and "Postponed" not in g["detail"]:
-            games.append(_nhl_with_probs(g))
+    for g in parsed:
+        g = _nhl_with_probs(g)
+        line = _game_odds_for(odds, g["away"]["name"], g["home"]["name"], g["start_utc"], g["state"] == "post")
+        g.update(away_odds=line.get("away_odds"), home_odds=line.get("home_odds"))
+        if g["away_win_prob"] is not None:
+            g.update(_value_bet(g["away_win_prob"], g["home_win_prob"], g["away_odds"], g["home_odds"]))
+        games.append(g)
     games.sort(key=lambda g: (g["start_utc"], g["game_id"]))
     _nhl_day_cache[date] = (_time_mod.time(), games)
     return games

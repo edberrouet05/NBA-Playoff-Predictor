@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useFitRows } from "../components/useFitRows";
-import { probClass } from "../components/PredictionBits";
+import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 import { useWakeHint, WAKE_HINT } from "../components/useWakeHint";
 import { nhlAbbr, nhlColor, nhlLogo, nhlNick } from "./nhlTeams";
 
@@ -12,7 +12,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Goalie { name: string; sv: number; status: "probable" | "started" | "last start" }
 interface Side { name: string; abbr: string; score: number | null; record: string | null; logo: string | null; color: string; goalie?: Goalie | null }
-interface NHLGame {
+interface NHLGame extends ValueFields {
+  away_odds: number | null; home_odds: number | null;
   game_id: string; start_utc: string; date: string;
   state: "pre" | "in" | "post"; status: string; detail: string; period: number; clock: string;
   venue: string; home: Side; away: Side;
@@ -69,7 +70,7 @@ function GameCard({ game }: { game: NHLGame }) {
   const awayProb = isLive && game.live_away_prob != null ? game.live_away_prob : game.away_win_prob;
   const homeProb = isLive && game.live_home_prob != null ? game.live_home_prob : game.home_win_prob;
 
-  function side(s: Side, prob: number | null, won: boolean, otherWon: boolean) {
+  function side(s: Side, prob: number | null, won: boolean, otherWon: boolean, odds: number | null) {
     return (
       <div className="flex flex-col items-center gap-1.5">
         <TeamLogo src={s.logo} team={s.name} size="w-12 h-12" />
@@ -77,6 +78,7 @@ function GameCard({ game }: { game: NHLGame }) {
         {prob != null && (
           <span className={`text-sm font-bold ${probClass(game.predicted_winner === s.name, otherWon)}`}>{prob}%</span>
         )}
+        {odds && !isLive && <span className="text-[11px] text-gray-400" title="Bookmaker decimal odds">x{odds}</span>}
         {(isLive || isFinal) && s.score !== null && (
           <span className={`text-lg font-bold ${won || isLive ? "text-gray-900 dark:text-white" : "text-gray-500"}`}>{s.score}</span>
         )}
@@ -106,9 +108,9 @@ function GameCard({ game }: { game: NHLGame }) {
         </div>
 
         <div className="px-5 pt-4 pb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-          {side(away, awayProb, awayWins, homeWins)}
+          {side(away, awayProb, awayWins, homeWins, game.away_odds)}
           <span className="text-gray-300 dark:text-gray-700 font-bold text-sm">@</span>
-          {side(home, homeProb, homeWins, awayWins)}
+          {side(home, homeProb, homeWins, awayWins, game.home_odds)}
         </div>
 
         {awayProb != null && (
@@ -128,6 +130,10 @@ function GameCard({ game }: { game: NHLGame }) {
           ) : <span />}
           {isLive && game.away_win_prob != null && (
             <span className="text-[11px] text-gray-400">Pre-game {game.away_win_prob}% · {game.home_win_prob}%</span>
+          )}
+          {game.away_win_prob != null && game.home_win_prob != null && (
+            <ValueBadge game={{ ...game, away_win_prob: game.away_win_prob, home_win_prob: game.home_win_prob }}
+              awayAbbr={away.abbr} homeAbbr={home.abbr} started={isLive || isFinal} />
           )}
         </div>
       </div>
