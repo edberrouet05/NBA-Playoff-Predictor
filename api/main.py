@@ -251,9 +251,44 @@ def _build_prediction(
     }
 
 
-# ── Compare cache (keyed by team pair, 30-min TTL) ───────────────────────────
+# ── Background refresh of expired caches ─────────────────────────────────────
 import threading as _threading
 import time as _time_mod
+
+_swr_local = _threading.local()
+_swr_busy: set[str] = set()
+_swr_lock = _threading.Lock()
+
+
+def _serve_stale(key: str, endpoint) -> bool:
+    """Stale-while-revalidate for a cached endpoint whose TTL has run out.
+
+    Returns True when the caller should answer with its expired cache right away, while
+    `endpoint()` recomputes it on a background thread (one at a time per key). Returns False
+    inside that background call, so the endpoint does the real work there."""
+    if getattr(_swr_local, "key", None) == key:
+        return False
+    with _swr_lock:
+        if key in _swr_busy:
+            return True
+        _swr_busy.add(key)
+
+    def run():
+        _swr_local.key = key
+        try:
+            endpoint()
+        except Exception:
+            pass
+        finally:
+            _swr_local.key = None
+            with _swr_lock:
+                _swr_busy.discard(key)
+
+    _threading.Thread(target=run, daemon=True).start()
+    return True
+
+
+# ── Compare cache (keyed by team pair, 30-min TTL) ───────────────────────────
 
 _compare_cache: dict[str, dict] = {}
 _compare_cache_time: dict[str, float] = {}
@@ -1128,7 +1163,7 @@ def get_predictions_log(n: int = 5):
     global _predictions_log_cache, _predictions_log_cache_time
 
     now = _time_mod.time()
-    if _predictions_log_cache is not None and (now - _predictions_log_cache_time) < _PREDICTIONS_LOG_TTL:
+    if _predictions_log_cache is not None and ((now - _predictions_log_cache_time) < _PREDICTIONS_LOG_TTL or _serve_stale("nba_log", get_predictions_log)):
         return {"log": _predictions_log_cache["log"][:n]}
 
     try:
@@ -1355,7 +1390,7 @@ def get_mlb_season_recap():
     best calls and biggest upsets)."""
     import time as _t
     global _mlb_recap_cache, _mlb_recap_cache_time
-    if _mlb_recap_cache is not None and _t.time() - _mlb_recap_cache_time < _MLB_RECAP_TTL:
+    if _mlb_recap_cache is not None and (_t.time() - _mlb_recap_cache_time < _MLB_RECAP_TTL or _serve_stale("mlb_recap", get_mlb_season_recap)):
         return _mlb_recap_cache
 
     season = int(_sport_season_label("mlb"))
@@ -1989,7 +2024,7 @@ def get_nba_standings():
     behind the conference leader, home / road records, last 10, streak and point differential."""
     global _nba_standings_cache, _nba_standings_cache_time
     now = _time_mod.time()
-    if _nba_standings_cache is not None and now - _nba_standings_cache_time < _NBA_STANDINGS_TTL:
+    if _nba_standings_cache is not None and (now - _nba_standings_cache_time < _NBA_STANDINGS_TTL or _serve_stale("nba_standings", get_nba_standings)):
         return _nba_standings_cache
     year = _nba_season_year()
     try:
@@ -2046,7 +2081,7 @@ def get_nba_projections():
     global _nba_proj_cache, _nba_proj_cache_time
     from scipy.special import ndtr
     now = _time_mod.time()
-    if _nba_proj_cache is not None and (now - _nba_proj_cache_time) < _NBA_PROJ_TTL:
+    if _nba_proj_cache is not None and ((now - _nba_proj_cache_time) < _NBA_PROJ_TTL or _serve_stale("nba_proj", get_nba_projections)):
         return _nba_proj_cache
 
     model, stats = _load_model(), _load_stats_by_name()
@@ -2775,7 +2810,7 @@ def get_mlb_teams() -> list[str]:
 
 _mlb_pred_log_cache: dict | None = None
 _mlb_pred_log_cache_time: float = 0.0
-_MLB_PRED_LOG_TTL = 300.0  # 5 minutes
+_MLB_PRED_LOG_TTL = 1800.0  # results only change once games end
 
 
 @app.get("/api/mlb/predictions_log")
@@ -2783,13 +2818,13 @@ def get_mlb_predictions_log(n: int = 500):
     """Return completed MLB regular-season games with model prediction vs actual result.
 
     Fetches from Opening Day 2026 → yesterday so the full season log is available.
-    Results are cached 5 minutes; n= slices the returned list.
+    Results are cached 30 minutes; n= slices the returned list.
     """
     import time as _t, datetime, json, urllib.request, calendar
     global _mlb_pred_log_cache, _mlb_pred_log_cache_time
 
     now = _t.time()
-    if _mlb_pred_log_cache is not None and (now - _mlb_pred_log_cache_time) < _MLB_PRED_LOG_TTL:
+    if _mlb_pred_log_cache is not None and ((now - _mlb_pred_log_cache_time) < _MLB_PRED_LOG_TTL or _serve_stale("mlb_log", get_mlb_predictions_log)):
         cached_log = _mlb_pred_log_cache["log"]
         return {"log": cached_log[:n]}
 
@@ -2809,18 +2844,10 @@ def get_mlb_predictions_log(n: int = 500):
 
         model = _load_mlb_model()
         stats = _load_mlb_stats()
-
-        # Batch-fetch pitcher ERAs for all games (same as the games endpoint)
-        all_games_flat = [g for db in data.get("dates", []) for g in db.get("games", [])]
-        pitcher_ids: list[int] = []
-        for g in all_games_flat:
-            for side in ("away", "home"):
-                pid = g.get("teams", {}).get(side, {}).get("probablePitcher", {}).get("id")
-                if pid:
-                    pitcher_ids.append(pid)
-        starter_eras: dict[int, float] = _fetch_pitcher_eras_batch(list(set(pitcher_ids)))
+        features = _load_mlb_game_features()
 
         log: list[dict] = []
+        pending: list[tuple[dict, dict, dict]] = []   # (log entry, away row, home row) scored in one batch
         for date_block in reversed(data.get("dates", [])):
             date_str = date_block.get("date", "")
             # Derive month label
@@ -2850,27 +2877,28 @@ def get_mlb_predictions_log(n: int = 500):
                 game_id = g.get("gamePk")
                 gid_str = str(game_id)
                 cached  = _mlb_game_pred_cache.get(gid_str)
-                known   = _load_mlb_game_features().get(gid_str, {})
+                known   = features.get(gid_str, {})
+                actual_winner = away_name if away_score > home_score else home_name
+                entry = {
+                    "game_id": game_id, "date": date_str, "month": month_name,
+                    "away_team": away_name, "home_team": home_name, "actual_winner": actual_winner,
+                    "away_score": away_score, "home_score": home_score,
+                }
+                if not cached and away_name in known and home_name in known:
+                    # The pipeline's pre-game rows (actual starters, state before the game)
+                    entry["source"] = "pregame"
+                    pending.append((entry, known[away_name], known[home_name]))
+                    log.append(entry)
+                    continue
                 if cached:
                     away_win_prob    = cached["away_win_prob"]
                     home_win_prob    = cached["home_win_prob"]
                     predicted_winner = cached["predicted_winner"]
                     source           = "pregame"   # served before the game by this server
-                elif away_name in known and home_name in known:
-                    # The pipeline's pre-game rows (actual starters, state before the game)
-                    X = pd.DataFrame([known[away_name], known[home_name]])[MLB_FEATURES]
-                    p_a, p_h = (float(v) for v in model.predict_proba(X)[:, 1])
-                    p_away           = p_a / (p_a + p_h)
-                    away_win_prob    = round(p_away * 100, 1)
-                    home_win_prob    = round((1 - p_away) * 100, 1)
-                    predicted_winner = away_name if p_away >= 0.5 else home_name
-                    source           = "pregame"
                 else:
                     source = "current"   # recomputed with today's ratings: not a fair pre-game pick
                     away_sp_id  = away_info.get("probablePitcher", {}).get("id")
                     home_sp_id  = home_info.get("probablePitcher", {}).get("id")
-                    away_sp_era = starter_eras.get(away_sp_id) if away_sp_id else None
-                    home_sp_era = starter_eras.get(home_sp_id) if home_sp_id else None
                     try:
                         p_away = _mlb_win_prob(model, stats, away_name, home_name, is_home=0,
                                                sp_id=away_sp_id,
@@ -2881,25 +2909,34 @@ def get_mlb_predictions_log(n: int = 500):
                     home_win_prob    = round((1 - p_away) * 100, 1)
                     predicted_winner = away_name if p_away >= 0.5 else home_name
 
-                predicted_prob = away_win_prob if predicted_winner == away_name else home_win_prob
-                actual_winner  = away_name if away_score > home_score else home_name
+                entry.update(away_win_prob=away_win_prob, home_win_prob=home_win_prob,
+                             predicted_winner=predicted_winner, source=source)
+                log.append(entry)
 
-                log.append({
-                    "game_id":          game_id,
-                    "date":             date_str,
-                    "month":            month_name,
-                    "away_team":        away_name,
-                    "home_team":        home_name,
-                    "predicted_winner": predicted_winner,
-                    "predicted_prob":   predicted_prob,
-                    "actual_winner":    actual_winner,
-                    "correct":          predicted_winner == actual_winner,
-                    "away_score":       away_score,
-                    "home_score":       home_score,
-                    "away_win_prob":    away_win_prob,
-                    "home_win_prob":    home_win_prob,
-                    "source":           source,
-                })
+        # One model call for every queued game: rows alternate away, home
+        if pending:
+            X = pd.DataFrame([r for _, a, h in pending for r in (a, h)])[MLB_FEATURES]
+            probs = model.predict_proba(X)[:, 1]
+            for i, (entry, _, _) in enumerate(pending):
+                p_a, p_h = float(probs[2 * i]), float(probs[2 * i + 1])
+                p_away = p_a / (p_a + p_h)
+                entry["away_win_prob"] = round(p_away * 100, 1)
+                entry["home_win_prob"] = round((1 - p_away) * 100, 1)
+                entry["predicted_winner"] = entry["away_team"] if p_away >= 0.5 else entry["home_team"]
+
+        # Same key order as before for every entry
+        for i, e in enumerate(log):
+            predicted = e["predicted_winner"]
+            log[i] = {
+                "game_id": e["game_id"], "date": e["date"], "month": e["month"],
+                "away_team": e["away_team"], "home_team": e["home_team"],
+                "predicted_winner": predicted,
+                "predicted_prob": e["away_win_prob"] if predicted == e["away_team"] else e["home_win_prob"],
+                "actual_winner": e["actual_winner"], "correct": predicted == e["actual_winner"],
+                "away_score": e["away_score"], "home_score": e["home_score"],
+                "away_win_prob": e["away_win_prob"], "home_win_prob": e["home_win_prob"],
+                "source": e["source"],
+            }
 
         result = {"log": log}
         _mlb_pred_log_cache = result
@@ -2916,7 +2953,7 @@ def get_mlb_standings():
     global _mlb_standings_cache, _mlb_standings_cache_time
 
     now = _t.time()
-    if _mlb_standings_cache is not None and (now - _mlb_standings_cache_time) < _MLB_STANDINGS_TTL:
+    if _mlb_standings_cache is not None and ((now - _mlb_standings_cache_time) < _MLB_STANDINGS_TTL or _serve_stale("mlb_standings", get_mlb_standings)):
         return _mlb_standings_cache
 
     try:
@@ -3787,7 +3824,7 @@ def get_nfl_predictions_log(n: int = 500):
     import time as _t
     global _nfl_pred_log_cache, _nfl_pred_log_cache_time
     now = _t.time()
-    if _nfl_pred_log_cache is not None and (now - _nfl_pred_log_cache_time) < _NFL_PRED_LOG_TTL:
+    if _nfl_pred_log_cache is not None and ((now - _nfl_pred_log_cache_time) < _NFL_PRED_LOG_TTL or _serve_stale("nfl_log", get_nfl_predictions_log)):
         cached_log = _nfl_pred_log_cache["log"]
         return {"log": cached_log[:n]}
 
@@ -3973,7 +4010,7 @@ def get_nfl_projections():
     global _nfl_proj_cache, _nfl_proj_cache_time
     from scipy.special import ndtr
     now = _time_mod.time()
-    if _nfl_proj_cache is not None and (now - _nfl_proj_cache_time) < _NFL_PROJ_TTL:
+    if _nfl_proj_cache is not None and ((now - _nfl_proj_cache_time) < _NFL_PROJ_TTL or _serve_stale("nfl_proj", get_nfl_projections)):
         return _nfl_proj_cache
 
     try:
@@ -4087,7 +4124,7 @@ def get_nfl_power():
     special-teams components, strength of schedule and efficiency stats."""
     global _nfl_power_cache, _nfl_power_cache_time
     now = _time_mod.time()
-    if _nfl_power_cache is not None and (now - _nfl_power_cache_time) < _NFL_PROJ_TTL:
+    if _nfl_power_cache is not None and ((now - _nfl_power_cache_time) < _NFL_PROJ_TTL or _serve_stale("nfl_power", get_nfl_power)):
         return _nfl_power_cache
 
     try:
@@ -4170,7 +4207,7 @@ def get_nfl_standings():
     import time as _t, json, urllib.request
     global _nfl_standings_cache, _nfl_standings_cache_time
     now = _t.time()
-    if _nfl_standings_cache is not None and (now - _nfl_standings_cache_time) < _NFL_STANDINGS_TTL:
+    if _nfl_standings_cache is not None and ((now - _nfl_standings_cache_time) < _NFL_STANDINGS_TTL or _serve_stale("nfl_standings", get_nfl_standings)):
         return _nfl_standings_cache
 
     try:
@@ -5999,3 +6036,20 @@ def get_team_roster(league: str, team: str):
                  "logo": logos[0]["href"] if logos else None},
         "groups": groups,
     }
+
+
+# ── Warm-up: compute the slow pages as soon as the server starts ──────────────
+
+@app.on_event("startup")
+def _warm_caches() -> None:
+    """Fill the slowest caches on a background thread, so the first visitor after a deploy or a
+    restart does not wait for them (the MLB log alone takes several seconds)."""
+    def run():
+        for fn in (get_predictions_log, get_nba_standings, get_nba_projections,
+                   get_nfl_predictions_log, get_nfl_standings, get_nfl_projections, get_nfl_power,
+                   get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap):
+            try:
+                fn()
+            except Exception:
+                pass
+    _threading.Thread(target=run, daemon=True).start()
