@@ -5279,6 +5279,87 @@ def _team_next_game_prob(league: str, game: dict, team_name: str) -> float | Non
         return None
 
 
+_search_cache: dict[str, tuple[float, dict]] = {}
+_SEARCH_TTL = 600.0
+_SEARCH_LEAGUES = ("nba", "nfl", "mlb")
+
+
+def _search_teams(q: str) -> list[dict]:
+    """Teams of the three leagues whose name, nickname, city or abbreviation matches."""
+    for league in _SEARCH_LEAGUES:
+        if league not in _team_list_cache:
+            _resolve_espn_team(league, "")   # fills the league's team list
+    hits = []
+    for league in _SEARCH_LEAGUES:
+        for t in _team_list_cache.get(league, []):
+            names = [t["displayName"], t.get("name", ""), t.get("location", ""), t.get("shortDisplayName", "")]
+            words = [w.lower() for n in names for w in n.split()]
+            # Best first: exact abbreviation, then a word starting with the query, then anywhere
+            if q == t["abbreviation"].lower():
+                rank = 0
+            elif any(w.startswith(q) for w in words) or t["displayName"].lower().startswith(q):
+                rank = 1
+            elif len(q) >= 3 and q in t["displayName"].lower():
+                rank = 2
+            else:
+                continue
+            logos = t.get("logos") or []
+            hits.append((rank, {"type": "team", "league": league, "id": t["id"], "name": t["displayName"],
+                                "abbr": t["abbreviation"], "logo": logos[0]["href"] if logos else None}))
+    return [h for _, h in sorted(hits, key=lambda h: (h[0], h[1]["name"]))]
+
+
+def _search_players(q: str, league: str) -> list[dict]:
+    """Active players of one league from ESPN's search, most relevant first."""
+    import urllib.parse
+    sport = _TEAM_LEAGUES[league]["sport"]
+    url = ("https://site.web.api.espn.com/apis/common/v3/search?type=player&limit=6"
+           f"&sport={sport}&league={league}&query={urllib.parse.quote(q)}")
+    out = []
+    for it in _espn_json(url, timeout=8).get("items", []):
+        pos = it.get("position")
+        pos = pos.get("abbreviation") if isinstance(pos, dict) else pos
+        # Skip inactive players and ESPN's placeholder entries (position "UN")
+        if it.get("league") != league or it.get("isActive") is False or pos == "UN":
+            continue
+        team = ((it.get("teamRelationships") or [{}])[0].get("core") or {})
+        head = it.get("headshot")
+        out.append({"type": "player", "league": league, "id": str(it["id"]), "name": it.get("displayName", ""),
+                    "team": team.get("abbreviation"), "team_name": team.get("displayName"),
+                    "position": pos,
+                    "headshot": head.get("href") if isinstance(head, dict) else head,
+                    "relevance": float(it.get("relevance") or 0)})
+    return out
+
+
+@app.get("/api/search")
+def search(q: str = ""):
+    """Teams and players (NBA, NFL, MLB) matching a name, for the search bar."""
+    q = " ".join(q.lower().split())[:40]
+    if len(q) < 2:
+        return {"query": q, "teams": [], "players": []}
+    hit = _search_cache.get(q)
+    if hit and _time_mod.time() - hit[0] < _SEARCH_TTL:
+        return hit[1]
+
+    def players(league: str) -> list[dict]:
+        try:
+            return _search_players(q, league)
+        except Exception:
+            return []
+
+    teams, *by_league = _parallel(lambda: _search_teams(q), *(lambda lg=lg: players(lg) for lg in _SEARCH_LEAGUES))
+    # Keep each league's top hits, then order by ESPN's relevance across leagues
+    found = sorted((p for lst in by_league for p in lst), key=lambda p: -p["relevance"])[:8]
+    for p in found:
+        p.pop("relevance", None)
+    result = {"query": q, "teams": teams[:5], "players": found}
+    if len(_search_cache) > 500:
+        _search_cache.clear()
+    _search_cache[q] = (_time_mod.time(), result)
+    return result
+
+
 @app.get("/api/team/{league}/{team}")
 def get_team_page(league: str, team: str):
     """Everything for a team page: record, schedule, key stats with league ranks,

@@ -12,14 +12,14 @@ const SPORT_LINKS = [
 export default function TopNav() {
   const path = usePathname();
   return (
-    <div className="flex items-center gap-4 ml-2">
+    <div className="flex items-center gap-3 sm:gap-4 ml-1 sm:ml-2">
       {SPORT_LINKS.map(({ href, label, match, disabled }) => {
         const active = match(path);
         if (disabled) {
           return (
             <span
               key={label}
-              className="text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide cursor-default select-none"
+              className="hidden sm:inline text-base font-bold text-gray-300 dark:text-gray-600 tracking-wide cursor-default select-none"
               title="Coming soon"
             >
               {label}

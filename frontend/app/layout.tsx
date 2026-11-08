@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
+import SearchBar from "./components/SearchBar";
 import ThemeToggle from "./components/ThemeToggle";
 import TopNav from "./components/TopNav";
 
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <TopNav />
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <SearchBar />
+              <ThemeToggle />
+            </div>
           </header>
           {children}
         </div>
