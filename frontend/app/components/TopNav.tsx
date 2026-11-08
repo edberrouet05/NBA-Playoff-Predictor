@@ -31,9 +31,11 @@ function useLiveLeagues(): Record<string, boolean> {
 export default function TopNav() {
   const path = usePathname();
   const live = useLiveLeagues();
+  // Sports with a game on come first; otherwise the usual order (sort is stable)
+  const links = [...SPORT_LINKS].sort((a, b) => Number(!!live[b.key]) - Number(!!live[a.key]));
   return (
     <div className="flex items-center gap-3 sm:gap-4 ml-1 sm:ml-2">
-      {SPORT_LINKS.map(({ href, label, key, match, disabled }) => {
+      {links.map(({ href, label, key, match, disabled }) => {
         const active = match(path);
         if (disabled) {
           return (
