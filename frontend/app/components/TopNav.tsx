@@ -30,7 +30,7 @@ export default function TopNav() {
           <Link
             key={label}
             href={href}
-            className={`text-base font-bold tracking-wide transition-colors ${
+            className={`text-sm sm:text-base font-bold tracking-wide transition-colors ${
               active
                 ? "text-red-600"
                 : "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"

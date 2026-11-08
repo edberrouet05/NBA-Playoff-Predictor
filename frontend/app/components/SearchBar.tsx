@@ -136,9 +136,9 @@ export default function SearchBar() {
       {/* Phones: a magnifier that opens the box over the header; wider screens: the box itself */}
       <div
         onClick={() => { if (!open) { setOpen(true); requestAnimationFrame(() => inputRef.current?.focus()); } }}
-        className={`flex items-center gap-2 h-8 rounded-lg px-2.5 transition-all bg-gray-100 dark:bg-gray-800 text-gray-400 ${
-          open ? "fixed left-3 right-3 top-2 z-40 sm:static sm:w-72 ring-2 ring-red-500/40"
-               : "w-8 justify-center cursor-pointer sm:w-56 sm:justify-start sm:cursor-text"}`}>
+        className={`flex items-center gap-2 h-8 rounded-lg px-2.5 transition-all text-gray-400 ${
+          open ? "fixed left-3 right-3 top-2 z-40 bg-gray-100 dark:bg-gray-800 sm:static sm:w-72 ring-2 ring-red-500/40"
+               : "w-8 justify-center cursor-pointer hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-white/10 sm:w-56 sm:justify-start sm:cursor-text sm:bg-gray-100 sm:dark:bg-gray-800"}`}>
         <SearchIcon />
         <input
           ref={inputRef}
