@@ -1200,10 +1200,10 @@
  },
  "401873046": {
   "away_team": "Houston Texans",
-  "away_win_prob": 63.9,
-  "frozen_at": "2026-11-05T02:01:40Z",
+  "away_win_prob": 63.1,
+  "frozen_at": "2026-11-08T18:07:08Z",
   "home_team": "Los Angeles Chargers",
-  "home_win_prob": 36.1,
+  "home_win_prob": 36.9,
   "kickoff": "2026-11-08T21:05Z",
   "predicted_winner": "Houston Texans"
  },
@@ -1218,37 +1218,37 @@
  },
  "401873048": {
   "away_team": "Arizona Cardinals",
-  "away_win_prob": 26.3,
-  "frozen_at": "2026-11-06T03:30:49Z",
+  "away_win_prob": 27.8,
+  "frozen_at": "2026-11-08T18:07:08Z",
   "home_team": "Seattle Seahawks",
-  "home_win_prob": 73.7,
+  "home_win_prob": 72.2,
   "kickoff": "2026-11-08T21:25Z",
   "predicted_winner": "Seattle Seahawks"
  },
  "401873049": {
   "away_team": "Green Bay Packers",
-  "away_win_prob": 39.7,
-  "frozen_at": "2026-11-05T02:01:40Z",
+  "away_win_prob": 35.5,
+  "frozen_at": "2026-11-08T18:07:08Z",
   "home_team": "New England Patriots",
-  "home_win_prob": 60.3,
+  "home_win_prob": 64.5,
   "kickoff": "2026-11-08T21:25Z",
   "predicted_winner": "New England Patriots"
  },
  "401873050": {
   "away_team": "Tampa Bay Buccaneers",
-  "away_win_prob": 34.1,
-  "frozen_at": "2026-11-05T02:01:40Z",
+  "away_win_prob": 34.0,
+  "frozen_at": "2026-11-08T18:07:09Z",
   "home_team": "Chicago Bears",
-  "home_win_prob": 65.9,
+  "home_win_prob": 66.0,
   "kickoff": "2026-11-09T01:20Z",
   "predicted_winner": "Chicago Bears"
  },
  "401873051": {
   "away_team": "Buffalo Bills",
-  "away_win_prob": 56.8,
-  "frozen_at": "2026-11-06T03:30:49Z",
+  "away_win_prob": 58.5,
+  "frozen_at": "2026-11-08T18:07:09Z",
   "home_team": "Minnesota Vikings",
-  "home_win_prob": 43.2,
+  "home_win_prob": 41.5,
   "kickoff": "2026-11-10T01:15Z",
   "predicted_winner": "Buffalo Bills"
  }
