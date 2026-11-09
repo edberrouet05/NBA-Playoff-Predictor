@@ -1,73 +1,120 @@
-# NBA Playoff Predictor
+# CourtEdge
 
-## Project Structure
+Win probabilities for every NBA, NFL, MLB and NHL game: before the game, live while it is played,
+and a public record of how the picks did.
 
+**Stack:** Python (pandas, scikit-learn, XGBoost) · FastAPI on Render · Next.js / TypeScript /
+Tailwind · GitHub Actions for the daily data refresh, prediction freezes and CI.
+
+| Games, probable goalies and live probabilities | NHL game page |
+|---|---|
+| ![Today's NHL games](docs/screenshots/games.png) | ![NHL game page](docs/screenshots/nhl-game.png) |
+| **Season record of the picks** | **Player page with projections** |
+| ![Season record](docs/screenshots/record.png) | ![Player page](docs/screenshots/player.png) |
+
+## What it does
+
+- **Pre-game win probability** for every game, from a model per sport trained on 5 to 12 seasons.
+- **Live win probability** that follows the score and the clock (NBA, NFL, NHL), drawn as a chart on
+  each game page with an explanation of why the model leans the way it does.
+- **Honest record**: picks are frozen before each game starts and scored afterwards (accuracy,
+  log loss, Brier score, calibration), next to the bookmakers' no-vig probabilities when a line was
+  stored. A game is never re-predicted with information from after it started.
+- **Season simulations**: playoff, division and title chances from 10,000 simulated seasons.
+- **Team and player pages** for all four leagues, with next-game projections (NBA points, rebounds
+  and assists; NFL yards; NHL points, goals, assists, shots), and a typo-tolerant search
+  ("jamar" finds Ja'Marr Chase).
+
+## Models
+
+Every feature is computed game by game from what was known **before** the game. Validation is
+leave-one-season-out: each season is predicted by a model that never saw it.
+
+| Sport | Seasons | Games | Accuracy | Log loss | Main features |
+|---|---|---|---|---|---|
+| NBA | 2016–2026 | 14,168 | **66.0 %** | 0.616 | Elo, recent point margin, roster strength (last season's per-minute Game Score of today's players), rest, back-to-backs |
+| NFL | 2015–2025 | 3,018 | **64.5 %** | 0.625 | Elo, EPA per play, starting quarterbacks, rest and travel. Vegas closing line on the same games: 66.2 % |
+| MLB | 2021–2025 | 12,148 | **57.5 %** | 0.676 | Elo, starting pitchers' FIP to date, bullpen quality and fatigue, recent offense |
+| NHL | 2015–2026 | 15,827 | **59.1 %** | 0.666 | Elo, shot share, goal differential, starting goalies' save % to date, rest, back-to-backs |
+
+The served model is a logistic regression: as accurate as XGBoost here, better calibrated, and its
+coefficients explain each pick. Baseball and hockey are the hardest sports to call: around 58–60 %
+is what good public models reach.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Sources
+        ESPN[ESPN API]
+        NHLAPI[NHL API]
+        MLBAPI[MLB Stats API]
+        NFLV[nflverse]
+        ODDS[The Odds API]
+    end
+    subgraph "GitHub Actions"
+        PIPE["{sport}/pipeline.py<br/>features game by game"]
+        TRAIN["{sport}/train.py<br/>leave-one-season-out"]
+        FREEZE["{sport}/freeze_predictions.py<br/>before each slate"]
+        CI[CI: pytest, tsc, eslint]
+    end
+    REPO[(Repo: data/*.csv,<br/>models/*.pkl,<br/>frozen picks)]
+    API["FastAPI on Render<br/>api/{nba,nfl,mlb,nhl}.py"]
+    WEB["Next.js site"]
+    ESPN & NHLAPI & MLBAPI & NFLV --> PIPE --> TRAIN --> REPO
+    FREEZE --> REPO
+    REPO -->|each commit redeploys| API
+    ESPN -->|live scores| API
+    ODDS -->|pre-game lines| API
+    API --> WEB
 ```
-NBA-Playoff-Predictor/
-├── backend/
-│   ├── requirements.txt
-│   ├── app/
-│   │   ├── main.py          # FastAPI app entry point
-│   │   ├── routers/         # API route handlers (step 4)
-│   │   └── ml/              # Model training & inference (step 3)
-│   └── data/
-│       └── fetch_stats.py   # nba_api data fetching script
-└── frontend/                # Next.js app (step 5)
-```
 
-## Setup
+- `{sport}/pipeline.py` walks every game in date order and writes the training rows, this season's
+  pre-game rows and the live team table; `{sport}/train.py` validates and saves the model.
+- The API (`api/`) is one module per area: `nba.py`, `nfl.py`, `mlb.py`, `nhl.py`, `teams.py`,
+  `players.py`, plus shared `common.py` (app, background cache refresh), `espn.py`, `odds.py` and
+  `record.py`. Slow pages are computed at startup and refreshed in the background, so visitors get
+  cached answers.
+- The site (`frontend/`) is a Next.js app with one section per sport.
 
-### Backend
+## Run it
 
 ```bash
-cd backend
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-pip install -r requirements.txt
+# API
+python -m venv .venv && .venv\Scripts\activate        # Windows (macOS / Linux: source .venv/bin/activate)
+pip install -r requirements-dev.txt
+uvicorn api.main:app --reload --reload-dir api        # http://localhost:8000
+
+# Site
+cd frontend
+npm install
+npm run dev                                           # http://localhost:3000
 ```
 
-### Fetch team stats
+The site reads `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). Betting odds need an
+`ODDS_API_KEY` environment variable; without it the rest works.
+
+Rebuild a model (raw downloads are cached in `data/{sport}/raw/`, git-ignored):
 
 ```bash
-# Regular season stats (default)
-python data/fetch_stats.py --season 2025-26
-
-# Playoff stats, skip rest-day calculation
-python data/fetch_stats.py --season 2025-26 --season-type Playoffs --no-rest
+python nhl/pipeline.py && python nhl/train.py         # same for nba, nfl, mlb
 ```
 
-Output CSV is saved to `backend/data/`.
-
-### Run API server
+## Tests
 
 ```bash
-uvicorn app.main:app --reload
+python -m pytest -q tests
 ```
 
-## NBA / NFL / MLB / NHL models
+They check the math (live win probability, value bets, season record), that each trained model
+matches the features the API feeds it, and the endpoints that answer from the repo's own data.
+The CI workflow runs them with the site's type check and lint on every push.
 
-Each sport has a data pipeline and a training script (run from the repo root):
+## Automation
 
-```bash
-python nba/pipeline.py && python nba/train.py   # ESPN: Elo, recent point margin, roster strength, rest / back-to-backs
-python nfl/pipeline.py && python nfl/train.py   # nflverse data: Elo, EPA, starting QBs, rest/travel
-python mlb/pipeline.py && python mlb/train.py   # MLB Stats API: Elo, starter FIP to date, bullpen, recent offense
-python nhl/pipeline.py && python nhl/train.py   # ESPN: Elo, shot share, goal differential, save %, rest / back-to-backs
-```
-
-- Features are computed game by game from information available **before** each game.
-- Validation is leave-one-season-out; `models/{sport}_metrics.json` holds accuracy,
-  log loss, Brier score, the calibration curve and (NFL) a comparison with the Vegas closing line.
-- Raw downloads are cached in `data/{nba,nfl,mlb,nhl}/raw/` (git-ignored); only the current season is re-fetched.
-- NBA and NFL predictions are frozen before tip-off / kickoff (`data/{nba,nfl}/*_frozen_predictions.json`),
-  so a played game is never re-predicted with later data.
-
-`.github/workflows/refresh-data.yml` runs these automatically (NBA, NHL and MLB daily with a Monday
-retrain, NFL every Tuesday) and commits the refreshed CSVs / models, which redeploys the API.
-It can also be started by hand from the repo's Actions tab. `freeze-nba-predictions.yml` and
-`freeze-nfl-predictions.yml` write down the pre-game predictions before each slate.
-
-The NBA model (`nba/`) replaced the original playoff-only model (`nba/fetch_data.py`,
-`nba/build_dataset.py`, `models/logistic_regression.pkl`), which used stats.nba.com and
-full-season stats.
+| Workflow | When | What |
+|---|---|---|
+| `refresh-data.yml` | daily in season (NFL: Tuesdays) | pipelines, Monday retrains, commit → redeploy |
+| `freeze-{nba,nfl,nhl}-predictions.yml` | before each slate | write down the pre-game picks |
+| `keep-alive.yml` | every 10 min, daytime | keeps the free Render instance awake |
+| `ci.yml` | every push | tests, type check, lint |
