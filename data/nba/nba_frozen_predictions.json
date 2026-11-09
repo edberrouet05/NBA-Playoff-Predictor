@@ -1285,5 +1285,77 @@
   "home_win_prob": 24.4,
   "predicted_winner": "Miami Heat",
   "tipoff": "2026-11-09T02:00Z"
+ },
+ "401909952": {
+  "away_team": "Los Angeles Lakers",
+  "away_win_prob": 35.8,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Atlanta Hawks",
+  "home_win_prob": 64.2,
+  "predicted_winner": "Atlanta Hawks",
+  "tipoff": "2026-11-10T00:00Z"
+ },
+ "401909953": {
+  "away_team": "Cleveland Cavaliers",
+  "away_win_prob": 73.6,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Charlotte Hornets",
+  "home_win_prob": 26.4,
+  "predicted_winner": "Cleveland Cavaliers",
+  "tipoff": "2026-11-10T00:00Z"
+ },
+ "401909954": {
+  "away_team": "Washington Wizards",
+  "away_win_prob": 18.4,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Detroit Pistons",
+  "home_win_prob": 81.6,
+  "predicted_winner": "Detroit Pistons",
+  "tipoff": "2026-11-10T00:00Z"
+ },
+ "401909955": {
+  "away_team": "Memphis Grizzlies",
+  "away_win_prob": 28.4,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Toronto Raptors",
+  "home_win_prob": 71.6,
+  "predicted_winner": "Toronto Raptors",
+  "tipoff": "2026-11-10T00:30Z"
+ },
+ "401909956": {
+  "away_team": "Indiana Pacers",
+  "away_win_prob": 33.8,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Dallas Mavericks",
+  "home_win_prob": 66.2,
+  "predicted_winner": "Dallas Mavericks",
+  "tipoff": "2026-11-10T01:00Z"
+ },
+ "401909957": {
+  "away_team": "Denver Nuggets",
+  "away_win_prob": 40.1,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Houston Rockets",
+  "home_win_prob": 59.9,
+  "predicted_winner": "Houston Rockets",
+  "tipoff": "2026-11-10T01:30Z"
+ },
+ "401909958": {
+  "away_team": "San Antonio Spurs",
+  "away_win_prob": 73.7,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Phoenix Suns",
+  "home_win_prob": 26.3,
+  "predicted_winner": "San Antonio Spurs",
+  "tipoff": "2026-11-10T02:00Z"
+ },
+ "401909959": {
+  "away_team": "New Orleans Pelicans",
+  "away_win_prob": 36.3,
+  "frozen_at": "2026-11-09T08:33:26Z",
+  "home_team": "Golden State Warriors",
+  "home_win_prob": 63.7,
+  "predicted_winner": "Golden State Warriors",
+  "tipoff": "2026-11-10T03:00Z"
  }
 }
