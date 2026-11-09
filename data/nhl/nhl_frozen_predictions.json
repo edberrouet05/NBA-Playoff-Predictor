@@ -42,5 +42,38 @@
   "home_win_prob": 65.2,
   "predicted_winner": "Anaheim Ducks",
   "puck_drop": "2026-11-09T01:00Z"
+ },
+ "401892680": {
+  "away_goalie": "Joonas Korpisalo",
+  "away_team": "New York Rangers",
+  "away_win_prob": 40.4,
+  "frozen_at": "2026-11-09T08:00:34Z",
+  "home_goalie": "Devon Levi",
+  "home_team": "Edmonton Oilers",
+  "home_win_prob": 59.6,
+  "predicted_winner": "Edmonton Oilers",
+  "puck_drop": "2026-11-10T01:00Z"
+ },
+ "401892681": {
+  "away_goalie": "Joseph Woll",
+  "away_team": "Philadelphia Flyers",
+  "away_win_prob": 52.2,
+  "frozen_at": "2026-11-09T08:00:34Z",
+  "home_goalie": "Leevi Merilainen",
+  "home_team": "Vancouver Canucks",
+  "home_win_prob": 47.8,
+  "predicted_winner": "Philadelphia Flyers",
+  "puck_drop": "2026-11-10T02:30Z"
+ },
+ "401892682": {
+  "away_goalie": "Ilya Sorokin",
+  "away_team": "New York Islanders",
+  "away_win_prob": 56.7,
+  "frozen_at": "2026-11-09T08:00:34Z",
+  "home_goalie": "Yaroslav Askarov",
+  "home_team": "San Jose Sharks",
+  "home_win_prob": 43.3,
+  "predicted_winner": "New York Islanders",
+  "puck_drop": "2026-11-10T03:00Z"
  }
 }
