@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { teamHref } from "../../components/teamLinks";
 import { nhlLogo } from "../nhlTeams";
+import { PctCell } from "../../components/PowerTable";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -14,6 +15,8 @@ interface StandingsTeam {
 }
 interface Division { division: string; conference: "East" | "West"; teams: StandingsTeam[] }
 interface StandingsData { season: string; divisions: Division[] }
+interface Projection { team: string; projected_points: number; playoff_pct: number; cup_pct: number }
+interface ProjectionsData { simulations: number; teams: Projection[] }
 
 type View = "division" | "conference";
 
@@ -30,7 +33,10 @@ const th = "px-2 py-2 text-center text-xs font-semibold text-gray-400 dark:text-
 const td = "px-2 py-2.5 text-center tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap";
 
 /** One standings table; `cutoff` draws a line after that many teams (playoff spots). */
-function StandingsTable({ title, teams, cutoff }: { title: string; teams: StandingsTeam[]; cutoff?: number }) {
+function StandingsTable({ title, teams, cutoff, proj }: {
+  title: string; teams: StandingsTeam[]; cutoff?: number; proj: Record<string, Projection>;
+}) {
+  const hasProj = Object.keys(proj).length > 0;
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden">
       <p className="px-5 pt-4 pb-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest">{title}</p>
@@ -43,6 +49,11 @@ function StandingsTable({ title, teams, cutoff }: { title: string; teams: Standi
               <th className={th}>PTS</th><th className={th} title="Points won out of points possible">P%</th>
               <th className={th} title="Goal differential">DIFF</th><th className={th}>STRK</th>
               <th className={th} title="Our team rating rank (Elo), 1 = best in the league">ELO</th>
+              {hasProj && <>
+                <th className={th} title="Average final points over the simulated seasons">PROJ</th>
+                <th className={th} title="Share of simulated seasons in which the team makes the playoffs">PLAYOFFS</th>
+                <th className={`${th} pr-5`} title="Share of simulated seasons in which the team wins the Stanley Cup">CUP</th>
+              </>}
             </tr>
           </thead>
           <tbody>
@@ -66,6 +77,11 @@ function StandingsTable({ title, teams, cutoff }: { title: string; teams: Standi
                   {t.streak > 0 ? `W${t.streak}` : t.streak < 0 ? `L${-t.streak}` : "–"}
                 </td>
                 <td className={td}>{t.elo_rank}</td>
+                {hasProj && proj[t.team] && <>
+                  <td className={`${td} font-semibold`}>{Math.round(proj[t.team].projected_points)}</td>
+                  <td className={td}><PctCell v={proj[t.team].playoff_pct} /></td>
+                  <td className={`${td} pr-5`}><PctCell v={proj[t.team].cup_pct} /></td>
+                </>}
               </tr>
             ))}
           </tbody>
@@ -79,13 +95,19 @@ export default function NHLStandingsPage() {
   const [data, setData] = useState<StandingsData | null>(null);
   const [error, setError] = useState("");
   const [view, setView] = useState<View>("division");
+  const [projections, setProjections] = useState<ProjectionsData | null>(null);
 
   useEffect(() => {
     fetch(`${API}/api/nhl/standings`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
       .catch(e => setError(e.message));
+    fetch(`${API}/api/nhl/projections`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(setProjections)
+      .catch(() => {});
   }, []);
+  const proj: Record<string, Projection> = Object.fromEntries((projections?.teams ?? []).map(t => [t.team, t]));
 
   const sortTeams = (ts: StandingsTeam[]) => [...ts].sort((a, b) => b.pts - a.pts || a.gp - b.gp || b.w - a.w || b.goal_diff - a.goal_diff);
 
@@ -111,18 +133,20 @@ export default function NHLStandingsPage() {
       {!data && !error && <p className="text-sm text-gray-400">Loading…</p>}
 
       {data && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
           {view === "division"
-            ? data.divisions.map(d => <StandingsTable key={d.division} title={`${d.division} · ${d.conference}`} teams={d.teams} cutoff={3} />)
+            ? data.divisions.map(d => <StandingsTable key={d.division} title={`${d.division} · ${d.conference}`} teams={d.teams} cutoff={3} proj={proj} />)
             : (["East", "West"] as const).map(c => (
                 <StandingsTable key={c} title={`${c}ern Conference`}
-                  teams={sortTeams(data.divisions.filter(d => d.conference === c).flatMap(d => d.teams))} cutoff={8} />
+                  teams={sortTeams(data.divisions.filter(d => d.conference === c).flatMap(d => d.teams))} cutoff={8} proj={proj} />
               ))}
         </div>
       )}
       <p className="text-xs text-gray-400 mt-4">
         The line marks playoff spots: top 3 of each division, then two wild cards per conference (8 teams in all).
         ELO = our rating rank across the league.
+        {projections && <> PROJ, PLAYOFFS and CUP come from {projections.simulations.toLocaleString()} simulations of the rest of the season and the playoffs with our game probabilities
+        (pulled toward average for games weeks away, with each team&apos;s true level uncertain).</>}
       </p>
     </main>
   );

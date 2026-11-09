@@ -5253,7 +5253,14 @@ def _team_leaders(sport: str, league: str, team_id: str, season: int, cfg: dict,
 
 
 def _team_model_block(league: str, team_name: str) -> dict | None:
-    """Our model's view of the team (NFL / NBA: power index + season simulation)."""
+    """Our model's view of the team (NFL / NBA: power index + season simulation; NHL: season
+    simulation)."""
+    if league == "nhl":
+        try:
+            r = next((t for t in get_nhl_projections()["teams"] if t["team"] == team_name), None)
+        except Exception:
+            return None
+        return {k: r[k] for k in ("projected_points", "playoff_pct", "division_pct", "final_pct", "cup_pct")} if r else None
     if league == "nba":
         try:
             r = next((t for t in get_nba_projections()["teams"] if t["team"] == team_name), None)
@@ -5960,6 +5967,158 @@ def get_nhl_standings():
         for t in d["teams"]:
             t["elo_rank"] = elo_rank.index(t["team"]) + 1
     return {"season": _sport_season_label("nhl"), "divisions": out}
+
+
+NHL_SIMS = 10_000
+NHL_OT_RATE = 0.23        # share of regular-season games that reach overtime (loser gets a point)
+# Today's ratings overstate the gaps for games weeks away (hot and cold teams cool off), and a
+# team's true level is uncertain: future games use the model's log-odds × NHL_FUTURE_SHRINK, and
+# each simulated season draws every team a hidden strength offset (log-odds, SD NHL_TEAM_SD)
+NHL_FUTURE_SHRINK = 0.5
+NHL_TEAM_SD = 0.3
+_nhl_proj_cache: tuple[float, dict] | None = None
+_NHL_PROJ_TTL = 3600.0
+
+
+@app.get("/api/nhl/projections")
+def get_nhl_projections():
+    """Season simulation: the rest of the regular season played NHL_SIMS times with our game
+    probabilities (overtime losses give a point), then the playoffs (top 3 of each division +
+    2 wild cards per conference, best-of-7 series). Per team: projected points, playoff, division
+    and Stanley Cup chances."""
+    import numpy as np
+    global _nhl_proj_cache
+    if _nhl_proj_cache is not None and (_time_mod.time() - _nhl_proj_cache[0] < _NHL_PROJ_TTL
+                                        or _serve_stale("nhl_proj", get_nhl_projections)):
+        return _nhl_proj_cache[1]
+
+    state = _load_nhl_state()
+    teams = sorted(state)
+    idx = {t: i for i, t in enumerate(teams)}
+    n = len(teams)
+    rng = np.random.default_rng()
+
+    # Remaining regular-season games, priced with the pipeline's latest rows
+    remaining = []
+    for gid, rows in _load_nhl_game_features().items():
+        if len(rows) != 2:
+            continue
+        h, a = rows.values()
+        if int(h["completed"]) == 0 and int(h["season_type"]) == 2 and h["team"] in idx and a["team"] in idx:
+            remaining.append((h, a))
+    points = np.tile(np.array([float(state[t]["points"]) for t in teams]), (NHL_SIMS, 1))
+    wins = np.tile(np.array([float(state[t]["wins"]) for t in teams]), (NHL_SIMS, 1))
+    if remaining:
+        X = pd.DataFrame([r for h, a in remaining for r in (h, a)])[NHL_FEATURES]
+        probs = _load_nhl_model().predict_proba(X)[:, 1]
+        p0 = probs[0::2] / (probs[0::2] + probs[1::2])
+        hi = np.array([idx[h["team"]] for h, _ in remaining])
+        ai = np.array([idx[a["team"]] for _, a in remaining])
+        offset = rng.normal(0.0, NHL_TEAM_SD, (NHL_SIMS, n))
+        logit = NHL_FUTURE_SHRINK * np.log(p0 / (1 - p0)) + offset[:, hi] - offset[:, ai]
+        p_home = 1 / (1 + np.exp(-logit))
+        # Overtime: a near coin flip (halfway to the pre-game pick); regulation carries the rest
+        q = 0.5 + (p_home - 0.5) / 2
+        p_reg = np.clip((p_home - NHL_OT_RATE * q) / (1 - NHL_OT_RATE), 0.0, 1.0)
+        ot = rng.random((NHL_SIMS, len(remaining))) < NHL_OT_RATE
+        home_wins = np.where(ot, rng.random(ot.shape) < q, rng.random(ot.shape) < p_reg)
+        for g in range(len(remaining)):
+            hw, o = home_wins[:, g], ot[:, g]
+            points[:, hi[g]] += np.where(hw, 2, o)
+            points[:, ai[g]] += np.where(hw, o, 2)
+            wins[:, hi[g]] += hw
+            wins[:, ai[g]] += ~hw
+
+    # Standings order: points, then wins, then a coin toss
+    score = points * 1000 + wins + rng.random(points.shape) * 0.5
+    division = np.array([state[t]["division"] for t in teams])
+    conference = np.array([state[t]["conference"] for t in teams])
+
+    # Game log-odds for every pair (team i at home vs team j), shrunk like future games
+    import datetime as _dt
+    today = _dt.date.today().isoformat()
+    pair_logit = np.zeros((n, n))
+    rows_h, rows_a, pairs = [], [], []
+    for i, ti in enumerate(teams):
+        for j, tj in enumerate(teams):
+            if i != j:
+                r = _nhl_state_rows(ti, tj, today)
+                if r:
+                    rows_h.append(r[0]); rows_a.append(r[1]); pairs.append((i, j))
+    X = pd.DataFrame(rows_h + rows_a)[NHL_FEATURES]
+    pr = _load_nhl_model().predict_proba(X)[:, 1]
+    m = len(pairs)
+    for k, (i, j) in enumerate(pairs):
+        p = pr[k] / (pr[k] + pr[m + k])
+        pair_logit[i, j] = NHL_FUTURE_SHRINK * np.log(p / (1 - p))
+    home_games = [True, True, False, False, True, False, True]     # 2-2-1-1-1 for the higher seed
+
+    made = np.zeros(n); div_win = np.zeros(n); conf_win = np.zeros(n); cup = np.zeros(n)
+    rounds_won = np.zeros((n, 4))
+
+    def play(a: int, b: int, sc: np.ndarray, off: np.ndarray) -> int:
+        """A best-of-7, game by game; the higher seed has home ice."""
+        hi_, lo = (a, b) if sc[a] >= sc[b] else (b, a)
+        edge = off[hi_] - off[lo]
+        p_home = 1 / (1 + np.exp(-(pair_logit[hi_, lo] + edge)))
+        p_road = 1 / (1 + np.exp(pair_logit[lo, hi_] - edge))
+        w = l = 0
+        for at_home in home_games:
+            if rng.random() < (p_home if at_home else p_road):
+                w += 1
+            else:
+                l += 1
+            if w == 4 or l == 4:
+                break
+        return hi_ if w == 4 else lo
+
+    team_offset = offset if remaining else rng.normal(0.0, NHL_TEAM_SD, (NHL_SIMS, n))
+    for sim in range(NHL_SIMS):
+        sc, off = score[sim], team_offset[sim]
+        champs = []
+        for conf in ("East", "West"):
+            divs = sorted({d for d, c in zip(division, conference) if c == conf})
+            tops, rest = {}, []
+            for d in divs:
+                members = sorted(np.where(division == d)[0], key=lambda t: -sc[t])
+                tops[d] = members[:3]
+                rest += members[3:]
+                div_win[members[0]] += 1
+            wild = sorted(rest, key=lambda t: -sc[t])[:2]
+            for t in [x for d in divs for x in tops[d]] + wild:
+                made[t] += 1
+            # Better division winner plays the 2nd wild card; the other one the 1st
+            d1, d2 = sorted(divs, key=lambda d: -sc[tops[d][0]])
+            brackets = []
+            for d, wc in ((d1, wild[1]), (d2, wild[0])):
+                w1 = play(tops[d][0], wc, sc, off)
+                w2 = play(tops[d][1], tops[d][2], sc, off)
+                rounds_won[w1, 0] += 1; rounds_won[w2, 0] += 1
+                dw = play(w1, w2, sc, off)
+                rounds_won[dw, 1] += 1
+                brackets.append(dw)
+            cw = play(brackets[0], brackets[1], sc, off)
+            rounds_won[cw, 2] += 1
+            conf_win[cw] += 1
+            champs.append(cw)
+        winner = play(champs[0], champs[1], sc, off)
+        cup[winner] += 1
+
+    out = []
+    for i, t in enumerate(teams):
+        out.append({"team": t, "abbr": state[t]["abbr"], "conference": state[t]["conference"],
+                    "division": state[t]["division"], "points": int(state[t]["points"]),
+                    "projected_points": round(float(points[:, i].mean()), 1),
+                    "playoff_pct": round(100 * made[i] / NHL_SIMS, 1),
+                    "division_pct": round(100 * div_win[i] / NHL_SIMS, 1),
+                    "second_round_pct": round(100 * rounds_won[i, 0] / NHL_SIMS, 1),
+                    "conf_final_pct": round(100 * rounds_won[i, 1] / NHL_SIMS, 1),
+                    "final_pct": round(100 * conf_win[i] / NHL_SIMS, 1),
+                    "cup_pct": round(100 * cup[i] / NHL_SIMS, 1)})
+    out.sort(key=lambda r: -r["projected_points"])
+    result = {"simulations": NHL_SIMS, "remaining_games": len(remaining), "teams": out}
+    _nhl_proj_cache = (_time_mod.time(), result)
+    return result
 
 
 _nhl_log_cache: tuple[float, list[dict]] | None = None
@@ -7056,7 +7215,7 @@ def _warm_caches() -> None:
         for fn in (get_predictions_log, get_nba_standings, get_nba_projections, get_bracket,
                    get_nfl_predictions_log, get_nfl_standings, get_nfl_projections, get_nfl_power,
                    get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap,
-                   get_nhl_predictions_log, _get_player_index):
+                   get_nhl_predictions_log, get_nhl_projections, _get_player_index):
             try:
                 fn()
             except Exception:

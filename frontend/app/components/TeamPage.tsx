@@ -37,6 +37,8 @@ interface ModelBlock {
   top_seed_pct?: number; conf_pct?: number; sb_win_pct?: number;
   // NBA: top 6 = no play-in; title = NBA championship
   top6_pct?: number; title_pct?: number; roster_rank?: number;
+  // NHL: points instead of wins, Stanley Cup Final and Cup
+  projected_points?: number; final_pct?: number; cup_pct?: number;
 }
 interface TeamPageData {
   league: League;
@@ -197,12 +199,15 @@ function ModelCard({ d }: { d: TeamPageData }) {
   const tiles: [string, string, string?][] = [];
   if (m.power_rank != null) tiles.push(["Power rank", `#${m.power_rank}`, `${m.power! > 0 ? "+" : ""}${m.power} pts vs avg`]);
   if (m.projected_wins != null) tiles.push(["Projected wins", `${m.projected_wins}`]);
+  if (m.projected_points != null) tiles.push(["Projected points", `${Math.round(m.projected_points)}`]);
   if (m.playoff_pct != null) tiles.push(["Make playoffs", `${m.playoff_pct}%`, d.league === "nba" ? "incl. play-in" : undefined]);
   if (m.division_pct != null) tiles.push(["Win division", `${m.division_pct}%`]);
   if (m.top6_pct != null) tiles.push(["Top-6 seed", `${m.top6_pct}%`, "skips the play-in"]);
   if (m.conf_pct != null) tiles.push(["Win conference", `${m.conf_pct}%`]);
   if (m.sb_win_pct != null) tiles.push(["Win Super Bowl", `${m.sb_win_pct}%`]);
   if (m.title_pct != null) tiles.push(["Win NBA title", `${m.title_pct}%`]);
+  if (m.final_pct != null) tiles.push(["Reach Cup Final", `${m.final_pct}%`]);
+  if (m.cup_pct != null) tiles.push(["Win Stanley Cup", `${m.cup_pct}%`]);
   const unit = d.league === "nba" ? "rating" : "EPA";
   const ranks: [string, number | undefined][] = [
     [`Offense (${unit})`, m.off_rank], [`Defense (${unit})`, m.def_rank],
