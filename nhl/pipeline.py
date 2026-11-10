@@ -107,16 +107,18 @@ def _progress(msg: str) -> None:
     print(msg, flush=True)
 
 
-def _get_json(url: str, retries: int = 3) -> dict:
+def _get_json(url: str, retries: int = 5) -> dict:
+    """GET a JSON document. ESPN and the NHL refuse for a while (403 / 429) when a first run without
+    cache asks for everything at once: back off 2, 4, 8, 16 s before giving up."""
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=UA)
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read())
-        except Exception:
+        except Exception as e:
             if attempt == retries - 1:
-                raise
-            time.sleep(1.5 * (attempt + 1))
+                raise RuntimeError(f"{url}: {e}") from e
+            time.sleep(2 ** (attempt + 1))
     return {}
 
 
@@ -192,7 +194,7 @@ def load_games(teams: dict[str, dict]) -> list[dict]:
         d = datetime.date(d.year + (d.month == 12), d.month % 12 + 1, 1)
     # The 2020 playoffs ran in the Edmonton / Toronto bubbles through September
     months += [(2020, 7), (2020, 8), (2020, 9)]
-    with ThreadPoolExecutor(max_workers=6) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         chunks = list(ex.map(_fetch_month, sorted(set(months))))
     by_id: dict[str, dict] = {}
     for chunk in chunks:
@@ -222,13 +224,17 @@ def _goalie_season(args: tuple[int, int]) -> list[dict]:
     sid = _season_id(season)
     try:
         goalies = _get_json(GOALIES_URL.format(season_id=sid, game_type=game_type)).get("data", [])
-    except Exception:
-        return []
+    except Exception as e:
+        print(f"  {season} type {game_type}: goalie list unavailable ({e})", flush=True)
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+
+    failed = []
 
     def log(g: dict) -> list[dict]:
         try:
             games = _get_json(GAME_LOG_URL.format(player_id=g["playerId"], season_id=sid, game_type=game_type))
         except Exception:
+            failed.append(g["playerId"])
             return []
         return [{"goalie_id": str(g["playerId"]), "name": g.get("goalieFullName", ""),
                  "date": x.get("gameDate", ""), "team": NHL_TO_ESPN.get(x.get("teamAbbrev"), x.get("teamAbbrev")),
@@ -236,16 +242,19 @@ def _goalie_season(args: tuple[int, int]) -> list[dict]:
                  "goals": int(x.get("goalsAgainst") or 0)}
                 for x in games.get("gameLog", [])]
 
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         rows = [r for chunk in ex.map(log, goalies) for r in chunk]
-    path.write_text(json.dumps(rows), encoding="utf-8")
+    if failed:
+        print(f"  {season} type {game_type}: {len(failed)} goalie game log(s) could not be read", flush=True)
+    elif rows:
+        path.write_text(json.dumps(rows), encoding="utf-8")   # cached only when complete
     return rows
 
 
 def load_goalie_games() -> dict[tuple[str, str], list[dict]]:
     """{(date, ESPN team abbr): that team's goalie appearances in its game of the day}."""
     jobs = [(s, t) for s in range(FIRST_SEASON, CURRENT_SEASON + 1) for t in (2, 3)]
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=2) as ex:
         chunks = list(ex.map(_goalie_season, jobs))
     out: dict[tuple[str, str], list[dict]] = {}
     for chunk in chunks:
@@ -537,7 +546,10 @@ if __name__ == "__main__":
                     "shots": round(goalies.shots.get(gid, 0.0), 1), "last_start": goalies.last_start.get(gid, "")}
                    for gid in goalies.shots if goalies.last_start.get(gid, "") >= f"{CURRENT_SEASON - 2}-08-01"]
     goalie_path = NHL_DIR / "nhl_goalies.csv"
-    pd.DataFrame(goalie_rows).sort_values("sv_rating", ascending=False).to_csv(goalie_path, index=False)
+    if goalie_rows:
+        pd.DataFrame(goalie_rows).sort_values("sv_rating", ascending=False).to_csv(goalie_path, index=False)
+    else:
+        _progress("  WARNING: no goalie data (NHL API unreachable?) - keeping the previous goalie file")
     _progress(f"  {len(goalie_rows)} goalies rated -> {goalie_path.name}")
 
     last_starter = {t: g for t, g in played.sort_values("start_utc")[["team", "goalie_id"]].itertuples(index=False)}
