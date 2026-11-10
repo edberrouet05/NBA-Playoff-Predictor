@@ -645,19 +645,24 @@ def get_nhl_projections():
         hi = np.array([idx[h["team"]] for h, _ in remaining])
         ai = np.array([idx[a["team"]] for _, a in remaining])
         offset = rng.normal(0.0, NHL_TEAM_SD, (NHL_SIMS, n))
-        logit = NHL_FUTURE_SHRINK * np.log(p0 / (1 - p0)) + offset[:, hi] - offset[:, ai]
-        p_home = 1 / (1 + np.exp(-logit))
-        # Overtime: a near coin flip (halfway to the pre-game pick); regulation carries the rest
-        q = 0.5 + (p_home - 0.5) / 2
-        p_reg = np.clip((p_home - NHL_OT_RATE * q) / (1 - NHL_OT_RATE), 0.0, 1.0)
-        ot = rng.random((NHL_SIMS, len(remaining))) < NHL_OT_RATE
-        home_wins = np.where(ot, rng.random(ot.shape) < q, rng.random(ot.shape) < p_reg)
-        for g in range(len(remaining)):
-            hw, o = home_wins[:, g], ot[:, g]
-            points[:, hi[g]] += np.where(hw, 2, o)
-            points[:, ai[g]] += np.where(hw, o, 2)
-            wins[:, hi[g]] += hw
-            wins[:, ai[g]] += ~hw
+        base = NHL_FUTURE_SHRINK * np.log(p0 / (1 - p0))
+        # A few dozen games at a time: sims × all games arrays would not fit the server's memory
+        for lo in range(0, len(remaining), 50):
+            g_hi, g_ai = hi[lo:lo + 50], ai[lo:lo + 50]
+            p_home = 1 / (1 + np.exp(-(base[lo:lo + 50] + offset[:, g_hi] - offset[:, g_ai])))
+            # Overtime: a near coin flip (halfway to the pre-game pick); regulation carries the rest
+            q = 0.5 + (p_home - 0.5) / 2
+            p_reg = np.clip((p_home - NHL_OT_RATE * q) / (1 - NHL_OT_RATE), 0.0, 1.0)
+            ot = rng.random(p_home.shape) < NHL_OT_RATE
+            home_wins = np.where(ot, rng.random(ot.shape) < q, rng.random(ot.shape) < p_reg)
+            # Spread each game's points to its two teams: (sims × games) @ (games × teams)
+            # (a team can play twice in a batch; the product adds both)
+            k = len(g_hi)
+            to_home, to_away = np.zeros((k, n)), np.zeros((k, n))
+            to_home[np.arange(k), g_hi] = 1.0
+            to_away[np.arange(k), g_ai] = 1.0
+            points += np.where(home_wins, 2.0, ot) @ to_home + np.where(home_wins, ot, 2.0) @ to_away
+            wins += home_wins @ to_home + (~home_wins) @ to_away
 
     # Standings order: points, then wins, then a coin toss
     score = points * 1000 + wins + rng.random(points.shape) * 0.5
