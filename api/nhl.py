@@ -599,7 +599,7 @@ def get_nhl_standings():
     return {"season": _sport_season_label("nhl"), "divisions": out}
 
 
-NHL_SIMS = 10_000
+NHL_SIMS = 5_000     # enough for ±0.7-point chances; the free server is slow
 NHL_OT_RATE = 0.23        # share of regular-season games that reach overtime (loser gets a point)
 # Today's ratings overstate the gaps for games weeks away (hot and cold teams cool off), and a
 # team's true level is uncertain: future games use the model's log-odds × NHL_FUTURE_SHRINK, and
