@@ -75,5 +75,82 @@
   "home_win_prob": 43.3,
   "predicted_winner": "New York Islanders",
   "puck_drop": "2026-11-10T03:00Z"
+ },
+ "401892683": {
+  "away_goalie": "Mackenzie Blackwood",
+  "away_team": "Colorado Avalanche",
+  "away_win_prob": 63.1,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Sergei Bobrovsky",
+  "home_team": "Toronto Maple Leafs",
+  "home_win_prob": 36.9,
+  "predicted_winner": "Colorado Avalanche",
+  "puck_drop": "2026-11-11T00:00Z"
+ },
+ "401892684": {
+  "away_goalie": "Jesper Wallstedt",
+  "away_team": "Minnesota Wild",
+  "away_win_prob": 50.2,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Jacob Fowler",
+  "home_team": "Montreal Canadiens",
+  "home_win_prob": 49.8,
+  "predicted_winner": "Minnesota Wild",
+  "puck_drop": "2026-11-11T00:00Z"
+ },
+ "401892685": {
+  "away_goalie": "Logan Thompson",
+  "away_team": "Washington Capitals",
+  "away_win_prob": 49.6,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Linus Ullmark",
+  "home_team": "Ottawa Senators",
+  "home_win_prob": 50.4,
+  "predicted_winner": "Ottawa Senators",
+  "puck_drop": "2026-11-11T00:00Z"
+ },
+ "401892686": {
+  "away_goalie": "Jacob Markstrom",
+  "away_team": "Florida Panthers",
+  "away_win_prob": 52.3,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Cam Talbot",
+  "home_team": "Columbus Blue Jackets",
+  "home_win_prob": 47.7,
+  "predicted_winner": "Florida Panthers",
+  "puck_drop": "2026-11-11T00:30Z"
+ },
+ "401892687": {
+  "away_goalie": "John Gibson",
+  "away_team": "Detroit Red Wings",
+  "away_win_prob": 47.9,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Joel Hofer",
+  "home_team": "St. Louis Blues",
+  "home_win_prob": 52.1,
+  "predicted_winner": "St. Louis Blues",
+  "puck_drop": "2026-11-11T01:00Z"
+ },
+ "401892688": {
+  "away_goalie": "Jake Allen",
+  "away_team": "New Jersey Devils",
+  "away_win_prob": 57.9,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Nico Daws",
+  "home_team": "Winnipeg Jets",
+  "home_win_prob": 42.1,
+  "predicted_winner": "New Jersey Devils",
+  "puck_drop": "2026-11-11T00:00Z"
+ },
+ "401892689": {
+  "away_goalie": "Juuse Saros",
+  "away_team": "Nashville Predators",
+  "away_win_prob": 43.2,
+  "frozen_at": "2026-11-10T08:27:28Z",
+  "home_goalie": "Darcy Kuemper",
+  "home_team": "Los Angeles Kings",
+  "home_win_prob": 56.8,
+  "predicted_winner": "Los Angeles Kings",
+  "puck_drop": "2026-11-11T03:00Z"
  }
 }
