@@ -6,8 +6,10 @@ const BOTTOM_GAP = 16;      // matches the sidebar's max-h calc(100vh - top - 1r
 const WIDE_SCREEN = 1280;   // Tailwind xl — the sidebar is only sticky from here up
 
 /**
- * How many rows of a list fit so the sticky sidebar (the ancestor marked `data-sidebar`)
- * needs no inner scrolling. Re-measures when the window or the sidebar's content changes.
+ * How many rows of a list fit between its top in the sticky sidebar (the ancestor marked
+ * `data-sidebar`) and the bottom of the screen, leaving room for what follows it in its card
+ * (the "See all" link). Cards further down the sidebar scroll, so a long one (NBA injuries)
+ * does not keep the list short. Re-measures when the window or the sidebar's content changes.
  * Below the xl breakpoint (sidebar not sticky) it returns `total`.
  */
 export function useFitRows(listRef: RefObject<HTMLElement | null>, total: number, enabled: boolean): number {
@@ -26,8 +28,11 @@ export function useFitRows(listRef: RefObject<HTMLElement | null>, total: number
       }
       const rowH = list.offsetHeight / list.children.length;
       const top = parseFloat(getComputedStyle(sidebar).top) || 0;
-      const others = sidebar.scrollHeight - list.offsetHeight;   // everything in the sidebar but these rows
-      const avail = window.innerHeight - top - BOTTOM_GAP - others;
+      // Sidebar content above the list, then the rest of its card below it
+      const above = list.getBoundingClientRect().top - sidebar.getBoundingClientRect().top + sidebar.scrollTop;
+      const after = list.nextElementSibling as HTMLElement | null;
+      const below = (after ? after.offsetHeight + parseFloat(getComputedStyle(after).marginTop || "0") : 0) + 24;
+      const avail = window.innerHeight - top - BOTTOM_GAP - above - below;
       setFit(Math.max(MIN_ROWS, Math.min(total, Math.floor(avail / rowH))));
     };
 
