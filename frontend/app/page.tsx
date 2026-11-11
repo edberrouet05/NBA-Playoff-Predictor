@@ -176,6 +176,96 @@ function PickList({ items, empty }: { items: { g: TodayGame; side: "away" | "hom
   );
 }
 
+// ── Our record (dashboard) ──────────────────────────────────────────────────────
+
+interface Tally { correct: number; n: number }
+interface DayRecord extends Tally { date: string; by_sport: Partial<Record<League, Tally>> }
+interface SportRecord extends Tally { sport: League; accuracy: number; in_season: boolean }
+interface HomeSummary { today: string; days: DayRecord[]; yesterday: Tally & { date: string }; sports: SportRecord[] }
+
+const pct = (t: Tally) => (t.n ? `${Math.round((t.correct / t.n) * 100)}%` : "—");
+const add = (a: Tally, b: Tally): Tally => ({ correct: a.correct + b.correct, n: a.n + b.n });
+const NONE: Tally = { correct: 0, n: 0 };
+
+function StatTile({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-4 py-3.5 min-w-0">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">{label}</p>
+      <p className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tabular-nums mt-1 leading-tight">{value}</p>
+      {sub && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{sub}</p>}
+    </div>
+  );
+}
+
+function dayLabel(d: string, long = false) {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("en-US", long ? { weekday: "short", month: "short", day: "numeric" } : { day: "numeric" });
+}
+
+/** Picks per day: right (green) under wrong (gray), one column per day; hover for the numbers. */
+function RecordChart({ rows, sport, sports }: { rows: (Tally & { date: string })[]; sport: League | "all"; sports: SportRecord[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const max = Math.max(1, ...rows.map(r => r.n));
+  const total = rows.reduce(add, NONE);
+  const h = hover != null ? rows[hover] : null;
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 h-full flex flex-col">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Our picks, last {rows.length} days</h2>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+            <b className="text-gray-900 dark:text-white">{total.correct}</b> of {total.n} right · <b className="text-gray-900 dark:text-white">{pct(total)}</b>
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-gray-500 flex-shrink-0">
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-600 dark:bg-green-500" />Right</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-gray-300 dark:bg-gray-600" />Wrong</span>
+        </div>
+      </div>
+      <div className="relative flex-1 min-h-[150px] flex flex-col justify-end">
+        {h && (
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 bg-gray-900 dark:bg-gray-800 text-white text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg pointer-events-none">
+            {dayLabel(h.date, true)} · {h.n ? <><b>{h.correct}/{h.n}</b> right ({pct(h)})</> : "no games"}
+          </div>
+        )}
+        <div className="flex items-end gap-1 sm:gap-1.5 border-b border-gray-100 dark:border-gray-800" style={{ height: 132 }}>
+          {rows.map((r, i) => {
+            const wrong = r.n - r.correct;
+            return (
+              <div key={r.date} className="flex-1 h-full flex flex-col justify-end"
+                onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+                aria-label={`${dayLabel(r.date, true)}: ${r.correct} of ${r.n} right`}>
+                <div className={`flex flex-col justify-end gap-[2px] transition-opacity ${hover != null && hover !== i ? "opacity-50" : ""}`}
+                  style={{ height: `${(r.n / max) * 100}%` }}>
+                  {wrong > 0 && <div className="bg-gray-300 dark:bg-gray-600 rounded-t" style={{ flexGrow: wrong }} />}
+                  {r.correct > 0 && <div className={`bg-green-600 dark:bg-green-500 ${wrong ? "" : "rounded-t"}`} style={{ flexGrow: r.correct }} />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-1 sm:gap-1.5 mt-1.5">
+          {rows.map((r, i) => (
+            <span key={r.date} className={`flex-1 text-center text-[9px] sm:text-[10px] tabular-nums ${i === rows.length - 1 ? "text-gray-700 dark:text-gray-300 font-semibold" : "text-gray-400"}`}>
+              <span className={(rows.length - 1 - i) % 2 ? "hidden sm:inline" : ""}>{dayLabel(r.date)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      {sport === "all" && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {sports.filter(s => s.in_season).map(s => (
+            <Link key={s.sport} href={`/${s.sport}/performance`}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
+              {SPORT_LABEL[s.sport]} this season <b className="text-gray-800 dark:text-gray-200 tabular-nums">{s.accuracy}%</b>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function TodayPage() {
@@ -184,6 +274,7 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sport, setSport] = useState<League | "all">("all");
+  const [summary, setSummary] = useState<HomeSummary | null>(null);
   const favorites = useFavorites();
   const waking = useWakeHint(loading);
   const anyLive = games.some(g => g.state === "in");
@@ -194,6 +285,7 @@ export default function TodayPage() {
       .then(d => { setGames(d.games ?? []); setDate(d.date ?? ""); })
       .catch(e => setError(`Could not load today's games. Is the backend running? (${e.message})`))
       .finally(() => setLoading(false));
+    fetch(`${API}/api/home_summary`).then(r => (r.ok ? r.json() : null)).then(d => { if (d) setSummary(d); }).catch(() => {});
   }, []);
 
   // Live scores and probabilities refresh every 30 s while a game is on
@@ -218,6 +310,10 @@ export default function TodayPage() {
   const value = shown.filter(g => g.state === "pre" && g.value_side && g.value_edge != null)
     .sort((a, b) => (b.value_edge ?? 0) - (a.value_edge ?? 0));
   const order = (g: TodayGame) => (g.state === "in" ? 0 : g.state === "pre" ? 1 : 2);
+  // Our record for the selected sport (all: every sport)
+  const days = (summary?.days ?? []).map(d => ({ date: d.date, ...(sport === "all" ? d : d.by_sport[sport] ?? NONE) }));
+  const yday = summary ? days.find(d => d.date === summary.yesterday.date) ?? NONE : null;
+  const season = summary?.sports.filter(s => (sport === "all" ? s.in_season : s.sport === sport)).reduce(add, NONE);
 
   return (
     <main className="px-4 md:px-6 py-6 md:py-8">
@@ -251,6 +347,40 @@ export default function TodayPage() {
         </div>
       )}
 
+      {!error && !loading && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <StatTile label="Games today" value={shown.length}
+              sub={`${shown.filter(g => g.state === "in").length} live · ${shown.filter(g => g.state === "pre").length} to come`} />
+            <StatTile label="Yesterday" value={yday ? (yday.n ? `${yday.correct}/${yday.n}` : "—") : "…"}
+              sub={yday ? (yday.n ? `${pct(yday)} of our picks right` : "no games") : ""} />
+            <StatTile label={`Last ${days.length || 14} days`} value={summary ? pct(days.reduce(add, NONE)) : "…"} sub="of our picks right" />
+            <StatTile label="This season" value={season ? pct(season) : "…"}
+              sub={season ? `${season.correct.toLocaleString()} of ${season.n.toLocaleString()} picks` : ""} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">
+            <div className="lg:col-span-2">
+              {summary ? <RecordChart rows={days} sport={sport} sports={summary.sports} />
+                : <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 text-center text-gray-400 text-sm h-full">Loading our record…</div>}
+            </div>
+            <div className="flex flex-col">
+              <Section title="Most confident picks">
+                <PickList empty="No games left to pick today."
+                  items={best.map(g => ({ g, side: pick(g)!.side, right: <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums w-12 text-right">{pick(g)!.prob}%</span> }))} />
+              </Section>
+              <Section title="Value picks" extra={<span className="text-[10px] text-gray-400">our % vs the betting market</span>}>
+                <PickList empty="No value picks right now."
+                  items={value.map(g => ({ g, side: g.value_side!, right: (
+                    <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 whitespace-nowrap tabular-nums">
+                      {g.value_side === "away" ? `x${g.away_odds}` : `x${g.home_odds}`} · +{g.value_edge}%
+                    </span>) }))} />
+              </Section>
+            </div>
+          </div>
+        </>
+      )}
+
       {yours.length > 0 && (
         <Section title={<><span className="text-yellow-400">★</span> Your teams</>}>
           <div className={grid}>{[...yours].sort((a, b) => order(a) - order(b)).map(g => <GameCard key={g.sport + g.game_id} g={g} favorites={favorites} />)}</div>
@@ -261,22 +391,6 @@ export default function TodayPage() {
         <Section title={<><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> Live now</>}>
           <div className={grid}>{liveGames.map(g => <GameCard key={g.sport + g.game_id} g={g} favorites={favorites} />)}</div>
         </Section>
-      )}
-
-      {(best.length > 0 || value.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-5">
-          <Section title="Most confident picks">
-            <PickList empty="No games left to pick today."
-              items={best.map(g => ({ g, side: pick(g)!.side, right: <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums w-12 text-right">{pick(g)!.prob}%</span> }))} />
-          </Section>
-          <Section title="Value picks" extra={<span className="text-[10px] text-gray-400">our % vs the betting market</span>}>
-            <PickList empty="No value picks right now."
-              items={value.map(g => ({ g, side: g.value_side!, right: (
-                <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 whitespace-nowrap tabular-nums">
-                  {g.value_side === "away" ? `x${g.away_odds}` : `x${g.home_odds}`} · +{g.value_edge}%
-                </span>) }))} />
-          </Section>
-        </div>
       )}
 
       {upcoming.length > 0 && (

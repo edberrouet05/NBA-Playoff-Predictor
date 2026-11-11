@@ -5,10 +5,10 @@ import urllib.parse
 import zoneinfo
 
 from api.common import _game_day, _parallel, app
-from api.mlb import get_mlb_today
-from api.nba import get_today_games
-from api.nfl import get_nfl_week
-from api.nhl import get_nhl_today
+from api.mlb import get_mlb_predictions_log, get_mlb_today
+from api.nba import get_predictions_log, get_today_games
+from api.nfl import get_nfl_predictions_log, get_nfl_week
+from api.nhl import get_nhl_predictions_log, get_nhl_today
 from api.teams import _resolve_espn_team
 
 _ET = zoneinfo.ZoneInfo("America/New_York")
@@ -112,3 +112,57 @@ def get_today_all():
     games = [g for league in leagues for g in league]
     games.sort(key=lambda g: (g["start_utc"] or "9999", g["sport"]))
     return {"date": today, "games": games}
+
+
+SUMMARY_DAYS = 14
+
+
+@app.get("/api/home_summary")
+def get_home_summary():
+    """Our record for the home page, every sport together: day by day over the last two weeks,
+    yesterday, and the season by sport. Fair picks only, as on the Record pages (frozen before the
+    game or from pre-game rows, never recomputed after it)."""
+    today = _game_day()
+    since = (today - datetime.timedelta(days=SUMMARY_DAYS - 1)).isoformat()
+    yesterday = (today - datetime.timedelta(days=1)).isoformat()
+
+    def log(fn, **kw):
+        def run():
+            try:
+                return [g for g in fn(**kw)["log"] if g.get("source", "pregame") != "current"]
+            except Exception:
+                return []
+        return run
+
+    logs = dict(zip(("nba", "nfl", "nhl", "mlb"), _parallel(
+        log(get_predictions_log, n=100_000), log(get_nfl_predictions_log, n=100_000),
+        log(get_nhl_predictions_log, n=100_000), log(get_mlb_predictions_log, n=100_000))))
+
+    days = {(today - datetime.timedelta(days=i)).isoformat(): {"correct": 0, "n": 0, "by_sport": {}}
+            for i in range(SUMMARY_DAYS)}
+    sports = []
+    for sport, games in logs.items():
+        if not games:
+            continue
+        recent = [g for g in games if g["date"] >= since]
+        # In season: a pick in the last two weeks (the MLB after the World Series is not)
+        sports.append({"sport": sport, "n": len(games), "correct": sum(bool(g["correct"]) for g in games),
+                       "in_season": bool(recent)})
+        for g in recent:
+            d = days.get(g["date"])
+            if d is None:
+                continue
+            ok = int(bool(g["correct"]))
+            d["correct"] += ok
+            d["n"] += 1
+            s = d["by_sport"].setdefault(sport, {"correct": 0, "n": 0})
+            s["correct"] += ok
+            s["n"] += 1
+    for s in sports:
+        s["accuracy"] = round(s["correct"] / s["n"] * 100, 1)
+    return {
+        "today": today.isoformat(),
+        "days": [{"date": d, **v} for d, v in sorted(days.items())],
+        "yesterday": {"date": yesterday, **{k: days[yesterday][k] for k in ("correct", "n")}},
+        "sports": sports,
+    }
