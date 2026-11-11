@@ -85,7 +85,7 @@ function GameCard({ g, favorites }: { g: TodayGame; favorites: string[] }) {
         <Logo side={side} />
         <span className={`text-sm font-bold ${winner && winner !== s ? "text-gray-400" : "text-gray-900 dark:text-white"}`}>{side.abbr}</span>
         <span className="text-xs text-gray-400 truncate hidden sm:inline">{side.name}</span>
-        <FavoriteStar league={g.sport} team={side.name} size={13} className={fav(side) ? "" : "opacity-0 group-hover:opacity-100 focus:opacity-100"} />
+        <FavoriteStar league={g.sport} team={side.name} size={13} className={`p-1 -m-1 ${fav(side) ? "" : "sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"}`} />
         <span className="flex-1" />
         {prob != null && !done && (
           <span className={`text-xs font-bold tabular-nums ${leads ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{prob}%</span>
@@ -241,9 +241,10 @@ const pct = (t: Tally) => (t.n ? `${Math.round((t.correct / t.n) * 100)}%` : "�
 const add = (a: Tally, b: Tally): Tally => ({ correct: a.correct + b.correct, n: a.n + b.n });
 const NONE: Tally = { correct: 0, n: 0 };
 
-function StatTile({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
+function StatTile({ label, value, sub, wide }: { label: string; value: React.ReactNode; sub?: React.ReactNode; wide?: boolean }) {
+  // `wide`: the odd tile out spans the row on phones (two tiles per row) instead of leaving a hole
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-4 py-3.5 min-w-0">
+    <div className={`bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-4 py-3.5 min-w-0 ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">{label}</p>
       <p className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tabular-nums mt-1 leading-tight">{value}</p>
       {sub && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{sub}</p>}
@@ -413,7 +414,7 @@ export default function TodayPage() {
             <StatTile label={`Last ${days.length || 14} days`} value={summary ? pct(days.reduce(add, NONE)) : "…"} sub="of our picks right" />
             <StatTile label="This season" value={season ? pct(season) : "…"}
               sub={season ? `${season.correct.toLocaleString()} of ${season.n.toLocaleString()} picks` : ""} />
-            <StatTile label={`Picks at ${summary?.sure_pick ?? 70}%+`} value={sure ? pct(sure) : "…"}
+            <StatTile wide label={`Picks at ${summary?.sure_pick ?? 70}%+`} value={sure ? pct(sure) : "…"}
               sub={sure ? `${sure.correct} of ${sure.n} right this season` : ""} />
           </div>
 
