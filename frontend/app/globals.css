@@ -11,11 +11,26 @@
 }
 
 .dark {
-  --chart-grid: #1f2937;
-  --chart-tick: #4b5563;
-  --tooltip-bg: #111827;
-  --tooltip-border: #1f2937;
+  --chart-grid: #262626;
+  --chart-tick: #525252;
+  --tooltip-bg: #171717;
+  --tooltip-border: #262626;
   --tooltip-text: #e5e7eb;
+}
+
+/* Neutral grays (no blue tint): dark mode reads as charcoal and black, not navy */
+@theme {
+  --color-gray-50: oklch(0.985 0 0);
+  --color-gray-100: oklch(0.97 0 0);
+  --color-gray-200: oklch(0.922 0 0);
+  --color-gray-300: oklch(0.87 0 0);
+  --color-gray-400: oklch(0.708 0 0);
+  --color-gray-500: oklch(0.556 0 0);
+  --color-gray-600: oklch(0.439 0 0);
+  --color-gray-700: oklch(0.371 0 0);
+  --color-gray-800: oklch(0.269 0 0);
+  --color-gray-900: oklch(0.205 0 0);
+  --color-gray-950: oklch(0.145 0 0);
 }
 
 @theme inline {
