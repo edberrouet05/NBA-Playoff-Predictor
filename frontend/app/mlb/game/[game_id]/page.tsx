@@ -2,7 +2,6 @@
 import { createContext, use, useContext, useEffect, useRef, useState } from "react";
 import { pickMatchupColors } from "../../../components/teamColors";
 import Link from "next/link";
-import { ProjectedScoreCard, type Projection } from "../../../components/ProjectedScore";
 import { teamHref } from "../../../components/teamLinks";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -17,7 +16,6 @@ interface WinProbPoint { label: string; away_prob: number; home_prob: number; }
 interface InningRow    { num: number; away_r: number | null; home_r: number | null; }
 
 interface MLBGameDetail {
-  projection?: Projection | null;
   game_id:          number;
   status:           string;
   game_time_utc:    string;
@@ -615,8 +613,8 @@ export default function MLBGamePage({
       {!loading && !fetchErr && g && (
         <>
           {/* ── Chart + Stats side by side ── */}
-          {(hasChart || hasStats || g.projection) && (
-            <div className={`grid gap-3 items-start ${hasChart && (hasStats || g.projection) ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : ""}`}>
+          {(hasChart || hasStats) && (
+            <div className={`grid gap-3 items-start ${hasChart && hasStats ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : ""}`}>
               {hasChart && (
                 <WinProbChart
                   data={g.win_prob_history}
@@ -624,54 +622,45 @@ export default function MLBGamePage({
                   homeTeam={home}
                 />
               )}
-              {(hasStats || g.projection) && (
-                <div className="flex flex-col gap-3 min-w-0">
-                  {hasStats && (
-                  <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
-                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
-                      Stats Comparison
-                    </p>
-                    <div className="flex flex-col gap-3">
-                      {MLB_STAT_DEFS.map(({ key, label, better, fmt }) => {
-                        const a = g.away_stats[key] ?? 0;
-                        const b = g.home_stats[key] ?? 0;
-                        const aWins = better !== 0 && (better === 1 ? a > b : a < b);
-                        const bWins = better !== 0 && (better === 1 ? b > a : b < a);
-                        const { aPct, bPct } = barPcts(a, b, better);
-                        return (
-                          <div key={key}>
-                            <div className="flex items-center mb-1">
-                              <span className={`w-12 text-xs font-bold ${aWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-                                {fmt(a)}
-                              </span>
-                              <span className="flex-1 text-center text-[10px] text-gray-500 uppercase tracking-wide">
-                                {label}
-                              </span>
-                              <span className={`w-12 text-xs font-bold text-right ${bWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
-                                {fmt(b)}
-                              </span>
+              {hasStats && (
+                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
+                    Stats Comparison
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {MLB_STAT_DEFS.map(({ key, label, better, fmt }) => {
+                      const a = g.away_stats[key] ?? 0;
+                      const b = g.home_stats[key] ?? 0;
+                      const aWins = better !== 0 && (better === 1 ? a > b : a < b);
+                      const bWins = better !== 0 && (better === 1 ? b > a : b < a);
+                      const { aPct, bPct } = barPcts(a, b, better);
+                      return (
+                        <div key={key}>
+                          <div className="flex items-center mb-1">
+                            <span className={`w-12 text-xs font-bold ${aWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+                              {fmt(a)}
+                            </span>
+                            <span className="flex-1 text-center text-[10px] text-gray-500 uppercase tracking-wide">
+                              {label}
+                            </span>
+                            <span className={`w-12 text-xs font-bold text-right ${bWins ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+                              {fmt(b)}
+                            </span>
+                          </div>
+                          <div className="flex h-[3px] gap-[2px]">
+                            <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-l-full overflow-hidden flex justify-end">
+                              <div className={`h-full rounded-l-full ${aWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                                style={{ width: `${aPct}%` }} />
                             </div>
-                            <div className="flex h-[3px] gap-[2px]">
-                              <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-l-full overflow-hidden flex justify-end">
-                                <div className={`h-full rounded-l-full ${aWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
-                                  style={{ width: `${aPct}%` }} />
-                              </div>
-                              <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-r-full overflow-hidden">
-                                <div className={`h-full rounded-r-full ${bWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
-                                  style={{ width: `${bPct}%` }} />
-                              </div>
+                            <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-r-full overflow-hidden">
+                              <div className={`h-full rounded-r-full ${bWins ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
+                                style={{ width: `${bPct}%` }} />
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  )}
-                  {g.projection && (
-                    <ProjectedScoreCard projection={g.projection} decimals={1} awayAbbr={getAbbr(away)} homeAbbr={getAbbr(home)}
-                      actual={isFinal ? g.away_score + g.home_score : null}
-                      note="Total from both lineups' runs per game against the other staff, the starters and the ballpark; the split follows our win probability." />
-                  )}
                 </div>
               )}
             </div>

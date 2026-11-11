@@ -1,4 +1,5 @@
-// "Projected score" card for the NHL, NFL and MLB game pages (the NBA page has its own, with pace).
+// "Projected score" card for the NFL game page (the NBA page has its own, with pace), and the
+// projected-total line on the NBA and NFL game cards. Only shown where a backtest beat the league average.
 
 export interface Projection {
   away: number;

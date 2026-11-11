@@ -272,21 +272,6 @@ def _nhl_goal_model(s: float, p_home: float, frac: float, home_margin: int) -> f
     return float(skellam.sf(-home_margin, mu_h, mu_a) + q * skellam.pmf(-home_margin, mu_h, mu_a))
 
 
-def _nhl_projected_score(home: str, away: str, p_home: float) -> dict | None:
-    """Expected goals: the total from each attack against the other defense (recent goals for /
-    against, relative to the league), split by the goal model's strength gap so it agrees with the pick."""
-    import math
-    state = _load_nhl_state()
-    h, a = state.get(home), state.get(away)
-    if h is None or a is None:
-        return None
-    league = sum(float(r["gf_ewm"]) for r in state.values()) / len(state)
-    total = (float(h["gf_ewm"]) * float(a["ga_ewm"]) + float(a["gf_ewm"]) * float(h["ga_ewm"])) / league
-    s = _nhl_strength(p_home)
-    home_goals = total * math.exp(s) / (math.exp(s) + math.exp(-s))
-    return {"home": round(home_goals, 1), "away": round(total - home_goals, 1), "total": round(total, 1)}
-
-
 def _nhl_live_prob(p_home: float, home_margin: int, minutes_left: float, overtime: bool = False,
                    strength: float | None = None) -> float:
     """Win probability during a game (see _nhl_goal_model). `strength`: _nhl_strength(p_home),
@@ -366,7 +351,7 @@ def _nhl_with_probs(g: dict) -> dict:
     goalies = (g["home"].get("probable"), g["away"].get("probable")) if g["state"] == "pre" else None
     pre = _nhl_pregame(g["game_id"], home, away, g["date"], g["neutral"], goalies)
     out = {**g, "home_win_prob": None, "away_win_prob": None, "predicted_winner": None,
-           "live_home_prob": None, "live_away_prob": None, "source": None, "projection": None}
+           "live_home_prob": None, "live_away_prob": None, "source": None}
     if pre is None:
         return out
     p_home, source, rows = pre
@@ -384,8 +369,7 @@ def _nhl_with_probs(g: dict) -> dict:
             "status": "started" if int(row.get("goalie_confirmed", 0) or 0) == 1 else
                       "probable" if row.get("goalie_probable") else "last start"} if name else None}
     out.update(home_win_prob=round(p_home * 100, 1), away_win_prob=round((1 - p_home) * 100, 1),
-               predicted_winner=home if p_home >= 0.5 else away, source=source,
-               projection=_nhl_projected_score(home, away, p_home))
+               predicted_winner=home if p_home >= 0.5 else away, source=source)
     hs, as_ = g["home"]["score"], g["away"]["score"]
     if g["state"] == "in" and hs is not None and as_ is not None:
         live = _nhl_live_prob(p_home, hs - as_, _nhl_minutes_left(g["period"], g["clock"]), g["period"] > 3)

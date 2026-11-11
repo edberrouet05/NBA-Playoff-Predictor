@@ -3,7 +3,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { playerHref, teamHref } from "../../../components/teamLinks";
-import { ProjectedScoreCard, type Projection } from "../../../components/ProjectedScore";
 import { nhlColor, nhlLogo, nhlNick } from "../../nhlTeams";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -18,7 +17,6 @@ interface Skater { id: string; name: string; side: string; position: string; goa
 interface Goal { period: string; clock: string; side: "home" | "away" | ""; text: string; strength: string; away_score: number; home_score: number }
 interface Form { record: string; points: number; goal_diff: number; streak: number; elo: number; gf: number; ga: number; shot_share: number; sv_pct: number }
 interface NHLGameDetail {
-  projection?: Projection | null;
   game_id: string; start_utc: string; state: "pre" | "in" | "post"; status: string; detail: string;
   period: number; clock: string; venue: string; home: Side; away: Side;
   home_win_prob: number | null; away_win_prob: number | null; predicted_winner: string | null;
@@ -312,16 +310,6 @@ function FormCard({ g }: { g: NHLGameDetail }) {
   );
 }
 
-function ProjectionCard({ g }: { g: NHLGameDetail }) {
-  if (!g.projection) return null;
-  const done = g.state === "post" && g.home.score != null && g.away.score != null;
-  return (
-    <ProjectedScoreCard projection={g.projection} decimals={1} awayAbbr={g.away.abbr} homeAbbr={g.home.abbr}
-      actual={done ? g.home.score! + g.away.score! : null}
-      note="Total from both teams' recent goals for and against; the split follows our pre-game win probability." />
-  );
-}
-
 function GoalsCard({ g }: { g: NHLGameDetail }) {
   if (!g.goals.length) return null;
   return (
@@ -443,10 +431,7 @@ export default function NHLGamePage({ params }: { params: Promise<{ game_id: str
               <PeriodTable g={g} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
                 <WhyPanel g={g} />
-                <div className="flex flex-col gap-3 min-w-0">
-                  <ProjectionCard g={g} />
-                  <FormCard g={g} />
-                </div>
+                <FormCard g={g} />
               </div>
             </>
           ) : (
@@ -460,7 +445,6 @@ export default function NHLGamePage({ params }: { params: Promise<{ game_id: str
               <div className="flex flex-col gap-3 min-w-0">
                 <TeamStats g={g} />
                 <PlayersCard g={g} />
-                <ProjectionCard g={g} />
                 <FormCard g={g} />
               </div>
             </div>

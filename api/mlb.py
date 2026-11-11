@@ -152,9 +152,6 @@ def _load_mlb_game_features() -> dict[str, dict[str, dict]]:
         _mlb_game_features_cache = out
     return _mlb_game_features_cache
 MLB_SP_UNKNOWN = 4.40  # FIP for a starter with no history (matches mlb/pipeline.py SP_UNKNOWN)
-MLB_SP_AVERAGE = 4.45  # innings-weighted average starter FIP in mlb_pitcher_ratings.csv
-MLB_SP_SHARE = 0.6     # share of a team's runs allowed that come off the starter
-MLB_MARGIN_SD = 4.4    # SD of MLB final run margins — converts win probability <-> run margin
 # Regular season + postseason (F wild card, D division series, L LCS, W World Series)
 MLB_GAME_TYPES = "R,F,D,L,W"
 
@@ -307,30 +304,6 @@ def _mlb_win_prob(
     return p_t / (p_t + p_o)   # normalise so home+away = 100 %
 
 
-def _mlb_projected_score(away: str, home: str, p_home: float, away_sp=None, home_sp=None) -> dict | None:
-    """Expected runs: each lineup's runs per game against the other staff's runs allowed (relative
-    to the league), scaled for the opposing starter and the ballpark; the margin from our win
-    probability so it agrees with the pick."""
-    from statistics import NormalDist
-    stats = _load_mlb_stats()
-    if away not in stats.index or home not in stats.index:
-        return None
-    ratings = _load_mlb_pitcher_ratings()
-    games = stats["wins"] + stats["losses"]
-    league = float((stats["runs_scored"] / games).mean())
-
-    def runs(team: str, opp: str, opp_sp) -> float:
-        rs = float(stats.loc[team, "runs_scored"]) / float(games[team])
-        ra = float(stats.loc[opp, "runs_allowed"]) / float(games[opp])
-        fip = ratings.get(opp_sp, MLB_SP_UNKNOWN) if opp_sp else MLB_SP_UNKNOWN
-        return rs * ra / league * (1 + MLB_SP_SHARE * (fip - MLB_SP_AVERAGE) / MLB_SP_AVERAGE)
-
-    park = 1 + (float(stats.loc[home].get("park_factor", 1.0)) - 1) / 2   # season stats are half at home
-    total = (runs(away, home, home_sp) + runs(home, away, away_sp)) * park
-    margin = MLB_MARGIN_SD * NormalDist().inv_cdf(min(max(p_home, 1e-4), 1 - 1e-4))
-    return {"away": round((total - margin) / 2, 1), "home": round((total + margin) / 2, 1), "total": round(total, 1)}
-
-
 def _fetch_mlb_today() -> dict:
     """Fetch today's MLB games directly from statsapi.mlb.com (no third-party package needed)."""
     import datetime, json, urllib.request
@@ -441,8 +414,6 @@ def _fetch_mlb_today() -> dict:
                 "away_win_prob":    away_wp,
                 "home_win_prob":    home_wp,
                 "predicted_winner": pred_winner,
-                "projected_total":  (_mlb_projected_score(away_name, home_name, 1 - p_away,
-                                                          away_sp_id, home_sp_id) or {}).get("total"),
                 "away_pitcher":     away_sp,
                 "home_pitcher":     home_sp,
                 "away_sp_era":      round(away_sp_era, 2) if away_sp_era is not None else None,
@@ -938,9 +909,6 @@ def get_mlb_game_detail(game_id: int):
             "away_win_prob":    round(p_away * 100, 1),
             "home_win_prob":    round(p_home * 100, 1),
             "win_prob_history": history,
-            "projection":       _mlb_projected_score(away_name, home_name, p_home,
-                                                     away_info.get("probablePitcher", {}).get("id"),
-                                                     home_info.get("probablePitcher", {}).get("id")),
             "innings":          inning_rows,
             "away_stats":       away_stats_out,
             "home_stats":       home_stats_out,
