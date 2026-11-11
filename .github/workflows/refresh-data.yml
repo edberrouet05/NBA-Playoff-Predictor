@@ -96,7 +96,9 @@ jobs:
         run: python nfl/pipeline.py
       - name: Train
         if: github.event_name == 'schedule' || inputs.retrain
-        run: python nfl/train.py
+        run: |
+          python nfl/train.py
+          python nfl/train_totals.py
       - name: Pull state the deployed API stored (this commit redeploys it)
         env:
           API_URL: https://nba-playoff-predictor-u8bj.onrender.com

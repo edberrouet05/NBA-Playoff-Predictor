@@ -432,6 +432,11 @@ def build_features(games: list[dict], teams: dict[str, dict], appearances: dict)
                 "shot_share": round(f_t["shot_share"], 4), "opp_shot_share": round(f_o["shot_share"], 4),
                 "shot_share_diff": round(f_t["shot_share"] - f_o["shot_share"], 4),
                 "sv_pct": round(f_t["sv_pct"], 4), "opp_sv_pct": round(f_o["sv_pct"], 4),
+                # Recent goals and shots for / against: the projected-total model's inputs
+                "gf_ewm": round(f_t["gf"], 3), "ga_ewm": round(f_t["ga"], 3),
+                "opp_gf_ewm": round(f_o["gf"], 3), "opp_ga_ewm": round(f_o["ga"], 3),
+                "sf_ewm": round(f_t["sf"], 2), "sa_ewm": round(f_t["sa"], 2),
+                "opp_sf_ewm": round(f_o["sf"], 2), "opp_sa_ewm": round(f_o["sa"], 2),
                 "sv_pct_diff": round(f_t["sv_pct"] - f_o["sv_pct"], 4),
                 "rest_days": r_t, "opp_rest_days": r_o, "rest_diff": r_t - r_o,
                 "b2b": int(r_t == 1), "opp_b2b": int(r_o == 1),

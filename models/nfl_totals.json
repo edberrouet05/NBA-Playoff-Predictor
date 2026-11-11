@@ -1,0 +1,28 @@
+{
+  "intercept": 43.467,
+  "coefficients": {
+    "pts": 0.2147,
+    "dome": 3.1165,
+    "qb": 13.8133
+  },
+  "indoor_teams": [
+    "Arizona Cardinals",
+    "Atlanta Falcons",
+    "Dallas Cowboys",
+    "Detroit Lions",
+    "Houston Texans",
+    "Indianapolis Colts",
+    "Las Vegas Raiders",
+    "Los Angeles Chargers",
+    "Los Angeles Rams",
+    "Minnesota Vikings",
+    "New Orleans Saints"
+  ],
+  "validation": {
+    "games": 2837,
+    "seasons": "2015-2025",
+    "mae": 10.632,
+    "vegas_mae": 10.442,
+    "league_average_mae": 10.996
+  }
+}

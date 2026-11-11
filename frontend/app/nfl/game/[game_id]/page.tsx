@@ -979,7 +979,7 @@ export default function NFLGamePage({
                 {g.projection && (
                   <ProjectedScoreCard projection={g.projection} awayAbbr={getAbbr(away)} homeAbbr={getAbbr(home)}
                     actual={isFinal && awayScore != null && homeScore != null ? awayScore + homeScore : null}
-                    note="Total from each offense against the other defense (points per game above average); the margin follows our win probability." />
+                    note="Total from a model fitted on past seasons (both offenses and defenses, indoor stadium, quarterbacks); the margin follows our win probability." />
                 )}
                 {(g.away_injuries || g.home_injuries) && (
                   <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />

@@ -100,21 +100,31 @@ _nfl_game_pred_cache: dict[str, dict] = {}  # str(event_id) → {away_win_prob, 
 # Pre-game predictions written down before kickoff, so a played game is never re-predicted with
 # later data (today's injury report, refreshed features). Refreshed while the game is upcoming,
 # frozen once it starts. Committed to the repo by the freeze workflow so redeploys keep it.
-NFL_POINTS_PER_TEAM = 22.5   # points per team per game, 2022-2026 regular seasons
-NFL_PTS_WEIGHT = 0.85        # actual points ≈ average + 0.85 × (attack + opposing defense) points per game
+NFL_TOTALS_PATH = ROOT / "models" / "nfl_totals.json"   # written by nfl/train_totals.py
 NFL_MARGIN_SD = 13.8         # SD of NFL final margins — converts win probability <-> point margin
+_nfl_totals_model: dict | None = None
 
 
 def _nfl_projected_score(away: str, home: str, home_wp: float) -> dict | None:
-    """Expected final score: the total from each offense against the other defense (points per
-    game above average), the margin from our win probability so it agrees with the pick."""
+    """Expected final score: the total from the fitted totals model (both attacks and defenses in
+    points per game, an indoor stadium, both quarterbacks), the margin from our win probability
+    so it agrees with the pick."""
+    import json
     from statistics import NormalDist
+    global _nfl_totals_model
+    if _nfl_totals_model is None:
+        _nfl_totals_model = json.loads(NFL_TOTALS_PATH.read_text(encoding="utf-8"))
+    m = _nfl_totals_model
     stats = _load_nfl_stats()
     if away not in stats.index or home not in stats.index:
         return None
     a, h = stats.loc[away], stats.loc[home]
-    total = 2 * NFL_POINTS_PER_TEAM + NFL_PTS_WEIGHT * (
-        float(a["off_pts"]) + float(h["def_pts"]) + float(h["off_pts"]) + float(a["def_pts"]))
+    inputs = {
+        "pts": float(a["off_pts"]) + float(h["def_pts"]) + float(h["off_pts"]) + float(a["def_pts"]),
+        "dome": float(home in m["indoor_teams"]),
+        "qb": float(a.get("qb_epa", 0) or 0) + float(h.get("qb_epa", 0) or 0),
+    }
+    total = m["intercept"] + sum(m["coefficients"][k] * v for k, v in inputs.items())
     margin = NFL_MARGIN_SD * NormalDist().inv_cdf(min(max(home_wp / 100, 1e-4), 1 - 1e-4))
     return {"away": round((total - margin) / 2), "home": round((total + margin) / 2), "total": round(total)}
 

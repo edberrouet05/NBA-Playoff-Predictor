@@ -540,7 +540,16 @@ def build_features(games: pd.DataFrame, team_game: dict, qb_game: dict, first_ro
                     "prev_season_point_diff_diff": round(t["prev_pd_pg"] - o["prev_pd_pg"], 2),
                     "win_pct_last5": t["win_pct_last5"], "point_diff_last5": t["point_diff_last5"],
                     "opp_win_pct_last5": o["win_pct_last5"], "opp_point_diff_last5": o["point_diff_last5"],
-                    # Evaluation only (not a model feature): closing no-vig moneyline probability
+                    # Points per game above average (EPA): the projected-total model's inputs
+                    "off_pts": round(t["off_pts"], 3), "def_pts": round(t["def_pts"], 3),
+                    "opp_off_pts": round(o["off_pts"], 3), "opp_def_pts": round(o["def_pts"], 3),
+                    "points_for": (g.home_score if is_home else g.away_score) if completed else None,
+                    "points_against": (g.away_score if is_home else g.home_score) if completed else None,
+                    "roof": None if pd.isna(g.roof) else g.roof,
+                    "temp": None if pd.isna(g.temp) else g.temp,
+                    "wind": None if pd.isna(g.wind) else g.wind,
+                    # Evaluation only: the closing total and no-vig moneyline probability
+                    "total_line": None if pd.isna(g.total_line) else g.total_line,
                     "vegas_prob": None if vegas_home is None else round(vegas_home if is_home else 1 - vegas_home, 4),
                     "win": won,
                 })
