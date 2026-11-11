@@ -172,6 +172,8 @@ export default function GamePage({
   const colors: Colors = { [away]: awayColor, [home]: homeColor };
   // Score, clock and live probability from the API once it answers; the link's values until then
   const [live, setLive] = useState<LiveGame | null>(null);
+  // The game's own data decides the layout: hold the cards until its first answer (or failure)
+  const [liveTried, setLiveTried] = useState(false);
   const started  = !!live && live.state !== "pre";
   const inPlay   = live?.state === "in";
   const time     = started ? live.status : (sp.time as string) ?? "";
@@ -205,9 +207,10 @@ export default function GamePage({
         .then((d: LiveGame) => {
           if (!active) return;
           setLive(d);
+          setLiveTried(true);
           if (d.state !== "post") timer = setTimeout(load, d.state === "in" ? 30_000 : 120_000);
         })
-        .catch(() => { if (active) timer = setTimeout(load, 60_000); });
+        .catch(() => { if (active) { setLiveTried(true); timer = setTimeout(load, 60_000); } });
     };
     load();
     return () => { active = false; clearTimeout(timer); };
@@ -350,7 +353,7 @@ export default function GamePage({
         </div>
       </div>
 
-      {!live && loading && (
+      {!live && (loading || !liveTried) && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center text-xs text-gray-400 dark:text-gray-600">
           Loading game…
         </div>
@@ -369,7 +372,7 @@ export default function GamePage({
       )}
 
       {/* ── Win probability (this game, or the series in the playoffs) + team stats ── */}
-      {(showChart || hasGameStats || compare) && (
+      {liveTried && (showChart || hasGameStats || compare) && (
         <div className={`grid gap-3 items-stretch ${showChart ? "grid-cols-1 lg:grid-cols-[5fr_2fr]" : "grid-cols-1"}`}>
           {started && live && live.season_type !== 3 && live.timeline.length > 1 && (
             <GameProbChart live={live} awayTeam={away} homeTeam={home} colors={colors} />
