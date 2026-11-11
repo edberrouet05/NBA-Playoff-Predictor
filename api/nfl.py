@@ -44,6 +44,9 @@ NFL_MODEL_PATH   = ROOT / "models" / "nfl_logistic_regression.pkl"
 NFL_STATS_PATH   = ROOT / "data" / "nfl" / "nfl_stats_current.csv"
 NFL_GAME_FEATURES_PATH = ROOT / "data" / "nfl" / "nfl_game_features_current.csv"
 NFL_QB_RATINGS_PATH    = ROOT / "data" / "nfl" / "nfl_qb_ratings.csv"
+# Starting QBs we know before nflverse's projections do (a trade, a late announcement):
+# {nflverse team code: {qb_id, qb_name, until (last game date it applies to), note}}
+NFL_QB_OVERRIDES_PATH  = ROOT / "data" / "nfl" / "nfl_qb_overrides.json"
 NFL_BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
 NFL_STANDINGS_BASE = "https://site.api.espn.com/apis/v2/sports/football/nfl/standings"
 NFL_UA = {"User-Agent": "Mozilla/5.0"}
@@ -328,6 +331,15 @@ def _load_nfl_qb_ratings() -> dict[str, float]:
     return _nfl_qb_ratings_cache
 
 
+def _load_nfl_qb_overrides() -> dict[str, dict]:
+    """Manual starting-QB corrections (see NFL_QB_OVERRIDES_PATH); read each call, it is tiny."""
+    import json
+    try:
+        return json.loads(NFL_QB_OVERRIDES_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def _fetch_nfl_live_qbs() -> dict[str, dict[str, str]]:
     """{espn_event_id: {nflverse_abbr: starting/projected QB id}} from nflverse.
     Returns the last good copy (or {}) if the download fails."""
@@ -369,9 +381,12 @@ def _nfl_rows_for_game(game_id: str | None, team: str, opp: str) -> tuple[dict, 
 
     live = _fetch_nfl_live_qbs().get(str(game_id), {})
     ratings = _load_nfl_qb_ratings()
+    overrides = _load_nfl_qb_overrides()
     qb_epa, qb_changed = {}, {}
     for r in (r_t, r_o):
-        qb_id = live.get(r["team"]) or r.get("qb_id")
+        o = overrides.get(r["team"])
+        forced = o["qb_id"] if o and str(r.get("game_date", ""))[:10] <= o.get("until", "") else None
+        qb_id = forced or live.get(r["team"]) or r.get("qb_id")
         last = r.get("last_qb_id")
         qb_epa[r["team"]] = ratings.get(qb_id, NFL_QB_REPLACEMENT) if isinstance(qb_id, str) else NFL_QB_REPLACEMENT
         qb_changed[r["team"]] = int(isinstance(last, str) and isinstance(qb_id, str) and qb_id != last)
