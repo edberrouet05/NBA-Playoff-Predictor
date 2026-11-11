@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { pickMatchupColors } from "../components/teamColors";
 import { useFitRows } from "../components/useFitRows";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 import { useWakeHint, WAKE_HINT } from "../components/useWakeHint";
-import { nhlAbbr, nhlColor, nhlLogo, nhlNick } from "./nhlTeams";
+import { nhlAbbr, nhlColor, nhlColorOptions, nhlLogo, nhlNick } from "./nhlTeams";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -94,6 +95,7 @@ function GameCard({ game }: { game: NHLGame }) {
     );
   }
 
+  const [barAway, barHome] = pickMatchupColors(nhlColorOptions(away.name), nhlColorOptions(home.name));
   return (
     <Link href={`/nhl/game/${game.game_id}`} className="block group">
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
@@ -115,8 +117,8 @@ function GameCard({ game }: { game: NHLGame }) {
 
         {awayProb != null && (
           <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
-            <div className="h-full" style={{ width: `${awayProb}%`, background: nhlColor(away.name) }} />
-            <div className="h-full flex-1" style={{ background: nhlColor(home.name) }} />
+            <div className="h-full" style={{ width: `${awayProb}%`, background: barAway }} />
+            <div className="h-full flex-1" style={{ background: barHome }} />
           </div>
         )}
 

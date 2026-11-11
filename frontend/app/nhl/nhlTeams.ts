@@ -21,6 +21,16 @@ export const NHL_COLORS: Record<string, string> = {
   WSH: "#C8102E", WPG: "#041E42",
 };
 
+// Secondary colors, used when both teams' primaries look alike
+export const NHL_ALT_COLORS: Record<string, string> = {
+  ANA: "#B9975B", BOS: "#000000", BUF: "#FFB81C", CGY: "#F1BE48", CAR: "#000000", CHI: "#000000",
+  COL: "#236192", CBJ: "#CE1126", DAL: "#8F8F8C", DET: "#000000", EDM: "#041E42", FLA: "#041E42",
+  LA: "#111111", MIN: "#A6192E", MTL: "#192168", NSH: "#041E42", NJ: "#000000", NYI: "#F47D30",
+  NYR: "#CE1126", OTT: "#000000", PHI: "#000000", PIT: "#000000", SJ: "#EA7200", SEA: "#001628",
+  STL: "#FCB514", TB: "#FFFFFF", TOR: "#A2AAAD", UTAH: "#090909", VAN: "#00205B", VGK: "#333F42",
+  WSH: "#041E42", WPG: "#AC162C",
+};
+
 export function nhlAbbr(team: string): string {
   return NHL_ABBR[team] ?? team.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???";
 }
@@ -38,4 +48,10 @@ export function nhlNick(team: string): string {
 
 export function nhlLogo(team: string): string {
   return `https://a.espncdn.com/i/teamlogos/nhl/500/${nhlAbbr(team).toLowerCase()}.png`;
+}
+
+/** The team's primary color, then its secondary: options for a matchup color pair. */
+export function nhlColorOptions(team: string): string[] {
+  const a = nhlAbbr(team);
+  return [NHL_COLORS[a] ?? "#555", ...(NHL_ALT_COLORS[a] ? [NHL_ALT_COLORS[a]] : [])];
 }

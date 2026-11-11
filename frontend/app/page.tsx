@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { useFitRows } from "./components/useFitRows";
 import { useWakeHint, WAKE_HINT } from "./components/useWakeHint";
 import Link from "next/link";
+import { pickMatchupColors } from "./components/teamColors";
 import { nbaSeasonLabel, probClass, ValueBadge, type ValueFields } from "./components/PredictionBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -69,7 +70,7 @@ const TEAM_COLORS: Record<string, string> = {
   NOP: "#C8A956", NYK: "#F58426", OKC: "#007AC1",
   ORL: "#0077C0", PHI: "#006BB6", PHX: "#E56020",
   POR: "#E03A3E", SAC: "#5A2D81", SAS: "#9EA0A2",
-  TOR: "#CE1141", UTA: "#F9A01B", WAS: "#E31837",
+  TOR: "#CE1141", UTA: "#753BBD", WAS: "#E31837",
 };
 const TEAM_IDS: Record<string, number> = {
   ATL: 1610612737, BOS: 1610612738, BKN: 1610612751,
@@ -86,6 +87,26 @@ const TEAM_IDS: Record<string, number> = {
 
 function getAbbr(t: string) { return TEAM_ABBR[t] ?? t.split(" ").pop()?.substring(0, 3).toUpperCase() ?? "???"; }
 function getColor(t: string) { return TEAM_COLORS[getAbbr(t)] ?? "#555"; }
+
+// Secondary team colors, used when both primaries look alike
+const TEAM_ALT_COLORS: Record<string, string> = {
+  ATL: "#C1D32F", BOS: "#BA9653", BKN: "#000000",
+  CHA: "#1D1160", CHI: "#000000", CLE: "#FDBB30",
+  DAL: "#002B5E", DEN: "#0E2240", DET: "#C8102E",
+  GSW: "#1D428A", HOU: "#000000", IND: "#002D62",
+  LAC: "#1D428A", LAL: "#552583", MEM: "#12173F",
+  MIA: "#98002E", MIL: "#0077C0", MIN: "#78BE20",
+  NOP: "#0C2340", NYK: "#006BB6", OKC: "#EF3B24",
+  ORL: "#000000", PHI: "#ED174C", PHX: "#1D1160",
+  POR: "#000000", SAC: "#63727A", SAS: "#000000",
+  TOR: "#000000", UTA: "#000000", WAS: "#002B5C",
+};
+
+/** [away, home] bar colors that stay distinct when the two teams' colors are alike. */
+function barColors(away: string, home: string): [string, string] {
+  const options = (t: string) => { const a = getAbbr(t); return [TEAM_COLORS[a] ?? "#555", ...(TEAM_ALT_COLORS[a] ? [TEAM_ALT_COLORS[a]] : [])]; };
+  return pickMatchupColors(options(away), options(home));
+}
 function getNick(t: string)  { return t.split(" ").pop() ?? t; }
 function getLogoUrl(t: string) {
   const id = TEAM_IDS[getAbbr(t)];
@@ -262,6 +283,7 @@ function GameCard({ game }: { game: TodayGame }) {
   const homeProb = live ? game.live_home_prob! : game.home_win_prob;
   const awayFav = live ? awayProb >= homeProb : game.predicted_winner === game.away_team;
 
+  const [barAway, barHome] = barColors(game.away_team, game.home_team);
   return (
     <Link href={gameUrl(game)} className="block group">
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
@@ -321,8 +343,8 @@ function GameCard({ game }: { game: TodayGame }) {
         </div>
 
         <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
-          <div className="h-full transition-all duration-700" style={{ width: `${awayProb}%`, background: getColor(game.away_team) }} />
-          <div className="h-full flex-1" style={{ background: getColor(game.home_team) }} />
+          <div className="h-full transition-all duration-700" style={{ width: `${awayProb}%`, background: barAway }} />
+          <div className="h-full flex-1" style={{ background: barHome }} />
         </div>
 
         <div className="px-5 py-3 flex items-center justify-between">

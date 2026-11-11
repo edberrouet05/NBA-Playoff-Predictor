@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFitRows } from "../components/useFitRows";
 import Link from "next/link";
+import { pickMatchupColors } from "../components/teamColors";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -70,6 +71,24 @@ export const NFL_COLORS: Record<string, string> = {
 
 export function getAbbr(t: string) { return NFL_ABBR[t] ?? t.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???"; }
 export function getColor(t: string) { return NFL_COLORS[getAbbr(t)] ?? "#555"; }
+
+// Secondary team colors, used when both primaries look alike (e.g. PIT black vs CLE brown)
+const NFL_ALT_COLORS: Record<string, string> = {
+  ARI: "#ffb612", ATL: "#000000", BAL: "#9e7c0c", BUF: "#c60c30",
+  CAR: "#101820", CHI: "#c83803", CIN: "#000000", CLE: "#ff3c00",
+  DAL: "#869397", DEN: "#fb4f14", DET: "#b0b7bc", GB:  "#ffb612",
+  HOU: "#a71930", IND: "#a2aaad", JAX: "#d7a22a", KC:  "#ffb81c",
+  LV:  "#a5acaf", LAC: "#ffc20e", LAR: "#ffa300", MIA: "#fc4c02",
+  MIN: "#ffc62f", NE:  "#c60c30", NO:  "#101820", NYG: "#a71930",
+  NYJ: "#000000", PHI: "#a5acaf", PIT: "#ffb612", SF:  "#b3995d",
+  SEA: "#69be28", TB:  "#34302b", TEN: "#0c2340", WSH: "#ffb612",
+};
+
+/** [away, home] bar colors that stay distinct when the two teams' colors are alike. */
+function barColors(away: string, home: string): [string, string] {
+  const options = (t: string) => { const a = getAbbr(t); return [NFL_COLORS[a] ?? "#555", ...(NFL_ALT_COLORS[a] ? [NFL_ALT_COLORS[a]] : [])]; };
+  return pickMatchupColors(options(away), options(home));
+}
 export function getNick(t: string) { return t.split(" ").slice(-1)[0]; }
 export function getLogoUrl(t: string): string {
   const abbr = getAbbr(t);
@@ -146,6 +165,7 @@ function GameCard({ game }: { game: NFLGame }) {
   const awayWins = isFinal && game.away_score !== null && game.home_score !== null && game.away_score > game.home_score;
   const homeWins = isFinal && game.away_score !== null && game.home_score !== null && game.home_score > game.away_score;
 
+  const [barAway, barHome] = barColors(game.away_team, game.home_team);
   return (
     <Link href={gameUrl(game)} className="block group">
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
@@ -189,8 +209,8 @@ function GameCard({ game }: { game: NFLGame }) {
         </div>
 
         <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
-          <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: getColor(game.away_team) }} />
-          <div className="h-full flex-1" style={{ background: getColor(game.home_team) }} />
+          <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: barAway }} />
+          <div className="h-full flex-1" style={{ background: barHome }} />
         </div>
 
         {!isFinal && (

@@ -91,7 +91,7 @@ const TEAM_COLORS: Record<string, string> = {
   NOP: "#C8A956", NYK: "#F58426", OKC: "#007AC1",
   ORL: "#0077C0", PHI: "#006BB6", PHX: "#E56020",
   POR: "#E03A3E", SAC: "#5A2D81", SAS: "#9EA0A2",
-  TOR: "#CE1141", UTA: "#F9A01B", WAS: "#E31837",
+  TOR: "#CE1141", UTA: "#753BBD", WAS: "#E31837",
 };
 
 // Secondary team colors, used when both primaries look alike
@@ -105,7 +105,7 @@ const TEAM_ALT_COLORS: Record<string, string> = {
   NOP: "#0C2340", NYK: "#006BB6", OKC: "#EF3B24",
   ORL: "#000000", PHI: "#ED174C", PHX: "#1D1160",
   POR: "#000000", SAC: "#63727A", SAS: "#000000",
-  TOR: "#000000", UTA: "#002B5C", WAS: "#002B5C",
+  TOR: "#000000", UTA: "#000000", WAS: "#002B5C",
 };
 
 function getAbbr(t: string) { return TEAM_ABBR[t] ?? t.split(" ").pop()?.substring(0, 3).toUpperCase() ?? "???"; }

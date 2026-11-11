@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFitRows } from "../components/useFitRows";
 import Link from "next/link";
+import { pickMatchupColors } from "../components/teamColors";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 import { teamHref } from "../components/teamLinks";
 
@@ -71,6 +72,24 @@ const MLB_LOGO_IDS: Record<string, number> = {
 
 function getAbbr(t: string)  { return MLB_ABBR[t] ?? t.split(" ").pop()?.slice(0, 3).toUpperCase() ?? "???"; }
 function getColor(t: string) { return MLB_COLORS[getAbbr(t)] ?? "#555"; }
+
+// Secondary team colors, used when both primaries look alike
+const MLB_ALT_COLORS: Record<string, string> = {
+  ARI: "#30CED8", ATL: "#13274F", BAL: "#000000", BOS: "#0C2340",
+  CHC: "#CC3433", CWS: "#8A8D8F", CIN: "#000000", CLE: "#0C2340",
+  COL: "#000000", DET: "#FA4616", HOU: "#EB6E1F", KC:  "#BD9B60",
+  LAA: "#003263", LAD: "#EF3E42", MIA: "#EF3340", MIL: "#FFC52F",
+  MIN: "#D31145", NYM: "#FF5910", NYY: "#8A8D8F", OAK: "#EFB21E",
+  PHI: "#002D72", PIT: "#27251F", SD:  "#FFC425", SF:  "#27251F",
+  SEA: "#005C5C", STL: "#0C2340", TB:  "#8FBCE6", TEX: "#C0111F",
+  TOR: "#E8291C", WSH: "#14225A",
+};
+
+/** [away, home] bar colors that stay distinct when the two teams' colors are alike. */
+function barColors(away: string, home: string): [string, string] {
+  const options = (t: string) => { const a = getAbbr(t); return [MLB_COLORS[a] ?? "#555", ...(MLB_ALT_COLORS[a] ? [MLB_ALT_COLORS[a]] : [])]; };
+  return pickMatchupColors(options(away), options(home));
+}
 function getNick(t: string)  {
   // "Red Sox" / "White Sox" / "Blue Jays": the last word alone is ambiguous or odd
   const words = t.split(" ");
@@ -131,6 +150,7 @@ function GameCard({ game }: { game: MLBGame }) {
 
   const href = `/mlb/game/${game.game_id}?away=${encodeURIComponent(game.away_team)}&home=${encodeURIComponent(game.home_team)}&status=${encodeURIComponent(game.status)}`;
 
+  const [barAway, barHome] = barColors(game.away_team, game.home_team);
   return (
     <Link href={href} className="block group">
     <div className={`bg-white dark:bg-gray-900 border shadow-sm rounded-2xl overflow-hidden transition-shadow group-hover:shadow-md ${
@@ -217,8 +237,8 @@ function GameCard({ game }: { game: MLBGame }) {
 
       {/* Probability bar */}
       <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
-        <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: getColor(game.away_team) }} />
-        <div className="h-full flex-1" style={{ background: getColor(game.home_team) }} />
+        <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: barAway }} />
+        <div className="h-full flex-1" style={{ background: barHome }} />
       </div>
 
       {/* Pitcher matchup row */}
