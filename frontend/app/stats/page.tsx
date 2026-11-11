@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { CalibrationChart, ProbabilityQuality, type CalibrationBin } from "../components/ModelQuality";
+import { FoldBars, Metric, seasonSpan } from "../components/ModelStatsBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -67,70 +68,6 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   );
 }
 
-// ── Metric card ────────────────────────────────────────────────────────────────
-
-function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 text-center">
-      <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-2">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
-    </div>
-  );
-}
-
-// ── Season fold bars ───────────────────────────────────────────────────────────
-
-function FoldBars({ folds, avg, seasons }: { folds: number[]; avg: number; seasons: number[] }) {
-  if (!folds.length) return null;
-  const max    = Math.max(...folds);
-  const min    = Math.min(...folds);
-  const range  = max - min || 1;
-  // Scale so shortest bar = 40% height, tallest = 100%
-  const height = (v: number) => 40 + ((v - min) / range) * 60;
-  // Season year 2026 = the 2025-26 season
-  const label = (i: number) => seasons.length === folds.length
-    ? `'${String(seasons[i] - 1).slice(2)}-${String(seasons[i]).slice(2)}` : `Fold ${i + 1}`;
-
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
-      <div className="flex items-start justify-between mb-5 gap-6">
-        <div>
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Accuracy by season</h2>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Each bar shows how accurate the model was on one season when trained only on the other seasons.
-          </p>
-        </div>
-        <span className="text-xs text-gray-400 flex-shrink-0">avg <span className="font-bold text-gray-700 dark:text-gray-200">{avg.toFixed(2)}%</span></span>
-      </div>
-
-      <div className="flex gap-2 mb-1">
-        {folds.map((acc, i) => (
-          <div key={i} className="flex-1 text-center">
-            <span className={`text-[10px] font-bold ${acc === max ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}>
-              {acc.toFixed(1)}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-end gap-2" style={{ height: 64 }}>
-        {folds.map((acc, i) => (
-          <div key={i} className="flex-1 rounded-t-md" style={{ height: `${height(acc)}%`, background: acc === max ? "#ef4444" : "#e5e7eb" }} />
-        ))}
-      </div>
-
-      <div className="flex gap-2 mt-1.5">
-        {folds.map((_, i) => (
-          <div key={i} className="flex-1 text-center" title={`Held-out season ${label(i)}`}>
-            <span className="text-[9px] text-gray-400">{label(i)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function NBAStatsPage() {
@@ -174,11 +111,11 @@ export default function NBAStatsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Model Stats</h1>
         <p className="text-gray-500 text-sm mt-1">
-          How well the NBA prediction model performs · trained on the {first - 1}-{String(first).slice(2)} to {last - 1}-{String(last).slice(2)} seasons
+          How well the NBA prediction model performs · trained on {seasonSpan(data.seasons, true)}
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-5">
         <Metric label="Prediction Accuracy" value={`${data.accuracy}%`} sub="on seasons it hadn't seen" />
         <Metric label="Games analyzed"      value={Math.round(data.n_rows / 2).toLocaleString()} sub={`across ${data.seasons.length} seasons`} />
         <Metric label="vs XGBoost"          value={xgbAcc != null ? `${(xgbAcc * 100).toFixed(2)}%` : "—"} sub="the simpler model wins" />
@@ -186,7 +123,7 @@ export default function NBAStatsPage() {
 
       {data.cv_folds.length > 0 && (
         <div className="mb-5">
-          <FoldBars folds={data.cv_folds} avg={data.accuracy} seasons={data.seasons} />
+          <FoldBars folds={data.cv_folds} avg={data.accuracy} seasons={data.seasons} split={true} />
         </div>
       )}
 

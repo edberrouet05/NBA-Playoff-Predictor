@@ -25,7 +25,7 @@ export interface VegasComparison {
 
 // ── Calibration chart ──────────────────────────────────────────────────────────
 
-const W = 320, H = 240, PAD_L = 36, PAD_B = 28, PAD_T = 8, PAD_R = 8;
+const W = 320, H = 240, PAD_L = 36, PAD_B = 28, PAD_T = 8, PAD_R = 16;   // room for the centered "100%" tick
 const x = (v: number) => PAD_L + v * (W - PAD_L - PAD_R);
 const y = (v: number) => PAD_T + (1 - v) * (H - PAD_T - PAD_B);
 const ACCENT = "#ef4444"; // site accent (red-500)
