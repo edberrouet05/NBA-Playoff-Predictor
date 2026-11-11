@@ -180,8 +180,65 @@ function PickList({ items, empty }: { items: { g: TodayGame; side: "away" | "hom
 
 interface Tally { correct: number; n: number }
 interface DayRecord extends Tally { date: string; by_sport: Partial<Record<League, Tally>> }
-interface SportRecord extends Tally { sport: League; accuracy: number; in_season: boolean }
-interface HomeSummary { today: string; days: DayRecord[]; yesterday: Tally & { date: string }; sports: SportRecord[] }
+interface SportRecord extends Tally {
+  sport: League; accuracy: number; in_season: boolean;
+  sure: Tally;                                          // picks at sure_pick% or more
+  value_bets: { n: number; won: number; units: number }; // 1 unit on each value pick
+}
+interface Brief {
+  sport: League; game_id: string; pick: string; prob: number; correct: boolean;
+  away_team: string; home_team: string; away_score: number | null; home_score: number | null;
+}
+interface HomeSummary {
+  today: string; days: DayRecord[]; sure_pick: number; sports: SportRecord[];
+  yesterday: Tally & { date: string; by_sport: Partial<Record<League, Tally>>; best: Brief[]; misses: Brief[] };
+}
+
+const STAKE = 10;   // dollars per value pick in the "if you had bet" tile
+
+function briefHref(b: Brief): string {
+  const q = new URLSearchParams({ away: b.away_team, home: b.home_team, status: "Final" }).toString();
+  return b.sport === "nhl" ? `/nhl/game/${b.game_id}` : b.sport === "nba" ? `/game/${b.game_id}?${q}` : `/${b.sport}/game/${b.game_id}?${q}`;
+}
+
+/** Yesterday in a few lines: the record by sport, our surest hits and our biggest misses. */
+function YesterdayCard({ y, sport }: { y: HomeSummary["yesterday"]; sport: League | "all" }) {
+  const keep = (b: Brief) => sport === "all" || b.sport === sport;
+  const best = y.best.filter(keep).slice(0, 1), misses = y.misses.filter(keep).slice(0, 2);
+  const line = (b: Brief) => {
+    const pickHome = b.pick === b.home_team;
+    const opp = pickHome ? b.away_team : b.home_team;
+    const [ps, os] = pickHome ? [b.home_score, b.away_score] : [b.away_score, b.home_score];
+    const nick = (n: string) => n.split(" ").slice(-1)[0];
+    return (
+      <Link key={b.sport + b.game_id} href={briefHref(b)}
+        className="flex items-center gap-3 px-2 py-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <span className={`w-5 text-center font-bold ${b.correct ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{b.correct ? "✓" : "✗"}</span>
+        <span className="w-9"><SportTag sport={b.sport} /></span>
+        <span className="text-sm text-gray-700 dark:text-gray-300 min-w-0 truncate">
+          <b className="text-gray-900 dark:text-white">{nick(b.pick)} {b.prob}%</b>
+          {" · "}{b.correct ? "beat" : "lost to"} {nick(opp)}{ps != null && os != null ? ` ${ps}-${os}` : ""}
+        </span>
+        <span className="flex-1" />
+        <span className="text-[10px] text-gray-400 uppercase tracking-wide whitespace-nowrap hidden sm:inline">{b.correct ? "Surest hit" : "Biggest miss"}</span>
+      </Link>
+    );
+  };
+  const sports = (Object.entries(y.by_sport) as [League, Tally][]).filter(([s]) => sport === "all" || s === sport);
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Yesterday · {dayLabel(y.date, true)}</h2>
+        <div className="flex gap-3 text-[11px] text-gray-500">
+          {sports.map(([s, r]) => <span key={s}>{SPORT_LABEL[s]} <b className="text-gray-800 dark:text-gray-200 tabular-nums">{r.correct}/{r.n}</b></span>)}
+        </div>
+      </div>
+      {best.length + misses.length === 0
+        ? <p className="text-xs text-gray-400 py-2">No games yesterday.</p>
+        : <div className="flex flex-col">{[...best, ...misses].map(line)}</div>}
+    </div>
+  );
+}
 
 const pct = (t: Tally) => (t.n ? `${Math.round((t.correct / t.n) * 100)}%` : "—");
 const add = (a: Tally, b: Tally): Tally => ({ correct: a.correct + b.correct, n: a.n + b.n });
@@ -313,7 +370,11 @@ export default function TodayPage() {
   // Our record for the selected sport (all: every sport)
   const days = (summary?.days ?? []).map(d => ({ date: d.date, ...(sport === "all" ? d : d.by_sport[sport] ?? NONE) }));
   const yday = summary ? days.find(d => d.date === summary.yesterday.date) ?? NONE : null;
-  const season = summary?.sports.filter(s => (sport === "all" ? s.in_season : s.sport === sport)).reduce(add, NONE);
+  const counted = summary?.sports.filter(s => (sport === "all" ? s.in_season : s.sport === sport));
+  const season = counted?.reduce(add, NONE);
+  const sure = counted?.map(s => s.sure).reduce(add, NONE);
+  const bets = counted?.reduce((a, s) => ({ n: a.n + s.value_bets.n, won: a.won + s.value_bets.won, units: a.units + s.value_bets.units }),
+    { n: 0, won: 0, units: 0 });
 
   return (
     <main className="px-4 md:px-6 py-6 md:py-8">
@@ -349,7 +410,7 @@ export default function TodayPage() {
 
       {!error && !loading && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
             <StatTile label="Games today" value={shown.length}
               sub={`${shown.filter(g => g.state === "in").length} live · ${shown.filter(g => g.state === "pre").length} to come`} />
             <StatTile label="Yesterday" value={yday ? (yday.n ? `${yday.correct}/${yday.n}` : "—") : "…"}
@@ -357,12 +418,19 @@ export default function TodayPage() {
             <StatTile label={`Last ${days.length || 14} days`} value={summary ? pct(days.reduce(add, NONE)) : "…"} sub="of our picks right" />
             <StatTile label="This season" value={season ? pct(season) : "…"}
               sub={season ? `${season.correct.toLocaleString()} of ${season.n.toLocaleString()} picks` : ""} />
+            <StatTile label={`Picks at ${summary?.sure_pick ?? 70}%+`} value={sure ? pct(sure) : "…"}
+              sub={sure ? `${sure.correct} of ${sure.n} right this season` : ""} />
+            <StatTile label="Value picks"
+              value={bets ? (bets.n ? <span className={bets.units >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                {bets.units >= 0 ? "+" : "−"}${Math.abs(bets.units * STAKE).toFixed(0)}</span> : "—") : "…"}
+              sub={bets ? (bets.n ? `$${STAKE} on each of ${bets.n} · ${bets.won} won` : "none yet this season") : ""} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 flex flex-col gap-5">
               {summary ? <RecordChart rows={days} sport={sport} sports={summary.sports} />
                 : <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 text-center text-gray-400 text-sm h-full">Loading our record…</div>}
+              {summary && <YesterdayCard y={summary.yesterday} sport={sport} />}
             </div>
             <div className="flex flex-col">
               <Section title="Most confident picks">

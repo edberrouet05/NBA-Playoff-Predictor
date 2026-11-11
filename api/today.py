@@ -4,11 +4,14 @@ import datetime
 import urllib.parse
 import zoneinfo
 
+import time
+
 from api.common import _game_day, _parallel, app
 from api.mlb import get_mlb_predictions_log, get_mlb_today
 from api.nba import get_predictions_log, get_today_games
 from api.nfl import get_nfl_predictions_log, get_nfl_week
 from api.nhl import get_nhl_predictions_log, get_nhl_today
+from api.record import _performance_payload
 from api.teams import _resolve_espn_team
 
 _ET = zoneinfo.ZoneInfo("America/New_York")
@@ -115,6 +118,9 @@ def get_today_all():
 
 
 SUMMARY_DAYS = 14
+SURE_PICK = 70          # "when we are very sure": picks at this probability or more
+_SUMMARY_TTL = 300.0    # results change only as games end
+_summary_cache: tuple[float, dict] | None = None
 
 
 @app.get("/api/home_summary")
@@ -122,6 +128,9 @@ def get_home_summary():
     """Our record for the home page, every sport together: day by day over the last two weeks,
     yesterday, and the season by sport. Fair picks only, as on the Record pages (frozen before the
     game or from pre-game rows, never recomputed after it)."""
+    global _summary_cache
+    if _summary_cache and time.time() - _summary_cache[0] < _SUMMARY_TTL:
+        return _summary_cache[1]
     today = _game_day()
     since = (today - datetime.timedelta(days=SUMMARY_DAYS - 1)).isoformat()
     yesterday = (today - datetime.timedelta(days=1)).isoformat()
@@ -146,8 +155,17 @@ def get_home_summary():
             continue
         recent = [g for g in games if g["date"] >= since]
         # In season: a pick in the last two weeks (the MLB after the World Series is not)
+        sure = [g for g in games if g["predicted_prob"] >= SURE_PICK]
+        try:
+            bets = (_performance_payload(sport, games).get("market") or {}).get("value_bets") or {}
+        except Exception:
+            bets = {}
         sports.append({"sport": sport, "n": len(games), "correct": sum(bool(g["correct"]) for g in games),
-                       "in_season": bool(recent)})
+                       "in_season": bool(recent),
+                       # Picks we gave SURE_PICK% or more, and how they did
+                       "sure": {"n": len(sure), "correct": sum(bool(g["correct"]) for g in sure)},
+                       # Our value bets on games with a stored pre-game line: 1 unit each
+                       "value_bets": {"n": bets.get("n", 0), "won": bets.get("won", 0), "units": bets.get("units", 0.0)}})
         for g in recent:
             d = days.get(g["date"])
             if d is None:
@@ -160,9 +178,31 @@ def get_home_summary():
             s["n"] += 1
     for s in sports:
         s["accuracy"] = round(s["correct"] / s["n"] * 100, 1)
-    return {
+
+    # Yesterday's games: our surest hit and our biggest miss (highest-confidence wrong pick)
+    def brief(sport: str, g: dict) -> dict:
+        return {"sport": sport, "game_id": str(g["game_id"]), "pick": g["predicted_winner"],
+                "prob": g["predicted_prob"], "correct": bool(g["correct"]),
+                "away_team": g["away_team"], "home_team": g["home_team"],
+                "away_score": g.get("away_score"), "home_score": g.get("home_score")}
+    played = [(s, g) for s, games in logs.items() for g in games if g["date"] == yesterday]
+    hits = sorted((x for x in played if x[1]["correct"]), key=lambda x: -x[1]["predicted_prob"])
+    misses = sorted((x for x in played if not x[1]["correct"]), key=lambda x: -x[1]["predicted_prob"])
+    by_sport_yday = {}
+    for s, g in played:
+        r = by_sport_yday.setdefault(s, {"correct": 0, "n": 0})
+        r["correct"] += int(bool(g["correct"]))
+        r["n"] += 1
+
+    result = {
         "today": today.isoformat(),
         "days": [{"date": d, **v} for d, v in sorted(days.items())],
-        "yesterday": {"date": yesterday, **{k: days[yesterday][k] for k in ("correct", "n")}},
+        "yesterday": {"date": yesterday, **{k: days[yesterday][k] for k in ("correct", "n")},
+                      "by_sport": by_sport_yday,
+                      "best": [brief(s, g) for s, g in hits[:2]],
+                      "misses": [brief(s, g) for s, g in misses[:2]]},
+        "sure_pick": SURE_PICK,
         "sports": sports,
     }
+    _summary_cache = (time.time(), result)
+    return result
