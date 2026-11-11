@@ -952,7 +952,8 @@ def _fetch_day(
             except Exception:
                 continue
             if fetch_injuries and g["state"] == "pre":
-                _nba_record_pred(g["game_id"], away_name, home_name, p_away, g["start_utc"])
+                _nba_record_pred(g["game_id"], away_name, home_name, p_away, g["start_utc"],
+                                 (_nba_projected_score(away_name, home_name, 1 - p_away) or {}).get("total"))
 
         away_impact = round((_adjust_for_injuries(p_raw, inj_away, 1.0) - p_raw) * 100, 1) if inj_away != 1.0 else 0.0
         home_impact = round((p_raw - _adjust_for_injuries(p_raw, 1.0, inj_home)) * 100, 1) if inj_home != 1.0 else 0.0
@@ -980,7 +981,9 @@ def _fetch_day(
             "away_win_prob":       round(p_away * 100, 1),
             "home_win_prob":       round((1 - p_away) * 100, 1),
             "predicted_winner":    away_name if p_away >= 0.5 else home_name,
-            "projected_total":     (_nba_projected_score(away_name, home_name, 1 - p_away) or {}).get("total"),
+            # Before tip-off today's projection; after, only the one frozen before the game
+            "projected_total":     ((_nba_projected_score(away_name, home_name, 1 - p_away) or {}).get("total")
+                                    if g["state"] == "pre" else (frozen or {}).get("projected_total")),
             "away_injury_impact":  away_impact,
             "home_injury_impact":  home_impact,
             "away_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(away_name, [])],
@@ -1411,16 +1414,18 @@ def _nba_known_pred(game_id) -> dict | None:
     return _nba_frozen_preds.get(str(game_id)) if game_id else None
 
 
-def _nba_record_pred(game_id: str, away: str, home: str, p_away: float, tipoff: str) -> None:
-    """Write down (or refresh) the pre-game prediction of a game that has not started."""
+def _nba_record_pred(game_id: str, away: str, home: str, p_away: float, tipoff: str,
+                     total: int | None = None) -> None:
+    """Write down (or refresh) the pre-game prediction of a game that has not started, with
+    its projected total."""
     away_pct = round(p_away * 100, 1)
     old = _nba_frozen_preds.get(str(game_id))
-    if old and old.get("away_win_prob") == away_pct:
+    if old and old.get("away_win_prob") == away_pct and old.get("projected_total") == total:
         return
     _nba_frozen_preds[str(game_id)] = {
         "away_team": away, "home_team": home,
         "away_win_prob": away_pct, "home_win_prob": round(100 - away_pct, 1),
-        "predicted_winner": away if away_pct >= 50 else home,
+        "predicted_winner": away if away_pct >= 50 else home, "projected_total": total,
         "tipoff": tipoff, "frozen_at": _time_mod.strftime("%Y-%m-%dT%H:%M:%SZ", _time_mod.gmtime()),
     }
     _save_nba_frozen_preds()
@@ -1587,6 +1592,19 @@ def _nba_projected_score(away: str, home: str, p_home: float) -> dict | None:
             "total": round(total), "margin": round(margin, 1), "pace": round(pace, 1)}
 
 
+def _nba_game_projection(game_id: str, away: str, home: str, p_home: float, state: str) -> dict | None:
+    """The game page's projected score: today's before tip-off; once the game has started, the
+    total frozen before it (none for older games without one), split by the pre-game pick."""
+    pr = _nba_projected_score(away, home, p_home)
+    if pr is None or state == "pre":
+        return pr
+    frozen = _nba_known_pred(game_id)
+    total = (frozen or {}).get("projected_total")
+    if total is None or (frozen["away_team"], frozen["home_team"]) != (away, home):
+        return None
+    return {**pr, "away": round((total - pr["margin"]) / 2), "home": round((total + pr["margin"]) / 2), "total": total}
+
+
 _nba_roster_cache: dict[str, tuple[float, set[str]]] = {}
 _NBA_ROSTER_TTL = 6 * 3600.0
 
@@ -1718,7 +1736,7 @@ def get_nba_game_live(game_id: str):
         "away_stats": team_stats.get(away, {}), "home_stats": team_stats.get(home, {}),
         "away_players": players.get(away, []), "home_players": players.get(home, []),
         "explanation": _nba_explain(a, b),
-        "projection": _nba_projected_score(away, home, p_home),
+        "projection": _nba_game_projection(game_id, away, home, p_home, state),
         "form": {side: _nba_team_form(t, season_games, comp.get("date", "") or "9999")
                  for side, t in (("away", away), ("home", home))},
         "h2h": _nba_head_to_head(away, home, game_id),

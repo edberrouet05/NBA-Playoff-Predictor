@@ -129,6 +129,21 @@ def _nfl_projected_score(away: str, home: str, home_wp: float) -> dict | None:
     return {"away": round((total - margin) / 2), "home": round((total + margin) / 2), "total": round(total)}
 
 
+def _nfl_game_projection(game_id: str, away: str, home: str, home_wp: float | None, state: str) -> dict | None:
+    """The game page's projected score: this week's before kickoff; once the game has started, the
+    total frozen before it (none for older games without one), split by the pre-game pick."""
+    if home_wp is None:
+        return None
+    pr = _nfl_projected_score(away, home, home_wp)
+    if pr is None or state == "pre":
+        return pr
+    total = (_nfl_frozen_preds.get(str(game_id)) or {}).get("projected_total")
+    if total is None:
+        return None
+    margin = pr["home"] - pr["away"]
+    return {"away": round((total - margin) / 2), "home": round((total + margin) / 2), "total": total}
+
+
 NFL_FROZEN_PREDS_PATH = ROOT / "data" / "nfl" / "nfl_frozen_predictions.json"
 
 
@@ -500,7 +515,8 @@ def _fetch_nfl_week() -> dict:
             away_wp, home_wp, pred_winner = pred
             if status.get("state", "pre") == "pre":
                 entry = {"away_team": away_name, "home_team": home_name, "kickoff": ev.get("date", ""),
-                         "away_win_prob": away_wp, "home_win_prob": home_wp, "predicted_winner": pred_winner}
+                         "away_win_prob": away_wp, "home_win_prob": home_wp, "predicted_winner": pred_winner,
+                         "projected_total": (_nfl_projected_score(away_name, home_name, home_wp) or {}).get("total")}
                 if not frozen or any(frozen.get(k) != v for k, v in entry.items()):
                     _nfl_frozen_preds[gid_str] = {**entry, "frozen_at": _time_mod.strftime("%Y-%m-%dT%H:%M:%SZ", _time_mod.gmtime())}
                     _save_nfl_frozen_preds()
@@ -526,7 +542,9 @@ def _fetch_nfl_week() -> dict:
             "away_win_prob":    away_wp,
             "home_win_prob":    home_wp,
             "predicted_winner": pred_winner,
-            "projected_total":  (_nfl_projected_score(away_name, home_name, home_wp) or {}).get("total"),
+            # Before kickoff this week's projection; after, only the one frozen before the game
+            "projected_total":  ((_nfl_projected_score(away_name, home_name, home_wp) or {}).get("total")
+                                 if status.get("state", "pre") == "pre" else (frozen or {}).get("projected_total")),
             "away_odds":        game_odds.get("away_odds"),
             "home_odds":        game_odds.get("home_odds"),
             **_value_bet(away_wp, home_wp, game_odds.get("away_odds"), game_odds.get("home_odds")),
@@ -1397,7 +1415,7 @@ def get_nfl_game_detail(game_id: str):
             "away_win_prob": away_wp,
             "home_win_prob": home_wp,
             "win_prob_history": history,
-            "projection":    _nfl_projected_score(away_name, home_name, home_wp) if home_wp is not None else None,
+            "projection":    _nfl_game_projection(game_id, away_name, home_name, home_wp, status.get("state", "pre")),
             "away_stats":    away_stats_out,
             "home_stats":    home_stats_out,
             "explanation":   _nfl_explain(_load_nfl_model(), _load_nfl_stats(), away_name, home_name, game_id),

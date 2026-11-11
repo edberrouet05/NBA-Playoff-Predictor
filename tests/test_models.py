@@ -61,3 +61,10 @@ def test_projected_score_is_plausible_and_agrees_with_the_pick(api, sport, away,
         assert low < pr["total"] < high
         assert pr["away"] + pr["home"] == pytest.approx(pr["total"], abs=1)
         assert (pr["home"] > pr["away"]) == (p_home > 0.5)
+
+
+def test_started_games_only_show_a_total_frozen_before_the_game(api):
+    pre = api._nba_game_projection("no-such-game", "Miami Heat", "Utah Jazz", 0.3, "pre")
+    assert pre["total"] > 0
+    assert api._nba_game_projection("no-such-game", "Miami Heat", "Utah Jazz", 0.3, "post") is None
+    assert api._nfl_game_projection("no-such-game", "Buffalo Bills", "Kansas City Chiefs", 55.0, "post") is None
