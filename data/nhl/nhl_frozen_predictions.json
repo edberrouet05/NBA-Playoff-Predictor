@@ -152,5 +152,71 @@
   "home_win_prob": 57.8,
   "predicted_winner": "Los Angeles Kings",
   "puck_drop": "2026-11-11T03:00Z"
+ },
+ "401892690": {
+  "away_goalie": "Andrei Vasilevskiy",
+  "away_team": "Tampa Bay Lightning",
+  "away_win_prob": 58.3,
+  "frozen_at": "2026-11-11T22:41:32Z",
+  "home_goalie": "Ukko-Pekka Luukkonen",
+  "home_team": "Buffalo Sabres",
+  "home_win_prob": 41.7,
+  "predicted_winner": "Tampa Bay Lightning",
+  "puck_drop": "2026-11-12T00:00Z"
+ },
+ "401892691": {
+  "away_goalie": "Joonas Korpisalo",
+  "away_team": "New York Rangers",
+  "away_win_prob": 51.5,
+  "frozen_at": "2026-11-11T22:41:32Z",
+  "home_goalie": "Devin Cooley",
+  "home_team": "Calgary Flames",
+  "home_win_prob": 48.5,
+  "predicted_winner": "New York Rangers",
+  "puck_drop": "2026-11-12T00:30Z"
+ },
+ "401892692": {
+  "away_goalie": "Dan Vladar",
+  "away_team": "Philadelphia Flyers",
+  "away_win_prob": 38.7,
+  "frozen_at": "2026-11-11T22:41:32Z",
+  "home_goalie": "Tristan Jarry",
+  "home_team": "Edmonton Oilers",
+  "home_win_prob": 61.3,
+  "predicted_winner": "Edmonton Oilers",
+  "puck_drop": "2026-11-12T02:00Z"
+ },
+ "401892693": {
+  "away_goalie": "Sebastian Cossa",
+  "away_team": "Utah Mammoth",
+  "away_win_prob": 48.2,
+  "frozen_at": "2026-11-11T22:41:33Z",
+  "home_goalie": "Carter Hart",
+  "home_team": "Vegas Golden Knights",
+  "home_win_prob": 51.8,
+  "predicted_winner": "Vegas Golden Knights",
+  "puck_drop": "2026-11-12T02:30Z"
+ },
+ "401892694": {
+  "away_goalie": "Justus Annunen",
+  "away_team": "Nashville Predators",
+  "away_win_prob": 31.4,
+  "frozen_at": "2026-11-11T22:41:34Z",
+  "home_goalie": "Laurent Brossoit",
+  "home_team": "Anaheim Ducks",
+  "home_win_prob": 68.6,
+  "predicted_winner": "Anaheim Ducks",
+  "puck_drop": "2026-11-12T03:00Z"
+ },
+ "401892695": {
+  "away_goalie": "Sergei Murashov",
+  "away_team": "Pittsburgh Penguins",
+  "away_win_prob": 59.2,
+  "frozen_at": "2026-11-11T22:41:34Z",
+  "home_goalie": "Yaroslav Askarov",
+  "home_team": "San Jose Sharks",
+  "home_win_prob": 40.8,
+  "predicted_winner": "Pittsburgh Penguins",
+  "puck_drop": "2026-11-12T03:00Z"
  }
 }
