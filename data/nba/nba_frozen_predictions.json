@@ -1378,28 +1378,28 @@
  },
  "401909962": {
   "away_team": "LA Clippers",
-  "away_win_prob": 47.7,
-  "frozen_at": "2026-11-10T08:46:20Z",
+  "away_win_prob": 50.5,
+  "frozen_at": "2026-11-11T01:34:47Z",
   "home_team": "Phoenix Suns",
-  "home_win_prob": 52.3,
-  "predicted_winner": "Phoenix Suns",
+  "home_win_prob": 49.5,
+  "predicted_winner": "LA Clippers",
   "tipoff": "2026-11-11T02:00Z"
  },
  "401909963": {
   "away_team": "Miami Heat",
-  "away_win_prob": 70.8,
-  "frozen_at": "2026-11-10T08:46:20Z",
+  "away_win_prob": 75.2,
+  "frozen_at": "2026-11-11T01:34:47Z",
   "home_team": "Utah Jazz",
-  "home_win_prob": 29.2,
+  "home_win_prob": 24.8,
   "predicted_winner": "Miami Heat",
   "tipoff": "2026-11-11T02:00Z"
  },
  "401909964": {
   "away_team": "Orlando Magic",
-  "away_win_prob": 62.3,
-  "frozen_at": "2026-11-10T08:46:20Z",
+  "away_win_prob": 59.6,
+  "frozen_at": "2026-11-11T01:34:47Z",
   "home_team": "Sacramento Kings",
-  "home_win_prob": 37.7,
+  "home_win_prob": 40.4,
   "predicted_winner": "Orlando Magic",
   "tipoff": "2026-11-11T03:00Z"
  },
