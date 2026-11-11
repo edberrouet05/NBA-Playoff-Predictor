@@ -8,7 +8,7 @@ import time
 
 from api.common import _game_day, _parallel, app
 from api.mlb import get_mlb_predictions_log, get_mlb_today
-from api.nba import get_predictions_log, get_today_games
+from api.nba import _fetch_day, _load_model, _load_stats_by_name, get_predictions_log, get_today_games
 from api.nfl import get_nfl_predictions_log, get_nfl_week
 from api.nhl import get_nhl_predictions_log, get_nhl_today
 from api.teams import _resolve_espn_team
@@ -40,9 +40,14 @@ def _game(sport: str, game_id, state: str, start_utc: str, status_text: str, awa
     }
 
 
-def _nba(today: str) -> list[dict]:
+def _nba(day: str) -> list[dict]:
     out = []
-    for g in get_today_games()["games"]:
+    if day == _game_day().isoformat():
+        games = get_today_games()["games"]
+    else:
+        y, m, d = day.split("-")
+        games = _fetch_day(f"{m}/{d}/{y}", _load_model(), _load_stats_by_name())["games"]
+    for g in games:
         state = {"Live": "in", "Final": "post"}.get(g["status"], "pre")
         q = {"away": g["away_team"], "home": g["home_team"], "time": g["status_text"], "status": g["status"],
              "away_prob": g["away_win_prob"], "home_prob": g["home_win_prob"], "winner": g["predicted_winner"],
@@ -54,9 +59,9 @@ def _nba(today: str) -> list[dict]:
     return out
 
 
-def _nhl(today: str) -> list[dict]:
+def _nhl(day: str) -> list[dict]:
     out = []
-    for g in get_nhl_today()["games"]:
+    for g in get_nhl_today(date=day)["games"]:
         a, h = g["away"], g["home"]
         out.append(_game("nhl", g["game_id"], g["state"], g["start_utc"], g["detail"],
                          {"name": a["name"], "abbr": a["abbr"], "logo": a.get("logo"), "score": a.get("score")},
@@ -85,8 +90,10 @@ def _nfl(today: str) -> list[dict]:
     return out
 
 
-def _mlb(today: str) -> list[dict]:
+def _mlb(day: str) -> list[dict]:
     out = []
+    if day != _game_day().isoformat():   # the MLB feed here covers today only
+        return out
     for g in get_mlb_today()["games"]:
         status = g["status"]
         state = "post" if status in ("Final", "Game Over", "Completed") else "in" if status in ("In Progress", "Live") else "pre"
@@ -98,10 +105,11 @@ def _mlb(today: str) -> list[dict]:
 
 
 @app.get("/api/today_all")
-def get_today_all():
-    """Every league's games on today's game day (ET, turning over at 5 am), in one shape.
+def get_today_all(day: str = "today"):
+    """Every league's games on today's game day (ET, turning over at 5 am), in one shape; with
+    day=tomorrow, the next day's (the home page shows their picks once today's have all started).
     A league that fails to answer is left out rather than failing the page."""
-    today = _game_day().isoformat()
+    today = (_game_day() + datetime.timedelta(days=1 if day == "tomorrow" else 0)).isoformat()
 
     def safe(fn):
         def run():

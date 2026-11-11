@@ -332,6 +332,8 @@ export default function TodayPage() {
   const [error, setError] = useState("");
   const [sport, setSport] = useState<League | "all">("all");
   const [summary, setSummary] = useState<HomeSummary | null>(null);
+  // Tomorrow's games, fetched once every game today has started: their picks fill the picks card
+  const [tomorrow, setTomorrow] = useState<TodayGame[] | null>(null);
   const favorites = useFavorites();
   const waking = useWakeHint(loading);
   const anyLive = games.some(g => g.state === "in");
@@ -344,6 +346,13 @@ export default function TodayPage() {
       .finally(() => setLoading(false));
     fetch(`${API}/api/home_summary`).then(r => (r.ok ? r.json() : null)).then(d => { if (d) setSummary(d); }).catch(() => {});
   }, []);
+
+  const allStarted = !loading && !error && !games.some(g => g.state === "pre");
+  useEffect(() => {
+    if (!allStarted || tomorrow !== null) return;
+    fetch(`${API}/api/today_all?day=tomorrow`).then(r => (r.ok ? r.json() : null))
+      .then(d => setTomorrow(d?.games ?? [])).catch(() => setTomorrow([]));
+  }, [allStarted, tomorrow]);
 
   // Live scores and probabilities refresh every 30 s while a game is on
   useEffect(() => {
@@ -362,9 +371,11 @@ export default function TodayPage() {
   const liveGames = others.filter(g => g.state === "in");
   const upcoming = others.filter(g => g.state === "pre");
   const finished = others.filter(g => g.state === "post");
-  const best = shown.filter(g => g.state === "pre" && pick(g))
-    .sort((a, b) => pick(b)!.prob - pick(a)!.prob).slice(0, 5);
-  const value = shown.filter(g => g.state === "pre" && g.value_side && g.value_edge != null)
+  // Picks come from today's games not yet started, or tomorrow's once they all have
+  const nextDay = allStarted && (tomorrow ?? []).length > 0;
+  const pool = (nextDay ? tomorrow! : games).filter(g => (sport === "all" || g.sport === sport) && g.state === "pre");
+  const best = pool.filter(g => pick(g)).sort((a, b) => pick(b)!.prob - pick(a)!.prob).slice(0, 5);
+  const value = pool.filter(g => g.value_side && g.value_edge != null)
     .sort((a, b) => (b.value_ev ?? 0) - (a.value_ev ?? 0));
   const order = (g: TodayGame) => (g.state === "in" ? 0 : g.state === "pre" ? 1 : 2);
   // Our record for the selected sport (all: every sport)
@@ -429,12 +440,15 @@ export default function TodayPage() {
               {summary && <YesterdayCard y={summary.yesterday} sport={sport} />}
               {best.length + value.length > 0 ? (
                 <div>
-                <Section title="Most confident picks">
+                {nextDay && (
+                  <p className="text-[11px] text-gray-400 mb-3">Every game today has started · here are <b className="text-gray-600 dark:text-gray-300">tomorrow&apos;s</b> picks</p>
+                )}
+                <Section title={nextDay ? "Tomorrow · most confident" : "Most confident picks"}>
                   <PickList empty="No games left to pick today."
                     items={best.map(g => ({ g, side: pick(g)!.side, right: <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums w-12 text-right">{pick(g)!.prob}%</span> }))} />
                 </Section>
-                <Section title="Edges" extra={<span className="text-[10px] text-gray-400 cursor-help" title="We disagree with the bookmakers here. They are usually right: an edge only pays off over many games, never on one.">we disagree with the bookmakers · higher risk</span>}>
-                  <PickList empty="No edges right now."
+                <Section title={nextDay ? "Tomorrow · edges" : "Edges"} extra={<span className="text-[10px] text-gray-400 cursor-help" title="We disagree with the bookmakers here. They are usually right: an edge only pays off over many games, never on one.">we disagree with the bookmakers · higher risk</span>}>
+                  <PickList empty={nextDay ? "No edges for tomorrow yet: odds can still move." : "No edges right now."}
                     items={value.map(g => ({ g, side: g.value_side!, right: (
                       <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 whitespace-nowrap tabular-nums">
                         {g.value_underdog && <span className="font-normal text-gray-400">underdog · </span>}
@@ -452,7 +466,7 @@ export default function TodayPage() {
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                       {shown.some(g => g.state === "pre") ? "No picks for the games left today." : "Every game today has started."}
                     </p>
-                    <p className="text-xs text-gray-400">Most confident picks and edges for tomorrow&apos;s games show up here in the morning.</p>
+                    <p className="text-xs text-gray-400">{allStarted && tomorrow === null ? "Looking up tomorrow's games…" : "Tomorrow's picks show up here once its schedule is out."}</p>
                   </div>
                 </div>
               )}
