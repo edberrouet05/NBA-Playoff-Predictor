@@ -177,11 +177,11 @@ function PredictionsLog({ log, loading }: { log: NHLPredEntry[]; loading: boolea
               <Link key={e.game_id} href={`/nhl/game/${e.game_id}`}
                 className="flex items-center justify-between py-2 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-1 px-1 rounded-lg transition-colors">
                 <p className="text-xs text-gray-500 truncate">
-                  {fmtShortDate(e.date)} · {nhlAbbr(e.away_team)} @ {nhlAbbr(e.home_team)}
+                  {fmtShortDate(e.date)} · {nhlNick(e.away_team)} @ {nhlNick(e.home_team)}
                 </p>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                    {nhlAbbr(e.predicted_winner)} {e.predicted_prob}%
+                    {nhlNick(e.predicted_winner)} {e.predicted_prob}%
                   </span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${
                     e.correct
@@ -194,7 +194,7 @@ function PredictionsLog({ log, loading }: { log: NHLPredEntry[]; loading: boolea
             ))}
           </div>
           <Link href="/nhl/predictions"
-            className="mt-3 flex items-center justify-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors pt-2 border-t border-gray-100 dark:border-gray-800">
+            className="mt-3 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-100 dark:border-gray-800 transition-colors">
             See all predictions
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4" /></svg>
           </Link>
