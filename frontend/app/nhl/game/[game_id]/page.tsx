@@ -274,27 +274,34 @@ function WhyPanel({ g }: { g: NHLGameDetail }) {
 function FormCard({ g }: { g: NHLGameDetail }) {
   const a = g.form.away, h = g.form.home;
   if (!a || !h) return null;
-  const rows: [string, string, string][] = [
-    ["Record (W-L-OTL)", a.record, h.record],
-    ["Points", String(a.points), String(h.points)],
-    ["Goal differential", (a.goal_diff > 0 ? "+" : "") + a.goal_diff, (h.goal_diff > 0 ? "+" : "") + h.goal_diff],
-    ["Goals for / game*", a.gf.toFixed(2), h.gf.toFixed(2)],
-    ["Goals against / game*", a.ga.toFixed(2), h.ga.toFixed(2)],
-    ["Shot share*", `${(a.shot_share * 100).toFixed(1)}%`, `${(h.shot_share * 100).toFixed(1)}%`],
-    ["Save %*", a.sv_pct.toFixed(3).replace(/^0/, ""), h.sv_pct.toFixed(3).replace(/^0/, "")],
-    ["Streak", a.streak > 0 ? `W${a.streak}` : `L${-a.streak}`, h.streak > 0 ? `W${h.streak}` : `L${-h.streak}`],
+  const sign = (n: number) => (n > 0 ? "+" : "") + n;
+  const streak = (n: number) => (n > 0 ? `W${n}` : `L${-n}`);
+  // [label, away, home, away value, home value, higher is better]
+  const rows: [string, string, string, number, number, boolean][] = [
+    ["Record (W-L-OTL)", a.record, h.record, a.points, h.points, true],
+    ["Points", String(a.points), String(h.points), a.points, h.points, true],
+    ["Goal differential", sign(a.goal_diff), sign(h.goal_diff), a.goal_diff, h.goal_diff, true],
+    ["Goals for / game*", a.gf.toFixed(2), h.gf.toFixed(2), a.gf, h.gf, true],
+    ["Goals against / game*", a.ga.toFixed(2), h.ga.toFixed(2), a.ga, h.ga, false],
+    ["Shot share*", `${(a.shot_share * 100).toFixed(1)}%`, `${(h.shot_share * 100).toFixed(1)}%`, a.shot_share, h.shot_share, true],
+    ["Save %*", a.sv_pct.toFixed(3).replace(/^0/, ""), h.sv_pct.toFixed(3).replace(/^0/, ""), a.sv_pct, h.sv_pct, true],
+    ["Streak", streak(a.streak), streak(h.streak), a.streak, h.streak, true],
   ];
+  // Green for the team ahead on a stat, red for the one behind, plain when level
+  const tone = (mine: number, theirs: number, higher: boolean) =>
+    mine === theirs ? "text-gray-700 dark:text-gray-300"
+      : (mine > theirs) === higher ? "text-green-600 dark:text-green-400 font-semibold" : "text-red-500 dark:text-red-400";
   return (
     <div className={`${card} p-5`}>
       <p className={`${cardTitle} mb-3`}>Season so far</p>
       <div className="grid grid-cols-[1fr_auto_1fr] text-xs gap-y-2">
         <span className="font-bold text-gray-800 dark:text-gray-200">{g.away.abbr}</span><span />
         <span className="font-bold text-gray-800 dark:text-gray-200 text-right">{g.home.abbr}</span>
-        {rows.map(([label, av, hv]) => (
+        {rows.map(([label, av, hv, an, hn, higher]) => (
           <div key={label} className="contents">
-            <span className="tabular-nums text-gray-700 dark:text-gray-300">{av}</span>
+            <span className={`tabular-nums ${tone(an, hn, higher)}`}>{av}</span>
             <span className="text-gray-400 text-center px-2">{label}</span>
-            <span className="tabular-nums text-gray-700 dark:text-gray-300 text-right">{hv}</span>
+            <span className={`tabular-nums text-right ${tone(hn, an, higher)}`}>{hv}</span>
           </div>
         ))}
       </div>
