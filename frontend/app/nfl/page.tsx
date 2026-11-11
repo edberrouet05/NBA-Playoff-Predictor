@@ -396,7 +396,7 @@ export default function NFLPage() {
                   <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-widest">
                     {group.day}
                   </p>
-                  <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {group.games.map(g => <GameCard key={g.game_id} game={g} />)}
                   </div>
                 </div>
@@ -415,7 +415,7 @@ export default function NFLPage() {
                     <p className="text-xs text-gray-400 font-semibold mb-3 uppercase tracking-widest">
                       {group.day}
                     </p>
-                    <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {group.games.map(g => <GameCard key={g.game_id} game={g} />)}
                     </div>
                   </div>
