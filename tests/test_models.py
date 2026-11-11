@@ -47,3 +47,21 @@ def test_nhl_pair_probability_is_symmetric(api):
     p = api._nhl_pair_prob(*rows)
     assert 0 < p < 1
     assert api._nhl_pair_prob(rows[1], rows[0]) == pytest.approx(1 - p)
+
+
+@pytest.mark.parametrize("sport, away, home, low, high", [
+    ("nba", "Miami Heat", "Utah Jazz", 190, 260),
+    ("nhl", "Florida Panthers", "Columbus Blue Jackets", 4.5, 8),
+    ("nfl", "Buffalo Bills", "Kansas City Chiefs", 30, 65),
+    ("mlb", "New York Yankees", "Boston Red Sox", 5, 13),
+])
+def test_projected_score_is_plausible_and_agrees_with_the_pick(api, sport, away, home, low, high):
+    project = {"nba": lambda p: api._nba_projected_score(away, home, p),
+               "nhl": lambda p: api._nhl_projected_score(home, away, p),
+               "nfl": lambda p: api._nfl_projected_score(away, home, p * 100),
+               "mlb": lambda p: api._mlb_projected_score(away, home, p)}[sport]
+    for p_home in (0.3, 0.7):
+        pr = project(p_home)
+        assert low < pr["total"] < high
+        assert pr["away"] + pr["home"] == pytest.approx(pr["total"], abs=1)
+        assert (pr["home"] > pr["away"]) == (p_home > 0.5)

@@ -1,6 +1,7 @@
 "use client";
 import { createContext, use, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ProjectedScoreCard, type Projection } from "../../../components/ProjectedScore";
 import { playerHref, teamHref } from "../../../components/teamLinks";
 import { probClass } from "../../../components/PredictionBits";
 import { pickMatchupColors } from "../../../components/teamColors";
@@ -19,6 +20,7 @@ interface WinProbPoint {
 }
 
 interface NFLGameDetail {
+  projection?: Projection | null;
   game_id:       string;
   status:        string;
   game_time_utc: string;
@@ -968,14 +970,21 @@ export default function NFLGamePage({
           )}
 
           {/* Why + injuries side by side, equal widths (stacked on small screens) */}
-          {((g.explanation && g.explanation.length > 0) || g.away_injuries || g.home_injuries) && (
-            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+          {((g.explanation && g.explanation.length > 0) || g.away_injuries || g.home_injuries || g.projection) && (
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
               {g.explanation && g.explanation.length > 0 && (
                 <WhyPanel factors={g.explanation} awayTeam={away} homeTeam={home} />
               )}
-              {(g.away_injuries || g.home_injuries) && (
-                <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />
-              )}
+              <div className="flex flex-col gap-3 min-w-0">
+                {g.projection && (
+                  <ProjectedScoreCard projection={g.projection} awayAbbr={getAbbr(away)} homeAbbr={getAbbr(home)}
+                    actual={isFinal && awayScore != null && homeScore != null ? awayScore + homeScore : null}
+                    note="Total from each offense against the other defense (points per game above average); the margin follows our win probability." />
+                )}
+                {(g.away_injuries || g.home_injuries) && (
+                  <InjuryPanel awayTeam={away} homeTeam={home} away={g.away_injuries ?? []} home={g.home_injuries ?? []} />
+                )}
+              </div>
             </div>
           )}
 

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { TotalLine, type Projection } from "../components/ProjectedScore";
 import { pickMatchupColors } from "../components/teamColors";
 import { useFitRows } from "../components/useFitRows";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
@@ -14,6 +15,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 interface Goalie { name: string; sv: number; status: "probable" | "started" | "last start" }
 interface Side { name: string; abbr: string; score: number | null; record: string | null; logo: string | null; color: string; goalie?: Goalie | null }
 interface NHLGame extends ValueFields {
+  projection?: Projection | null;
   away_odds: number | null; home_odds: number | null;
   game_id: string; start_utc: string; date: string;
   state: "pre" | "in" | "post"; status: string; detail: string; period: number; clock: string;
@@ -122,7 +124,7 @@ function GameCard({ game }: { game: NHLGame }) {
           </div>
         )}
 
-        <div className="px-5 py-3 flex items-center justify-between gap-3">
+        <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           {game.predicted_winner && !isFinal ? (
             <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
           ) : game.predicted_winner && isFinal ? (
@@ -130,13 +132,17 @@ function GameCard({ game }: { game: NHLGame }) {
               Our pick: {nhlNick(game.predicted_winner)} {(homeWins ? home.name : away.name) === game.predicted_winner ? "✓" : "✗"}
             </span>
           ) : <span />}
-          {isLive && game.away_win_prob != null && (
-            <span className="text-[11px] text-gray-400">Pre-game {game.away_win_prob}% · {game.home_win_prob}%</span>
-          )}
-          {game.away_win_prob != null && game.home_win_prob != null && (
-            <ValueBadge game={{ ...game, away_win_prob: game.away_win_prob, home_win_prob: game.home_win_prob }}
-              awayAbbr={away.abbr} homeAbbr={home.abbr} started={isLive || isFinal} />
-          )}
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            {isLive && game.away_win_prob != null && (
+              <span className="text-[11px] text-gray-400">Pre-game {game.away_win_prob}% · {game.home_win_prob}%</span>
+            )}
+            <TotalLine projected={game.projection?.total} decimals={1}
+              actual={isFinal && away.score != null && home.score != null ? away.score + home.score : null} />
+            {game.away_win_prob != null && game.home_win_prob != null && (
+              <ValueBadge game={{ ...game, away_win_prob: game.away_win_prob, home_win_prob: game.home_win_prob }}
+                awayAbbr={away.abbr} homeAbbr={home.abbr} started={isLive || isFinal} />
+            )}
+          </div>
         </div>
       </div>
     </Link>

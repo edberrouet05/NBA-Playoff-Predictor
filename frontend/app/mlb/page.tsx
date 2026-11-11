@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFitRows } from "../components/useFitRows";
 import Link from "next/link";
+import { TotalLine } from "../components/ProjectedScore";
 import { pickMatchupColors } from "../components/teamColors";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 import { teamHref } from "../components/teamLinks";
@@ -11,6 +12,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface MLBGame extends ValueFields {
+  projected_total?: number | null;
   game_id: number;
   status: string;
   game_time_utc: string;
@@ -249,10 +251,14 @@ function GameCard({ game }: { game: MLBGame }) {
       </div>
 
       {/* Predicted winner + value badge */}
-      {!isFinal && (
-        <div className="px-5 py-3 flex items-center justify-between">
-          <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
-          <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} started={isLive || isFinal} />
+      {(!isFinal || game.projected_total != null) && (
+        <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          {!isFinal ? <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span> : <span />}
+          <div className="flex items-center gap-3">
+            <TotalLine projected={game.projected_total} decimals={1}
+              actual={isFinal && game.away_score != null && game.home_score != null ? game.away_score + game.home_score : null} />
+            <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} started={isLive || isFinal} />
+          </div>
         </div>
       )}
     </div>

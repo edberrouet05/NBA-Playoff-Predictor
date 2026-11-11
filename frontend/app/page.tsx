@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { useFitRows } from "./components/useFitRows";
 import { useWakeHint, WAKE_HINT } from "./components/useWakeHint";
 import Link from "next/link";
+import { TotalLine } from "./components/ProjectedScore";
 import { pickMatchupColors } from "./components/teamColors";
 import { nbaSeasonLabel, probClass, ValueBadge, type ValueFields } from "./components/PredictionBits";
 
@@ -30,6 +31,7 @@ interface TodayGame extends ValueFields {
   // During the game: our live probability (away/home_win_prob stay the pre-game prediction)
   live_away_prob?: number | null;
   live_home_prob?: number | null;
+  projected_total?: number | null;
 }
 
 interface PredictionEntry {
@@ -350,9 +352,13 @@ function GameCard({ game }: { game: TodayGame }) {
           <div className="h-full flex-1" style={{ background: barHome }} />
         </div>
 
-        <div className="px-5 py-3 flex items-center justify-between">
+        <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span className="text-xs text-green-600 dark:text-green-400">Predicted: {game.predicted_winner}</span>
-          <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} started={isLive || isFinal} />
+          <div className="flex items-center gap-3">
+            <TotalLine projected={game.projected_total}
+              actual={isFinal && game.away_score != null && game.home_score != null ? game.away_score + game.home_score : null} />
+            <ValueBadge game={game} awayAbbr={getAbbr(game.away_team)} homeAbbr={getAbbr(game.home_team)} started={isLive || isFinal} />
+          </div>
         </div>
       </div>
     </Link>

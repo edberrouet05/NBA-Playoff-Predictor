@@ -100,6 +100,25 @@ _nfl_game_pred_cache: dict[str, dict] = {}  # str(event_id) → {away_win_prob, 
 # Pre-game predictions written down before kickoff, so a played game is never re-predicted with
 # later data (today's injury report, refreshed features). Refreshed while the game is upcoming,
 # frozen once it starts. Committed to the repo by the freeze workflow so redeploys keep it.
+NFL_POINTS_PER_TEAM = 22.5   # points per team per game, 2022-2026 regular seasons
+NFL_PTS_WEIGHT = 0.85        # actual points ≈ average + 0.85 × (attack + opposing defense) points per game
+NFL_MARGIN_SD = 13.8         # SD of NFL final margins — converts win probability <-> point margin
+
+
+def _nfl_projected_score(away: str, home: str, home_wp: float) -> dict | None:
+    """Expected final score: the total from each offense against the other defense (points per
+    game above average), the margin from our win probability so it agrees with the pick."""
+    from statistics import NormalDist
+    stats = _load_nfl_stats()
+    if away not in stats.index or home not in stats.index:
+        return None
+    a, h = stats.loc[away], stats.loc[home]
+    total = 2 * NFL_POINTS_PER_TEAM + NFL_PTS_WEIGHT * (
+        float(a["off_pts"]) + float(h["def_pts"]) + float(h["off_pts"]) + float(a["def_pts"]))
+    margin = NFL_MARGIN_SD * NormalDist().inv_cdf(min(max(home_wp / 100, 1e-4), 1 - 1e-4))
+    return {"away": round((total - margin) / 2), "home": round((total + margin) / 2), "total": round(total)}
+
+
 NFL_FROZEN_PREDS_PATH = ROOT / "data" / "nfl" / "nfl_frozen_predictions.json"
 
 
@@ -497,6 +516,7 @@ def _fetch_nfl_week() -> dict:
             "away_win_prob":    away_wp,
             "home_win_prob":    home_wp,
             "predicted_winner": pred_winner,
+            "projected_total":  (_nfl_projected_score(away_name, home_name, home_wp) or {}).get("total"),
             "away_odds":        game_odds.get("away_odds"),
             "home_odds":        game_odds.get("home_odds"),
             **_value_bet(away_wp, home_wp, game_odds.get("away_odds"), game_odds.get("home_odds")),
@@ -1367,6 +1387,7 @@ def get_nfl_game_detail(game_id: str):
             "away_win_prob": away_wp,
             "home_win_prob": home_wp,
             "win_prob_history": history,
+            "projection":    _nfl_projected_score(away_name, home_name, home_wp) if home_wp is not None else None,
             "away_stats":    away_stats_out,
             "home_stats":    home_stats_out,
             "explanation":   _nfl_explain(_load_nfl_model(), _load_nfl_stats(), away_name, home_name, game_id),

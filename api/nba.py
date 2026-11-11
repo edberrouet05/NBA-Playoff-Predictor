@@ -980,6 +980,7 @@ def _fetch_day(
             "away_win_prob":       round(p_away * 100, 1),
             "home_win_prob":       round((1 - p_away) * 100, 1),
             "predicted_winner":    away_name if p_away >= 0.5 else home_name,
+            "projected_total":     (_nba_projected_score(away_name, home_name, 1 - p_away) or {}).get("total"),
             "away_injury_impact":  away_impact,
             "home_injury_impact":  home_impact,
             "away_injury_players": [{"name": p["name"], "status": p["status"]} for p in injury_players.get(away_name, [])],
