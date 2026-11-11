@@ -54,3 +54,21 @@ def test_nhl_rest_days(api):
     assert api._nhl_rest("2026-11-07", "2026-11-08") == 1          # back-to-back
     assert api._nhl_rest("2026-11-01", "2026-11-08") == api.NHL_MAX_REST
     assert api._nhl_rest("", "2026-11-08") == api.NHL_MAX_REST
+
+
+def test_game_day_turns_over_at_5am_eastern(api, monkeypatch):
+    import datetime, zoneinfo
+    et = zoneinfo.ZoneInfo("America/New_York")
+
+    class Clock(datetime.datetime):
+        now_value = None
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls.now_value.astimezone(tz)
+
+    monkeypatch.setattr(datetime, "datetime", Clock)
+    Clock.now_value = datetime.datetime(2026, 11, 11, 0, 40, tzinfo=et)     # overtime past midnight
+    assert api._game_day() == datetime.date(2026, 11, 10)
+    Clock.now_value = datetime.datetime(2026, 11, 11, 9, 0, tzinfo=et)
+    assert api._game_day() == datetime.date(2026, 11, 11)

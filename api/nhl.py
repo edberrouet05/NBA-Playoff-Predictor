@@ -10,6 +10,7 @@ import pandas as pd
 
 from api.common import (
     ROOT,
+    _game_day,
     _serve_stale,
     app,
 )
@@ -404,8 +405,7 @@ def _nhl_day(date: str) -> list[dict]:
 
 
 def _nhl_today() -> str:
-    import datetime, zoneinfo
-    return datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+    return _game_day().isoformat()
 
 
 @app.get("/api/nhl/today")

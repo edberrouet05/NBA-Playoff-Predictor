@@ -64,6 +64,17 @@ def _parallel(*calls):
         return [f.result() for f in futures]
 
 
+GAME_DAY_ROLLOVER_HOUR = 5   # a night's games end by ~2 am ET; the next slate starts after noon
+
+
+def _game_day():
+    """The sports day in Eastern time: it turns over at 5 am, not midnight, so games still
+    being played after midnight stay on tonight's page (as on ESPN)."""
+    import datetime, zoneinfo
+    now = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+    return (now - datetime.timedelta(hours=GAME_DAY_ROLLOVER_HOUR)).date()
+
+
 def _nba_season_year(day=None) -> int:
     """ESPN's NBA season year, i.e. the year it ends (2026-27 → 2027). A new season from August."""
     import datetime

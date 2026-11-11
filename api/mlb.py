@@ -8,6 +8,7 @@ import pandas as pd
 from api.common import (
     ODDS_API_KEY,
     ROOT,
+    _game_day,
     _serve_stale,
     app,
 )
@@ -282,7 +283,7 @@ def _mlb_win_prob(
     """
     import datetime, zoneinfo
     ratings = _load_mlb_pitcher_ratings()
-    today = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+    today = _game_day().isoformat()
 
     def _row(t, o, home, t_sp, o_sp):
         ts, os_ = stats.loc[t], stats.loc[o]
@@ -308,7 +309,7 @@ def _fetch_mlb_today() -> dict:
     import datetime, json, urllib.request
 
     import zoneinfo
-    today_iso = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+    today_iso = _game_day().isoformat()
 
     url = (
         "https://statsapi.mlb.com/api/v1/schedule"
@@ -436,7 +437,7 @@ def get_mlb_today():
     import datetime
 
     import zoneinfo
-    today = datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date().isoformat()
+    today = _game_day().isoformat()
     now   = _t.time()
 
     # Serve cache si même jour ET TTL pas expiré

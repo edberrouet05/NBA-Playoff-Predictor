@@ -12,6 +12,7 @@ import pandas as pd
 
 from api.common import (
     ROOT,
+    _game_day,
     _nba_season_year,
     _parallel,
     _serve_stale,
@@ -1005,10 +1006,9 @@ def _fetch_day(
 
 
 def _nba_today():
-    """Today in Eastern time — NBA game days (the server clock is UTC: after 8 pm ET it is
-    already tomorrow there, mid-slate)."""
-    import datetime, zoneinfo
-    return datetime.datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+    """Today's NBA game day in Eastern time (the server clock is UTC: after 8 pm ET it is
+    already tomorrow there, mid-slate). Late games stay on it past midnight."""
+    return _game_day()
 
 
 @app.get("/api/today")
