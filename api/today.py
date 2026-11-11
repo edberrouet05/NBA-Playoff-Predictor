@@ -36,6 +36,7 @@ def _game(sport: str, game_id, state: str, start_utc: str, status_text: str, awa
         "live_away_prob": live_away, "predicted_winner": g.get("predicted_winner"),
         "away_odds": g.get("away_odds"), "home_odds": g.get("home_odds"),
         "value_side": g.get("value_side"), "value_edge": g.get("value_edge"),
+        "value_ev": g.get("value_ev"), "value_underdog": g.get("value_underdog"),
     }
 
 

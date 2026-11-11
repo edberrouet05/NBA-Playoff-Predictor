@@ -20,10 +20,11 @@ export interface ValueFields {
   value_side?: "away" | "home" | null;
   value_edge?: number | null;
   value_ev?: number | null;
+  value_underdog?: boolean | null;
 }
 
-/** "Value pick" badge: the model's probability beats the no-vig market price by ≥ 5 points.
- *  The numbers are in the tooltip. Hidden once the game has started: it is about the pre-game
+/** "Edge" badge: our probability, blended 1 to 3 with the market's, still beats the bookmaker's
+ *  price (see _value_bet in api/odds.py). Usually an underdog, so it says so. The numbers are in the tooltip. Hidden once the game has started: it is about the pre-game
  *  price, which can no longer be bet and ignores the score. */
 export function ValueBadge({ game, awayAbbr, homeAbbr, started = false }: {
   game: ValueFields & { away_win_prob: number; home_win_prob: number };
@@ -35,12 +36,13 @@ export function ValueBadge({ game, awayAbbr, homeAbbr, started = false }: {
   const away = game.value_side === "away";
   const model  = away ? game.away_win_prob : game.home_win_prob;
   const market = away ? game.away_market_prob : game.home_market_prob;
-  const ev = game.value_ev != null ? `${game.value_ev >= 0 ? "+" : ""}${(game.value_ev * 100).toFixed(0)}%` : "—";
+  const team = away ? awayAbbr : homeAbbr;
+  const risk = game.value_underdog ? ` Higher risk: ${team} is the underdog and should lose more often than it wins.` : "";
   return (
     <span
-      title={`Our model gives ${away ? awayAbbr : homeAbbr} ${model}%, the bookmakers ${market ?? "—"}% (their margin removed). If the model is right, a bet returns ${ev} on average.`}
-      className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 cursor-help">
-      Value pick: {away ? awayAbbr : homeAbbr}
+      title={`Our model gives ${team} ${model}%, the bookmakers ${market ?? "—"}% (their margin removed). We disagree with the bookmakers here. They are usually right: an edge only pays off over many games, never on one.${risk}`}
+      className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 cursor-help whitespace-nowrap">
+      Edge: {team}{game.value_underdog ? " · underdog" : ""}
     </span>
   );
 }

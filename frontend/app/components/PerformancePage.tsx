@@ -113,8 +113,8 @@ function ValueBetsCard({ m }: { m: Market }) {
   const vb = m.value_bets;
   return (
     <div className={card}>
-      <p className={`${cardTitle} mb-1`}>Value bets</p>
-      <p className="text-xs text-gray-400 mb-3">Games where our probability beat the bookmaker&apos;s (margin removed) by 5+ points, betting 1 unit at the pre-game odds.</p>
+      <p className={`${cardTitle} mb-1`}>Edge picks</p>
+      <p className="text-xs text-gray-400 mb-3">Games where our probability, weighted 1 to 3 with the bookmakers&apos;, still beat their price: 1 unit on each at the pre-game odds. Mostly underdogs, so expect long losing runs; only many games tell.</p>
       {vb.n === 0 ? <p className="text-sm text-gray-400">None yet.</p> : (
         <div className="grid grid-cols-3 gap-2 text-center">
           <div><p className="text-xl font-black text-gray-900 dark:text-white">{vb.won}/{vb.n}</p><p className="text-[10px] text-gray-400 uppercase">won</p></div>

@@ -65,9 +65,15 @@ def test_value_bet_removes_the_bookmaker_margin(api):
 
 def test_value_bet_flags_a_big_edge(api):
     out = api._value_bet(60.0, 40.0, 2.6, 1.55)   # market ≈ 37 % for the away team
-    assert out["value_side"] == "away"
-    assert out["value_edge"] >= api.VALUE_EDGE_MIN
-    assert out["value_ev"] == pytest.approx(0.6 * 2.6 - 1, abs=1e-3)
+    assert out["value_side"] == "away" and out["value_underdog"]
+    assert out["value_edge"] == pytest.approx(60.0 - out["away_market_prob"], abs=0.1)
+    blend = (0.25 * 60.0 + 0.75 * out["away_market_prob"]) / 100
+    assert out["value_ev"] == pytest.approx(blend * 2.6 - 1, abs=2e-3)
+
+
+def test_value_bet_ignores_small_disagreements(api):
+    # The old rule flagged a 5-point edge; with the market weighted 3 to 1 it is not enough
+    assert api._value_bet(57.0, 43.0, 1.95, 1.95)["value_side"] is None
 
 
 def test_value_bet_without_odds(api):

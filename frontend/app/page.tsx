@@ -1,6 +1,6 @@
 "use client";
 // Home page: every sport's games today. Your teams first, then live games, the most confident
-// picks, value picks, upcoming and finished games. Each card opens the sport's game page.
+// picks, edges (value picks), upcoming and finished games. Each card opens the sport's game page.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FavoriteStar, favoriteKey, useFavorites, type League } from "./components/favorites";
@@ -27,6 +27,8 @@ interface TodayGame {
   home_odds: number | null;
   value_side: "away" | "home" | null;
   value_edge: number | null;
+  value_ev?: number | null;
+  value_underdog?: boolean | null;
 }
 
 const SPORT_LABEL: Record<League, string> = { nba: "NBA", nfl: "NFL", nhl: "NHL", mlb: "MLB" };
@@ -125,8 +127,9 @@ function GameCard({ g, favorites }: { g: TodayGame; favorites: string[] }) {
                 {live && " pre-game"}</span>
             )}
             {!done && !live && g.value_side && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400">
-                Value: {g[g.value_side].abbr}
+              <span title="We disagree with the bookmakers here. They are usually right: an edge only pays off over many games, never on one."
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 whitespace-nowrap">
+                Edge: {g[g.value_side].abbr}{g.value_underdog ? " · underdog" : ""}
               </span>
             )}
           </div>
@@ -362,7 +365,7 @@ export default function TodayPage() {
   const best = shown.filter(g => g.state === "pre" && pick(g))
     .sort((a, b) => pick(b)!.prob - pick(a)!.prob).slice(0, 5);
   const value = shown.filter(g => g.state === "pre" && g.value_side && g.value_edge != null)
-    .sort((a, b) => (b.value_edge ?? 0) - (a.value_edge ?? 0));
+    .sort((a, b) => (b.value_ev ?? 0) - (a.value_ev ?? 0));
   const order = (g: TodayGame) => (g.state === "in" ? 0 : g.state === "pre" ? 1 : 2);
   // Our record for the selected sport (all: every sport)
   const days = (summary?.days ?? []).map(d => ({ date: d.date, ...(sport === "all" ? d : d.by_sport[sport] ?? NONE) }));
@@ -430,10 +433,11 @@ export default function TodayPage() {
                   <PickList empty="No games left to pick today."
                     items={best.map(g => ({ g, side: pick(g)!.side, right: <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums w-12 text-right">{pick(g)!.prob}%</span> }))} />
                 </Section>
-                <Section title="Value picks" extra={<span className="text-[10px] text-gray-400">our % vs the betting market</span>}>
-                  <PickList empty="No value picks right now."
+                <Section title="Edges" extra={<span className="text-[10px] text-gray-400 cursor-help" title="We disagree with the bookmakers here. They are usually right: an edge only pays off over many games, never on one.">we disagree with the bookmakers · higher risk</span>}>
+                  <PickList empty="No edges right now."
                     items={value.map(g => ({ g, side: g.value_side!, right: (
                       <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 whitespace-nowrap tabular-nums">
+                        {g.value_underdog && <span className="font-normal text-gray-400">underdog · </span>}
                         {g.value_side === "away" ? `x${g.away_odds}` : `x${g.home_odds}`} · +{g.value_edge}%
                       </span>) }))} />
                 </Section>
@@ -448,7 +452,7 @@ export default function TodayPage() {
                     <p className="text-sm text-gray-700 dark:text-gray-300">
                       {shown.some(g => g.state === "pre") ? "No picks for the games left today." : "Every game today has started."}
                     </p>
-                    <p className="text-xs text-gray-400">Most confident picks and value picks for tomorrow&apos;s games show up here in the morning.</p>
+                    <p className="text-xs text-gray-400">Most confident picks and edges for tomorrow&apos;s games show up here in the morning.</p>
                   </div>
                 </div>
               )}
