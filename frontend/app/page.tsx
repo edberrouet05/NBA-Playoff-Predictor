@@ -212,12 +212,11 @@ function YesterdayCard({ y, sport }: { y: HomeSummary["yesterday"]; sport: Leagu
         className="flex items-center gap-3 px-2 py-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
         <span className={`w-5 text-center font-bold ${b.correct ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>{b.correct ? "✓" : "✗"}</span>
         <span className="w-9"><SportTag sport={b.sport} /></span>
-        <span className="text-sm text-gray-700 dark:text-gray-300 min-w-0 truncate">
+        <span className="text-sm text-gray-700 dark:text-gray-300 min-w-0 truncate"
+          title={b.correct ? "Our surest pick that came in" : "One of our most confident picks that missed"}>
           <b className="text-gray-900 dark:text-white">{nick(b.pick)} {b.prob}%</b>
           {" · "}{b.correct ? "beat" : "lost to"} {nick(opp)}{ps != null && os != null ? ` ${ps}-${os}` : ""}
         </span>
-        <span className="flex-1" />
-        <span className="text-[10px] text-gray-400 uppercase tracking-wide whitespace-nowrap hidden sm:inline">{b.correct ? "Surest hit" : "Biggest miss"}</span>
       </Link>
     );
   };
@@ -419,23 +418,31 @@ export default function TodayPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">
-            <div className="lg:col-span-2 flex flex-col gap-5">
+            <div className="lg:col-span-2">
               {summary ? <RecordChart rows={days} sport={sport} sports={summary.sports} />
                 : <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 text-center text-gray-400 text-sm h-full">Loading our record…</div>}
-              {summary && <YesterdayCard y={summary.yesterday} sport={sport} />}
             </div>
-            <div className="flex flex-col">
-              <Section title="Most confident picks">
-                <PickList empty="No games left to pick today."
-                  items={best.map(g => ({ g, side: pick(g)!.side, right: <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums w-12 text-right">{pick(g)!.prob}%</span> }))} />
-              </Section>
-              <Section title="Value picks" extra={<span className="text-[10px] text-gray-400">our % vs the betting market</span>}>
-                <PickList empty="No value picks right now."
-                  items={value.map(g => ({ g, side: g.value_side!, right: (
-                    <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 whitespace-nowrap tabular-nums">
-                      {g.value_side === "away" ? `x${g.away_odds}` : `x${g.home_odds}`} · +{g.value_edge}%
-                    </span>) }))} />
-              </Section>
+            <div className="flex flex-col gap-5 min-w-0">
+              {summary && <YesterdayCard y={summary.yesterday} sport={sport} />}
+              {best.length + value.length > 0 ? (
+                <div>
+                <Section title="Most confident picks">
+                  <PickList empty="No games left to pick today."
+                    items={best.map(g => ({ g, side: pick(g)!.side, right: <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums w-12 text-right">{pick(g)!.prob}%</span> }))} />
+                </Section>
+                <Section title="Value picks" extra={<span className="text-[10px] text-gray-400">our % vs the betting market</span>}>
+                  <PickList empty="No value picks right now."
+                    items={value.map(g => ({ g, side: g.value_side!, right: (
+                      <span className="text-[11px] font-semibold text-yellow-700 dark:text-yellow-400 whitespace-nowrap tabular-nums">
+                        {g.value_side === "away" ? `x${g.away_odds}` : `x${g.home_odds}`} · +{g.value_edge}%
+                      </span>) }))} />
+                </Section>
+                </div>
+              ) : (
+                <p className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-5 py-4 text-xs text-gray-400">
+                  {shown.some(g => g.state === "pre") ? "No picks for the games left today." : "Every game today has started: new picks tomorrow."}
+                </p>
+              )}
             </div>
           </div>
         </>
