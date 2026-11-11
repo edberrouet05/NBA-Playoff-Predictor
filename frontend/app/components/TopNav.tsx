@@ -7,7 +7,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // `offMonths`: months (0 = January) with no games — the sport is left out of the phone header then
 const SPORT_LINKS = [
-  { href: "/",    label: "NBA", key: "nba", offMonths: [6, 7, 8], match: (p: string) => !p.startsWith("/mlb") && !p.startsWith("/nfl") && !p.startsWith("/nhl") },
+  { href: "/nba", label: "NBA", key: "nba", offMonths: [6, 7, 8], match: (p: string) => p !== "/" && !p.startsWith("/mlb") && !p.startsWith("/nfl") && !p.startsWith("/nhl") },
   { href: "/nfl", label: "NFL", key: "nfl", offMonths: [2, 3, 4, 5, 6, 7], match: (p: string) =>  p.startsWith("/nfl") },
   { href: "/nhl", label: "NHL", key: "nhl", offMonths: [6, 7, 8], match: (p: string) =>  p.startsWith("/nhl") },
   { href: "/mlb", label: "MLB", key: "mlb", offMonths: [10, 11, 0, 1], match: (p: string) =>  p.startsWith("/mlb") },

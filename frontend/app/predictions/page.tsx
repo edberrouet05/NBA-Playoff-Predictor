@@ -141,7 +141,7 @@ export default function NBAPredictionsPage() {
 
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Link href="/"
+          <Link href="/nba"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 12L6 8l4-4" />

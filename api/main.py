@@ -8,6 +8,7 @@ The app is assembled from one module per area (imported in dependency order):
   record    season record and model cards
   nba, mlb, nfl, nhl    one module per sport
   teams     team pages, live-game indicator, search
+  today     every sport's games of the day (the home page)
   players   player pages
 
 Usage:
@@ -45,9 +46,9 @@ from api.teams import (
 )
 
 # Every module's names are also reachable as `api.main.<name>` (scripts and tests use them)
-from api import common, espn, odds, record, nba, mlb, nfl, nhl, teams, players  # noqa: E402
+from api import common, espn, odds, record, nba, mlb, nfl, nhl, teams, players, today  # noqa: E402
 
-for _module in (common, espn, odds, record, nba, mlb, nfl, nhl, teams, players):
+for _module in (common, espn, odds, record, nba, mlb, nfl, nhl, teams, players, today):
     globals().update({k: v for k, v in vars(_module).items() if not k.startswith("__")})
 
 

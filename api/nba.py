@@ -971,6 +971,7 @@ def _fetch_day(
         results.append({
             "game_id":             g["game_id"],
             "status":              nba_status,
+            "start_utc":           g["start_utc"],
             "live_away_prob":      live_away,
             "live_home_prob":      None if live_away is None else round(100 - live_away, 1),
             "status_text":         g["time_et"] if g["state"] == "pre" else (g["detail"] or nba_status),
