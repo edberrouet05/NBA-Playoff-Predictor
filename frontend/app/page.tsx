@@ -251,7 +251,7 @@ export default function GamesPage() {
                 {formatDate(day.date)}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {day.games.map(g => <GameCard key={g.game_id} game={g} />)}
+                {[...day.games].sort((a, b) => gameOrder(a) - gameOrder(b)).map(g => <GameCard key={g.game_id} game={g} />)}
               </div>
             </div>
           ))}
@@ -270,6 +270,9 @@ export default function GamesPage() {
 }
 
 // ── Game card ──────────────────────────────────────────────────────────────────
+
+// Live games first, then upcoming, finished games last
+function gameOrder(g: TodayGame) { return g.status === "Live" ? 0 : g.status === "Final" ? 2 : 1; }
 
 function GameCard({ game }: { game: TodayGame }) {
   const isLive  = game.status === "Live";
