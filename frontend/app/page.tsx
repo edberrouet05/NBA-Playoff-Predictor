@@ -182,8 +182,7 @@ interface Tally { correct: number; n: number }
 interface DayRecord extends Tally { date: string; by_sport: Partial<Record<League, Tally>> }
 interface SportRecord extends Tally {
   sport: League; accuracy: number; in_season: boolean;
-  sure: Tally;                                          // picks at sure_pick% or more
-  value_bets: { n: number; won: number; units: number }; // 1 unit on each value pick
+  sure: Tally;   // picks at sure_pick% or more
 }
 interface Brief {
   sport: League; game_id: string; pick: string; prob: number; correct: boolean;
@@ -193,8 +192,6 @@ interface HomeSummary {
   today: string; days: DayRecord[]; sure_pick: number; sports: SportRecord[];
   yesterday: Tally & { date: string; by_sport: Partial<Record<League, Tally>>; best: Brief[]; misses: Brief[] };
 }
-
-const STAKE = 10;   // dollars per value pick in the "if you had bet" tile
 
 function briefHref(b: Brief): string {
   const q = new URLSearchParams({ away: b.away_team, home: b.home_team, status: "Final" }).toString();
@@ -373,8 +370,6 @@ export default function TodayPage() {
   const counted = summary?.sports.filter(s => (sport === "all" ? s.in_season : s.sport === sport));
   const season = counted?.reduce(add, NONE);
   const sure = counted?.map(s => s.sure).reduce(add, NONE);
-  const bets = counted?.reduce((a, s) => ({ n: a.n + s.value_bets.n, won: a.won + s.value_bets.won, units: a.units + s.value_bets.units }),
-    { n: 0, won: 0, units: 0 });
 
   return (
     <main className="px-4 md:px-6 py-6 md:py-8">
@@ -410,7 +405,7 @@ export default function TodayPage() {
 
       {!error && !loading && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 mb-5">
             <StatTile label="Games today" value={shown.length}
               sub={`${shown.filter(g => g.state === "in").length} live · ${shown.filter(g => g.state === "pre").length} to come`} />
             <StatTile label="Yesterday" value={yday ? (yday.n ? `${yday.correct}/${yday.n}` : "—") : "…"}
@@ -420,10 +415,6 @@ export default function TodayPage() {
               sub={season ? `${season.correct.toLocaleString()} of ${season.n.toLocaleString()} picks` : ""} />
             <StatTile label={`Picks at ${summary?.sure_pick ?? 70}%+`} value={sure ? pct(sure) : "…"}
               sub={sure ? `${sure.correct} of ${sure.n} right this season` : ""} />
-            <StatTile label="Value picks"
-              value={bets ? (bets.n ? <span className={bets.units >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}>
-                {bets.units >= 0 ? "+" : "−"}${Math.abs(bets.units * STAKE).toFixed(0)}</span> : "—") : "…"}
-              sub={bets ? (bets.n ? `$${STAKE} on each of ${bets.n} · ${bets.won} won` : "none yet this season") : ""} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">

@@ -11,7 +11,6 @@ from api.mlb import get_mlb_predictions_log, get_mlb_today
 from api.nba import get_predictions_log, get_today_games
 from api.nfl import get_nfl_predictions_log, get_nfl_week
 from api.nhl import get_nhl_predictions_log, get_nhl_today
-from api.record import _performance_payload
 from api.teams import _resolve_espn_team
 
 _ET = zoneinfo.ZoneInfo("America/New_York")
@@ -156,16 +155,10 @@ def get_home_summary():
         recent = [g for g in games if g["date"] >= since]
         # In season: a pick in the last two weeks (the MLB after the World Series is not)
         sure = [g for g in games if g["predicted_prob"] >= SURE_PICK]
-        try:
-            bets = (_performance_payload(sport, games).get("market") or {}).get("value_bets") or {}
-        except Exception:
-            bets = {}
         sports.append({"sport": sport, "n": len(games), "correct": sum(bool(g["correct"]) for g in games),
                        "in_season": bool(recent),
                        # Picks we gave SURE_PICK% or more, and how they did
-                       "sure": {"n": len(sure), "correct": sum(bool(g["correct"]) for g in sure)},
-                       # Our value bets on games with a stored pre-game line: 1 unit each
-                       "value_bets": {"n": bets.get("n", 0), "won": bets.get("won", 0), "units": bets.get("units", 0.0)}})
+                       "sure": {"n": len(sure), "correct": sum(bool(g["correct"]) for g in sure)}})
         for g in recent:
             d = days.get(g["date"])
             if d is None:
