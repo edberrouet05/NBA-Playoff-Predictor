@@ -418,23 +418,28 @@ export default function NHLGamePage({ params }: { params: Promise<{ game_id: str
       {g && (
         <>
           <Scoreboard g={g} />
-          {g.state === "pre" ? <PeriodTable g={g} /> : (
-            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-3 items-start">
-              <ProbChart g={g} />
+          {/* Two equal columns that stack independently, so short cards leave no holes */}
+          {g.state === "pre" ? (
+            <>
               <PeriodTable g={g} />
-            </div>
-          )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-            <WhyPanel g={g} />
-            {g.state === "pre" ? <FormCard g={g} /> : <TeamStats g={g} />}
-          </div>
-          {g.state !== "pre" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-              <div className="flex flex-col gap-3">
-                <GoalsCard g={g} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+                <WhyPanel g={g} />
                 <FormCard g={g} />
               </div>
-              <PlayersCard g={g} />
+            </>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+              <div className="flex flex-col gap-3 min-w-0">
+                <ProbChart g={g} />
+                <PeriodTable g={g} />
+                <GoalsCard g={g} />
+                <WhyPanel g={g} />
+              </div>
+              <div className="flex flex-col gap-3 min-w-0">
+                <TeamStats g={g} />
+                <PlayersCard g={g} />
+                <FormCard g={g} />
+              </div>
             </div>
           )}
         </>
