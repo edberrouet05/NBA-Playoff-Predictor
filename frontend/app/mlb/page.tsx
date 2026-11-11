@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useFitRows } from "../components/useFitRows";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { pickMatchupColors } from "../components/teamColors";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 import { teamHref } from "../components/teamLinks";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const LOG_ROWS_OPEN = 10;   // games in the opened "Recent predictions log"
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -286,9 +286,7 @@ function fmtShortDate(d: string): string {
 
 function PredictionsLog({ log, loading, error }: { log: MLBPredEntry[]; loading: boolean; error: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
-  const fit = useFitRows(listRef, log.length, expanded);
-  const visible = log.slice(0, expanded ? fit : 3);
+  const visible = log.slice(0, expanded ? LOG_ROWS_OPEN : 3);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
@@ -314,7 +312,7 @@ function PredictionsLog({ log, loading, error }: { log: MLBPredEntry[]; loading:
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet.</p>
       ) : (
         <>
-          <div ref={listRef} className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
             {visible.map((e, i) => (
               <Link key={i} href={`/mlb/game/${e.game_id}?away=${encodeURIComponent(e.away_team)}&home=${encodeURIComponent(e.home_team)}&status=Final`}
                 className="flex items-center justify-between py-2 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-1 px-1 rounded-lg transition-colors">

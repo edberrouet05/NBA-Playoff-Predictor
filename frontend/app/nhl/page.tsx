@@ -1,13 +1,13 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { pickMatchupColors } from "../components/teamColors";
-import { useFitRows } from "../components/useFitRows";
 import { probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 import { useWakeHint, WAKE_HINT } from "../components/useWakeHint";
 import { nhlAbbr, nhlColor, nhlColorOptions, nhlLogo, nhlNick } from "./nhlTeams";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const LOG_ROWS_OPEN = 10;   // games in the opened "Recent predictions log"
 
 // ── Types (mirror /api/nhl/today and /api/nhl/predictions_log) ────────────────
 
@@ -149,9 +149,7 @@ function GameCard({ game }: { game: NHLGame }) {
 
 function PredictionsLog({ log, loading }: { log: NHLPredEntry[]; loading: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
-  const fit = useFitRows(listRef, log.length, expanded);
-  const visible = log.slice(0, expanded ? fit : 3);
+  const visible = log.slice(0, expanded ? LOG_ROWS_OPEN : 3);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
@@ -174,7 +172,7 @@ function PredictionsLog({ log, loading }: { log: NHLPredEntry[]; loading: boolea
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet.</p>
       ) : (
         <>
-          <div ref={listRef} className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
             {visible.map(e => (
               <Link key={e.game_id} href={`/nhl/game/${e.game_id}`}
                 className="flex items-center justify-between py-2 gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-1 px-1 rounded-lg transition-colors">

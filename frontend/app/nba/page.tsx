@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useFitRows } from "../components/useFitRows";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useWakeHint, WAKE_HINT } from "../components/useWakeHint";
 import Link from "next/link";
 import { TotalLine } from "../components/ProjectedScore";
@@ -8,6 +7,7 @@ import { pickMatchupColors } from "../components/teamColors";
 import { nbaSeasonLabel, probClass, ValueBadge, type ValueFields } from "../components/PredictionBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const LOG_ROWS_OPEN = 10;   // games in the opened "Recent predictions log"
 
 interface InjuryPlayerMin { name: string; status: string; }
 
@@ -383,9 +383,7 @@ function TeamLogo({ team, size }: { team: string; size: string }) {
 
 function PredictionsLog({ log, logLoading }: { log: PredictionEntry[]; logLoading: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
-  const fit = useFitRows(listRef, log.length, expanded);
-  const visible = log.slice(0, expanded ? fit : 3);
+  const visible = log.slice(0, expanded ? LOG_ROWS_OPEN : 3);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-4">
@@ -411,7 +409,7 @@ function PredictionsLog({ log, logLoading }: { log: PredictionEntry[]; logLoadin
         <p className="text-xs text-gray-400 text-center py-3">No completed games yet this season.</p>
       ) : (
         <>
-        <div ref={listRef} className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
           {visible.map((e, i) => {
             const params = new URLSearchParams({
               away:       e.away_team,
