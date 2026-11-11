@@ -8,6 +8,7 @@ The app is assembled from one module per area (imported in dependency order):
   record    season record and model cards
   nba, mlb, nfl, nhl    one module per sport
   teams     team pages, live-game indicator, search
+  today     every sport's games of the day (the home page)
   players   player pages
 
 Usage:
@@ -43,11 +44,15 @@ from api.nhl import (
 from api.teams import (
     _get_player_index,
 )
+from api.today import (
+    get_home_summary,
+    get_today_all,
+)
 
 # Every module's names are also reachable as `api.main.<name>` (scripts and tests use them)
-from api import common, espn, odds, record, nba, mlb, nfl, nhl, teams, players  # noqa: E402
+from api import common, espn, odds, record, nba, mlb, nfl, nhl, teams, players, today  # noqa: E402
 
-for _module in (common, espn, odds, record, nba, mlb, nfl, nhl, teams, players):
+for _module in (common, espn, odds, record, nba, mlb, nfl, nhl, teams, players, today):
     globals().update({k: v for k, v in vars(_module).items() if not k.startswith("__")})
 
 
@@ -61,7 +66,8 @@ def _warm_caches() -> None:
         for fn in (get_predictions_log, get_nba_standings, get_nba_projections, get_bracket,
                    get_nfl_predictions_log, get_nfl_standings, get_nfl_projections, get_nfl_power,
                    get_mlb_standings, get_mlb_predictions_log, get_mlb_season_recap,
-                   get_nhl_predictions_log, get_nhl_projections, _get_player_index):
+                   get_nhl_predictions_log, get_nhl_projections, get_today_all, get_home_summary,
+                   _get_player_index):
             try:
                 fn()
             except Exception:

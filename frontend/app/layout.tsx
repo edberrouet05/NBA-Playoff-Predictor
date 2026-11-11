@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
 import Navbar from "./components/Navbar";
 import SearchBar from "./components/SearchBar";
 import ThemeToggle from "./components/ThemeToggle";
@@ -25,9 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="md:ml-[68px] pb-16 md:pb-0">
           <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/60 dark:border-white/[0.06] px-4 md:px-7 h-12 flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex-shrink-0">
+              <Link href="/" title="Today's games" className="flex-shrink-0">
                 <span className="text-red-600 font-black text-lg sm:text-xl tracking-tight">Court</span><span className="text-gray-900 dark:text-white font-black text-lg sm:text-xl tracking-tight">Edge</span>
-              </div>
+              </Link>
               <TopNav />
             </div>
             <div className="flex items-center gap-1 sm:gap-3 ml-2 flex-shrink-0">

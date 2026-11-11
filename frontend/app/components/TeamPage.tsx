@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { nbaGameHref, playerHref, teamHref } from "./teamLinks";
+import { FavoriteStar } from "./favorites";
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -132,7 +133,10 @@ function Hero({ d }: { d: TeamPageData }) {
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
             {d.league.toUpperCase()} · {d.season.label}{d.season.is_current ? "" : " season"}
           </p>
-          <h1 className="text-2xl lg:text-3xl font-black text-gray-900 dark:text-white leading-tight">{d.team.name}</h1>
+          <h1 className="text-2xl lg:text-3xl font-black text-gray-900 dark:text-white leading-tight flex items-center gap-2">
+            {d.team.name}
+            <FavoriteStar league={d.league} team={d.team.name} size={20} />
+          </h1>
           {d.team.standing && <p className="text-sm text-gray-500 mt-0.5">{d.team.standing}</p>}
         </div>
         <div className="flex items-end gap-6">

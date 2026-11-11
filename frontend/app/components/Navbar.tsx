@@ -40,6 +40,16 @@ function IconTarget() {
   );
 }
 
+function IconToday() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3.5" width="14" height="12.5" rx="2" />
+      <path d="M2 7.5h14M6 1.5v3.5M12 1.5v3.5" />
+      <circle cx="9" cy="11.8" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 // ── Sport detection ────────────────────────────────────────────────────────────
 
 type Sport = "nba" | "mlb" | "nfl" | "nhl";
@@ -64,10 +74,10 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
   // Three icons per sport: the other pages are tabs inside "Standings" and "Model"
   nba: [
     {
-      href: "/",
+      href: "/nba",
       Icon: IconGames,
       label: "Games",
-      isActive: (p) => p === "/" || p.startsWith("/game") || p.startsWith("/team")
+      isActive: (p) => p === "/nba" || p.startsWith("/game") || p.startsWith("/team")
         || p.startsWith("/nba/team") || p.startsWith("/nba/player") || p === "/predictions",
     },
     {
@@ -148,12 +158,15 @@ const SPORT_SIDEBAR: Record<Sport, SidebarLink[]> = {
   ],
 };
 
+const TODAY_LINK: SidebarLink = { href: "/", Icon: IconToday, label: "Today", isActive: (p) => p === "/" };
+
 // ── Sidebar component ──────────────────────────────────────────────────────────
 
 export default function Sidebar() {
   const path  = usePathname();
   const sport = getSport(path);
-  const links = SPORT_SIDEBAR[sport];
+  // "Today" (every sport's games) comes first, then the current sport's pages
+  const links = [TODAY_LINK, ...SPORT_SIDEBAR[sport]];
 
   return (
     <>
