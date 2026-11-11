@@ -282,7 +282,7 @@ function RecordChart({ rows, sport, sports }: { rows: (Tally & { date: string })
             {dayLabel(h.date, true)} · {h.n ? <><b>{h.correct}/{h.n}</b> right ({pct(h)})</> : "no games"}
           </div>
         )}
-        <div className="flex items-end gap-1 sm:gap-1.5 border-b border-gray-100 dark:border-gray-800" style={{ height: 132 }}>
+        <div className="flex-1 min-h-[132px] flex items-end gap-1 sm:gap-1.5 border-b border-gray-100 dark:border-gray-800">
           {rows.map((r, i) => {
             const wrong = r.n - r.correct;
             return (
@@ -439,9 +439,18 @@ export default function TodayPage() {
                 </Section>
                 </div>
               ) : (
-                <p className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl px-5 py-4 text-xs text-gray-400">
-                  {shown.some(g => g.state === "pre") ? "No picks for the games left today." : "Every game today has started: new picks tomorrow."}
-                </p>
+                <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5">
+                  <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Today&apos;s picks</h2>
+                  <div className="flex flex-col items-center text-center gap-2 py-2">
+                    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="text-gray-400">
+                      <circle cx="8" cy="8" r="6.5" /><path d="M8 4.5V8l2.5 1.5" />
+                    </svg>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      {shown.some(g => g.state === "pre") ? "No picks for the games left today." : "Every game today has started."}
+                    </p>
+                    <p className="text-xs text-gray-400">Most confident picks and value picks for tomorrow&apos;s games show up here in the morning.</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
