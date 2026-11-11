@@ -1396,10 +1396,10 @@
  },
  "401909964": {
   "away_team": "Orlando Magic",
-  "away_win_prob": 59.6,
-  "frozen_at": "2026-11-11T01:34:47Z",
+  "away_win_prob": 57.0,
+  "frozen_at": "2026-11-11T02:03:01Z",
   "home_team": "Sacramento Kings",
-  "home_win_prob": 40.4,
+  "home_win_prob": 43.0,
   "predicted_winner": "Orlando Magic",
   "tipoff": "2026-11-11T03:00Z"
  },
