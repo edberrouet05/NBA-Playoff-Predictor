@@ -152,8 +152,8 @@ function GameCard({ game }: { game: MLBGame }) {
 
   const [barAway, barHome] = barColors(game.away_team, game.home_team);
   return (
-    <Link href={href} className="block group">
-    <div className={`bg-white dark:bg-gray-900 border shadow-sm rounded-2xl overflow-hidden transition-shadow group-hover:shadow-md ${
+    <Link href={href} className="block group h-full">
+    <div className={`bg-white dark:bg-gray-900 border shadow-sm rounded-2xl overflow-hidden h-full flex flex-col transition-shadow group-hover:shadow-md ${
       isFinal
         ? "border-gray-100 dark:border-gray-800 opacity-80"
         : "border-gray-100 dark:border-transparent"
@@ -236,7 +236,7 @@ function GameCard({ game }: { game: MLBGame }) {
       </div>
 
       {/* Probability bar */}
-      <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
+      <div className="mx-5 mt-auto h-[3px] flex rounded-full overflow-hidden">
         <div className="h-full" style={{ width: `${game.away_win_prob}%`, background: barAway }} />
         <div className="h-full flex-1" style={{ background: barHome }} />
       </div>

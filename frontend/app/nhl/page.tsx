@@ -97,8 +97,8 @@ function GameCard({ game }: { game: NHLGame }) {
 
   const [barAway, barHome] = pickMatchupColors(nhlColorOptions(away.name), nhlColorOptions(home.name));
   return (
-    <Link href={`/nhl/game/${game.game_id}`} className="block group">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
+    <Link href={`/nhl/game/${game.game_id}`} className="block group h-full">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden h-full flex flex-col group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
         <div className="px-5 pt-4 flex items-center justify-between">
           <span className="text-xs text-gray-500">{isFinal ? game.detail : isLive ? game.detail : formatGameTime(game.start_utc)}</span>
           {isLive && (
@@ -116,7 +116,7 @@ function GameCard({ game }: { game: NHLGame }) {
         </div>
 
         {awayProb != null && (
-          <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
+          <div className="mx-5 mt-auto h-[3px] flex rounded-full overflow-hidden">
             <div className="h-full" style={{ width: `${awayProb}%`, background: barAway }} />
             <div className="h-full flex-1" style={{ background: barHome }} />
           </div>

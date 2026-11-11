@@ -288,8 +288,8 @@ function GameCard({ game }: { game: TodayGame }) {
 
   const [barAway, barHome] = barColors(game.away_team, game.home_team);
   return (
-    <Link href={gameUrl(game)} className="block group">
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
+    <Link href={gameUrl(game)} className="block group h-full">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl overflow-hidden h-full flex flex-col group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
 
         <div className="px-5 pt-4 flex items-center justify-between">
           <span className="text-xs text-gray-500">{game.status_text}</span>
@@ -345,7 +345,7 @@ function GameCard({ game }: { game: TodayGame }) {
           </div>
         </div>
 
-        <div className="mx-5 h-[3px] flex rounded-full overflow-hidden">
+        <div className="mx-5 mt-auto h-[3px] flex rounded-full overflow-hidden">
           <div className="h-full transition-all duration-700" style={{ width: `${awayProb}%`, background: barAway }} />
           <div className="h-full flex-1" style={{ background: barHome }} />
         </div>
