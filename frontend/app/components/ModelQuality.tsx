@@ -41,7 +41,7 @@ export function CalibrationChart({ bins }: { bins: CalibrationBin[] }) {
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Calibration</h2>
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Are the percentages honest?</h2>
           <p className="text-xs text-gray-400 leading-relaxed">
             When the model says X%, does that team actually win X% of the time? Points on the dashed line = perfectly calibrated.
           </p>
@@ -137,7 +137,7 @@ export function ProbabilityQuality({ logLoss, brier, vegas, market }: {
   const dec = (v: number) => v.toFixed(3);
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
-      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Probability quality</h2>
+      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Beyond right or wrong</h2>
       <p className="text-xs text-gray-400 leading-relaxed mb-4">
         Accuracy only checks who was favoured. Log loss and Brier score also punish being confidently wrong — lower is better
         (a coin flip scores 0.693 and 0.250).

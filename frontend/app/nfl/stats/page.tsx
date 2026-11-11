@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { CalibrationChart, ProbabilityQuality, type CalibrationBin, type VegasComparison } from "../../components/ModelQuality";
-import { FoldBars, Metric, seasonSpan } from "../../components/ModelStatsBits";
+import { FoldBars, InShort, Metric, seasonSpan } from "../../components/ModelStatsBits";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -118,6 +118,10 @@ export default function NFLStatsPage() {
         </p>
       </div>
 
+      <InShort accuracy={data.accuracy} seasons={data.seasons.length} bins={data.calibration ?? []}
+        topFactor={ranked[0] ? (FEATURE_LABELS[ranked[0].feature]?.label ?? ranked[0].feature) : undefined}
+        vegasAccuracy={data.vegas?.vegas.accuracy} />
+
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-5">
         <Metric label="Prediction Accuracy" value={`${data.accuracy}%`} sub="on games it hadn't seen" />
         <Metric label="Games analyzed" value={Math.round(data.n_rows / 2).toLocaleString()} sub={`across ${data.seasons.length} seasons`} />
@@ -137,7 +141,7 @@ export default function NFLStatsPage() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6 mb-5">
         <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-5">
-          Feature Importance — coefficient magnitude
+          What matters most · model weights
         </h2>
         <div className="flex flex-col gap-3.5">
           {ranked.map(({ feature, coef }) => {
@@ -188,7 +192,7 @@ export default function NFLStatsPage() {
       </div>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-6">
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">About the Model</h2>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">How it works</h2>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Logistic Regression with L2 regularization + StandardScaler</li>
           <li className="flex gap-2"><span className="text-gray-300 dark:text-gray-600">—</span> Trained on {data.seasons[0]}–{data.seasons[data.seasons.length - 1]} regular-season and playoff games (2 rows per game)</li>

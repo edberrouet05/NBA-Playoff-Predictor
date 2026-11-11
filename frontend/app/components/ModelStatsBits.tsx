@@ -66,3 +66,47 @@ export function FoldBars({ folds, avg, seasons, split }: {
     </div>
   );
 }
+
+/** The page in three plain sentences, for visitors who will not read the charts below. */
+export function InShort({ accuracy, seasons, bins, topFactor, vegasAccuracy }: {
+  accuracy: number; seasons: number;
+  bins: { predicted: number; actual: number; n: number }[];
+  /** The input that moves the prediction most */
+  topFactor?: string;
+  /** Share of winners the Vegas closing line picked on the same games (0-1), when we have it */
+  vegasAccuracy?: number | null;
+}) {
+  // The calibration bin nearest a 70% favourite, if it has enough games to mean something
+  const near70 = bins.filter(b => b.n >= 30).sort((a, b) => Math.abs(a.predicted - 0.7) - Math.abs(b.predicted - 0.7))[0];
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 sm:p-6 mb-5">
+      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">In short</h2>
+      <ul className="flex flex-col gap-2.5 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <li className="flex gap-2.5">
+          <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+          <span>
+            Tested on <b className="text-gray-900 dark:text-white">{seasons} seasons it had never seen</b>, it picks the winner{" "}
+            <b className="text-gray-900 dark:text-white">{accuracy.toFixed(1)}%</b> of the time (a coin flip gets 50%).
+            {vegasAccuracy != null && <> Las Vegas&apos;s closing line, the toughest benchmark there is, gets {(vegasAccuracy * 100).toFixed(1)}% on the same games.</>}
+          </span>
+        </li>
+        {near70 && (
+          <li className="flex gap-2.5">
+            <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+            <span>
+              {Math.abs(near70.actual - near70.predicted) <= 0.04 ? "Its percentages mean what they say: when" : "When"} it gives a team about{" "}
+              <b className="text-gray-900 dark:text-white">{Math.round(near70.predicted * 100)}%</b>, that team wins{" "}
+              <b className="text-gray-900 dark:text-white">{Math.round(near70.actual * 100)}%</b> of the time.
+            </span>
+          </li>
+        )}
+        {topFactor && (
+          <li className="flex gap-2.5">
+            <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+            <span>The factor that weighs most: <b className="text-gray-900 dark:text-white">{topFactor}</b>. Details below.</span>
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
