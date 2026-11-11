@@ -266,8 +266,8 @@ function RecordChart({ rows, sport, sports }: { rows: (Tally & { date: string })
   const total = rows.reduce(add, NONE);
   const h = hover != null ? rows[hover] : null;
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 h-full flex flex-col">
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-transparent shadow-sm rounded-2xl p-5 flex flex-col">
+      <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Our picks, last {rows.length} days</h2>
           <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
@@ -279,13 +279,13 @@ function RecordChart({ rows, sport, sports }: { rows: (Tally & { date: string })
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-gray-300 dark:bg-gray-600" />Wrong</span>
         </div>
       </div>
-      <div className="relative flex-1 min-h-[150px] flex flex-col justify-end">
+      <div className="relative pt-8 flex flex-col justify-end">
         {h && (
           <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 bg-gray-900 dark:bg-gray-800 text-white text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg pointer-events-none">
             {dayLabel(h.date, true)} · {h.n ? <><b>{h.correct}/{h.n}</b> right ({pct(h)})</> : "no games"}
           </div>
         )}
-        <div className="flex-1 min-h-[132px] flex items-end gap-1 sm:gap-1.5 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-end gap-1 sm:gap-1.5 border-b border-gray-100 dark:border-gray-800" style={{ height: 132 }}>
           {rows.map((r, i) => {
             const wrong = r.n - r.correct;
             return (
@@ -431,13 +431,13 @@ export default function TodayPage() {
               sub={sure ? `${sure.correct} of ${sure.n} right this season` : ""} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7 items-start">
+            <div className="lg:col-span-2 flex flex-col gap-5 min-w-0">
               {summary ? <RecordChart rows={days} sport={sport} sports={summary.sports} />
-                : <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 text-center text-gray-400 text-sm h-full">Loading our record…</div>}
+                : <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 text-center text-gray-400 text-sm">Loading our record…</div>}
+              {summary && <YesterdayCard y={summary.yesterday} sport={sport} />}
             </div>
             <div className="flex flex-col gap-5 min-w-0">
-              {summary && <YesterdayCard y={summary.yesterday} sport={sport} />}
               {best.length + value.length > 0 ? (
                 <div>
                 {nextDay && (
