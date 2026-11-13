@@ -286,13 +286,13 @@
   "puck_drop": "2026-11-13T00:00Z"
  },
  "401892702": {
-  "away_goalie": "Colten Ellis",
+  "away_goalie": "Alex Lyon",
   "away_team": "Buffalo Sabres",
-  "away_win_prob": 60.0,
-  "frozen_at": "2026-11-12T22:25:10Z",
+  "away_win_prob": 60.8,
+  "frozen_at": "2026-11-13T00:22:16Z",
   "home_goalie": "Spencer Knight",
   "home_team": "Chicago Blackhawks",
-  "home_win_prob": 40.0,
+  "home_win_prob": 39.2,
   "predicted_winner": "Buffalo Sabres",
   "puck_drop": "2026-11-13T01:00Z"
  },

@@ -1511,5 +1511,25 @@
   "predicted_winner": "Oklahoma City Thunder",
   "projected_total": 224,
   "tipoff": "2026-11-12T03:00Z"
+ },
+ "401909978": {
+  "away_team": "Dallas Mavericks",
+  "away_win_prob": 31.3,
+  "frozen_at": "2026-11-13T00:22:36Z",
+  "home_team": "Minnesota Timberwolves",
+  "home_win_prob": 68.7,
+  "predicted_winner": "Minnesota Timberwolves",
+  "projected_total": 228,
+  "tipoff": "2026-11-13T01:00Z"
+ },
+ "401909979": {
+  "away_team": "Charlotte Hornets",
+  "away_win_prob": 31.5,
+  "frozen_at": "2026-11-13T00:22:36Z",
+  "home_team": "Phoenix Suns",
+  "home_win_prob": 68.5,
+  "predicted_winner": "Phoenix Suns",
+  "projected_total": 220,
+  "tipoff": "2026-11-13T02:00Z"
  }
 }
