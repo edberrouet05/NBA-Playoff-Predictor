@@ -328,5 +328,27 @@
   "home_win_prob": 53.6,
   "predicted_winner": "Los Angeles Kings",
   "puck_drop": "2026-11-13T03:00Z"
+ },
+ "401892706": {
+  "away_goalie": "Dylan Garand",
+  "away_team": "New York Rangers",
+  "away_win_prob": 63.5,
+  "frozen_at": "2026-11-13T22:05:44Z",
+  "home_goalie": "Leevi Merilainen",
+  "home_team": "Vancouver Canucks",
+  "home_win_prob": 36.5,
+  "predicted_winner": "New York Rangers",
+  "puck_drop": "2026-11-14T02:00Z"
+ },
+ "401892707": {
+  "away_goalie": "Juuse Saros",
+  "away_team": "Nashville Predators",
+  "away_win_prob": 36.3,
+  "frozen_at": "2026-11-13T22:05:44Z",
+  "home_goalie": "Adin Hill",
+  "home_team": "Vegas Golden Knights",
+  "home_win_prob": 63.7,
+  "predicted_winner": "Vegas Golden Knights",
+  "puck_drop": "2026-11-14T03:00Z"
  }
 }
