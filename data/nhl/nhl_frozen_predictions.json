@@ -482,5 +482,60 @@
   "home_win_prob": 61.9,
   "predicted_winner": "Los Angeles Kings",
   "puck_drop": "2026-11-15T03:00Z"
+ },
+ "401892721": {
+  "away_goalie": "Tristan Jarry",
+  "away_team": "Edmonton Oilers",
+  "away_win_prob": 54.2,
+  "frozen_at": "2026-11-15T18:28:08Z",
+  "home_goalie": "Dan Vladar",
+  "home_team": "Philadelphia Flyers",
+  "home_win_prob": 45.8,
+  "predicted_winner": "Edmonton Oilers",
+  "puck_drop": "2026-11-16T00:30Z"
+ },
+ "401892722": {
+  "away_goalie": "Akira Schmid",
+  "away_team": "Florida Panthers",
+  "away_win_prob": 42.5,
+  "frozen_at": "2026-11-15T18:28:08Z",
+  "home_goalie": "Casey DeSmith",
+  "home_team": "Dallas Stars",
+  "home_win_prob": 57.5,
+  "predicted_winner": "Dallas Stars",
+  "puck_drop": "2026-11-16T01:00Z"
+ },
+ "401892723": {
+  "away_goalie": "Devin Cooley",
+  "away_team": "Calgary Flames",
+  "away_win_prob": 39.1,
+  "frozen_at": "2026-11-15T18:28:08Z",
+  "home_goalie": "Ville Husso",
+  "home_team": "Anaheim Ducks",
+  "home_win_prob": 60.9,
+  "predicted_winner": "Anaheim Ducks",
+  "puck_drop": "2026-11-16T01:00Z"
+ },
+ "401892724": {
+  "away_goalie": "Leevi Merilainen",
+  "away_team": "Vancouver Canucks",
+  "away_win_prob": 24.9,
+  "frozen_at": "2026-11-15T18:28:09Z",
+  "home_goalie": "Carter Hart",
+  "home_team": "Vegas Golden Knights",
+  "home_win_prob": 75.1,
+  "predicted_winner": "Vegas Golden Knights",
+  "puck_drop": "2026-11-16T02:00Z"
+ },
+ "401892725": {
+  "away_goalie": "Juuse Saros",
+  "away_team": "Nashville Predators",
+  "away_win_prob": 58.5,
+  "frozen_at": "2026-11-15T18:28:09Z",
+  "home_goalie": "Alex Nedeljkovic",
+  "home_team": "San Jose Sharks",
+  "home_win_prob": 41.5,
+  "predicted_winner": "Nashville Predators",
+  "puck_drop": "2026-11-16T02:00Z"
  }
 }
