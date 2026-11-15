@@ -1561,5 +1561,35 @@
   "predicted_winner": "Phoenix Suns",
   "projected_total": 220,
   "tipoff": "2026-11-13T02:00Z"
+ },
+ "401909982": {
+  "away_team": "Detroit Pistons",
+  "away_win_prob": 62.7,
+  "frozen_at": "2026-11-15T00:51:41Z",
+  "home_team": "Miami Heat",
+  "home_win_prob": 37.3,
+  "predicted_winner": "Detroit Pistons",
+  "projected_total": 232,
+  "tipoff": "2026-11-15T01:00Z"
+ },
+ "401909983": {
+  "away_team": "Brooklyn Nets",
+  "away_win_prob": 34.0,
+  "frozen_at": "2026-11-15T00:51:41Z",
+  "home_team": "Memphis Grizzlies",
+  "home_win_prob": 66.0,
+  "predicted_winner": "Memphis Grizzlies",
+  "projected_total": 230,
+  "tipoff": "2026-11-15T01:00Z"
+ },
+ "401909984": {
+  "away_team": "Chicago Bulls",
+  "away_win_prob": 9.1,
+  "frozen_at": "2026-11-15T00:51:41Z",
+  "home_team": "Minnesota Timberwolves",
+  "home_win_prob": 90.9,
+  "predicted_winner": "Minnesota Timberwolves",
+  "projected_total": 234,
+  "tipoff": "2026-11-15T01:00Z"
  }
 }
