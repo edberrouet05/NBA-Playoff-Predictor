@@ -1374,10 +1374,10 @@
  },
  "401873064": {
   "away_team": "Pittsburgh Steelers",
-  "away_win_prob": 42.7,
-  "frozen_at": "2026-11-15T18:28:04Z",
+  "away_win_prob": 42.4,
+  "frozen_at": "2026-11-16T01:12:39Z",
   "home_team": "Cincinnati Bengals",
-  "home_win_prob": 57.3,
+  "home_win_prob": 57.6,
   "kickoff": "2026-11-16T01:20Z",
   "predicted_winner": "Cincinnati Bengals",
   "projected_total": 48
