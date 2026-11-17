@@ -559,5 +559,126 @@
   "home_win_prob": 76.9,
   "predicted_winner": "Utah Mammoth",
   "puck_drop": "2026-11-17T02:30Z"
+ },
+ "401892728": {
+  "away_goalie": "Darcy Kuemper",
+  "away_team": "Los Angeles Kings",
+  "away_win_prob": 41.5,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Michael DiPietro",
+  "home_team": "Boston Bruins",
+  "home_win_prob": 58.5,
+  "predicted_winner": "Boston Bruins",
+  "puck_drop": "2026-11-18T00:00Z"
+ },
+ "401892729": {
+  "away_goalie": "Logan Thompson",
+  "away_team": "Washington Capitals",
+  "away_win_prob": 39.1,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Andrei Vasilevskiy",
+  "home_team": "Tampa Bay Lightning",
+  "home_win_prob": 60.9,
+  "predicted_winner": "Tampa Bay Lightning",
+  "puck_drop": "2026-11-18T00:30Z"
+ },
+ "401892730": {
+  "away_goalie": "Devon Levi",
+  "away_team": "Edmonton Oilers",
+  "away_win_prob": 45.5,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Jacob Markstrom",
+  "home_team": "Florida Panthers",
+  "home_win_prob": 54.5,
+  "predicted_winner": "Florida Panthers",
+  "puck_drop": "2026-11-18T00:00Z"
+ },
+ "401892731": {
+  "away_goalie": "Cam Talbot",
+  "away_team": "Columbus Blue Jackets",
+  "away_win_prob": 46.8,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Ilya Sorokin",
+  "home_team": "New York Islanders",
+  "home_win_prob": 53.2,
+  "predicted_winner": "New York Islanders",
+  "puck_drop": "2026-11-18T00:00Z"
+ },
+ "401892732": {
+  "away_goalie": "Alex Lyon",
+  "away_team": "Buffalo Sabres",
+  "away_win_prob": 54.5,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Joseph Woll",
+  "home_team": "Philadelphia Flyers",
+  "home_win_prob": 45.5,
+  "predicted_winner": "Buffalo Sabres",
+  "puck_drop": "2026-11-18T00:00Z"
+ },
+ "401892733": {
+  "away_goalie": "Sergei Bobrovsky",
+  "away_team": "Toronto Maple Leafs",
+  "away_win_prob": 56.3,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Spencer Knight",
+  "home_team": "Chicago Blackhawks",
+  "home_win_prob": 43.7,
+  "predicted_winner": "Toronto Maple Leafs",
+  "puck_drop": "2026-11-18T00:30Z"
+ },
+ "401892734": {
+  "away_goalie": "Ville Husso",
+  "away_team": "Anaheim Ducks",
+  "away_win_prob": 55.0,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Jordan Binnington",
+  "home_team": "St. Louis Blues",
+  "home_win_prob": 45.0,
+  "predicted_winner": "Anaheim Ducks",
+  "puck_drop": "2026-11-18T01:00Z"
+ },
+ "401892735": {
+  "away_goalie": "Juuse Saros",
+  "away_team": "Nashville Predators",
+  "away_win_prob": 33.6,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Jesper Wallstedt",
+  "home_team": "Minnesota Wild",
+  "home_win_prob": 66.4,
+  "predicted_winner": "Minnesota Wild",
+  "puck_drop": "2026-11-18T01:00Z"
+ },
+ "401892736": {
+  "away_goalie": "Linus Ullmark",
+  "away_team": "Ottawa Senators",
+  "away_win_prob": 53.1,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Stuart Skinner",
+  "home_team": "Winnipeg Jets",
+  "home_win_prob": 46.9,
+  "predicted_winner": "Ottawa Senators",
+  "puck_drop": "2026-11-18T00:00Z"
+ },
+ "401892737": {
+  "away_goalie": "Jake Oettinger",
+  "away_team": "Dallas Stars",
+  "away_win_prob": 46.8,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Adin Hill",
+  "home_team": "Vegas Golden Knights",
+  "home_win_prob": 53.2,
+  "predicted_winner": "Vegas Golden Knights",
+  "puck_drop": "2026-11-18T03:00Z"
+ },
+ "401892738": {
+  "away_goalie": "Dustin Wolf",
+  "away_team": "Calgary Flames",
+  "away_win_prob": 48.6,
+  "frozen_at": "2026-11-17T23:37:35Z",
+  "home_goalie": "Yaroslav Askarov",
+  "home_team": "San Jose Sharks",
+  "home_win_prob": 51.4,
+  "predicted_winner": "San Jose Sharks",
+  "puck_drop": "2026-11-18T03:00Z"
  }
 }
