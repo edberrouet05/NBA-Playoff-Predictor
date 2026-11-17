@@ -7406,8 +7406,22 @@ season,game_type,week,gameday,location,away_team,home_team,away_score,home_score
 2026,REG,9,2026-11-08,Home,New York Giants,Philadelphia Eagles,19,11,0.0,J.J. McCarthy,Joe Milton III,John Harbaugh,Nick Sirianni,Lincoln Financial Field,401873044
 2026,REG,9,2026-11-08,Home,New York Jets,Kansas City Chiefs,12,35,0.0,Geno Smith,Patrick Mahomes,Aaron Glenn,Andy Reid,GEHA Field at Arrowhead Stadium,401873045
 2026,REG,9,2026-11-08,Home,Houston Texans,Los Angeles Chargers,44,22,0.0,C.J. Stroud,Justin Herbert,DeMeco Ryans,Jim Harbaugh,SoFi Stadium,401873046
-2026,REG,9,2026-11-08,Home,Las Vegas Raiders,San Francisco 49ers,17,38,0.0,Kirk Cousins,Brock Purdy,Klint Kubiak,Kyle Shanahan,Levi's Stadium,401873047
 2026,REG,9,2026-11-08,Home,Arizona Cardinals,Seattle Seahawks,3,17,0.0,Gardner Minshew,Drew Lock,Mike LaFleur,Mike Macdonald,Lumen Field,401873048
 2026,REG,9,2026-11-08,Home,Green Bay Packers,New England Patriots,45,27,0.0,Jordan Love,Drake Maye,Matt LaFleur,Mike Vrabel,Gillette Stadium,401873049
+2026,REG,9,2026-11-08,Home,Las Vegas Raiders,San Francisco 49ers,17,38,0.0,Kirk Cousins,Brock Purdy,Klint Kubiak,Kyle Shanahan,Levi's Stadium,401873047
 2026,REG,9,2026-11-08,Home,Tampa Bay Buccaneers,Chicago Bears,24,27,0.0,Baker Mayfield,Caleb Williams,Todd Bowles,Ben Johnson,Soldier Field,401873050
 2026,REG,9,2026-11-09,Home,Buffalo Bills,Minnesota Vikings,23,6,0.0,Josh Allen,Carson Wentz,Joe Brady,Kevin O'Connell,U.S. Bank Stadium,401873051
+2026,REG,10,2026-11-12,Home,Washington Commanders,New York Giants,24,21,0.0,Jayden Daniels,J.J. McCarthy,Dan Quinn,John Harbaugh,MetLife Stadium,401873052
+2026,REG,10,2026-11-15,Neutral,New England Patriots,Detroit Lions,10,35,0.0,Drake Maye,Jared Goff,Mike Vrabel,Dan Campbell,FC Bayern Munich Stadium,401873053
+2026,REG,10,2026-11-15,Home,Buffalo Bills,New York Jets,31,12,0.0,Josh Allen,Geno Smith,Joe Brady,Aaron Glenn,MetLife Stadium,401873054
+2026,REG,10,2026-11-15,Home,Carolina Panthers,New Orleans Saints,20,17,0.0,Bryce Young,Tyler Shough,Dave Canales,Kellen Moore,Caesars Superdome,401873055
+2026,REG,10,2026-11-15,Home,Houston Texans,Cleveland Browns,24,27,0.0,C.J. Stroud,Deshaun Watson,DeMeco Ryans,Todd Monken,Huntington Bank Field,401873056
+2026,REG,10,2026-11-15,Home,Jacksonville Jaguars,Tennessee Titans,40,23,0.0,Trevor Lawrence,Cam Ward,Liam Coen,Robert Saleh,Nissan Stadium,401873057
+2026,REG,10,2026-11-15,Home,Kansas City Chiefs,Atlanta Falcons,35,13,0.0,Patrick Mahomes,Michael Penix Jr.,Andy Reid,Kevin Stefanski,Mercedes-Benz Stadium,401873058
+2026,REG,10,2026-11-15,Home,Miami Dolphins,Indianapolis Colts,22,24,0.0,Kyle McCord,Daniel Jones,Jeff Hafley,Shane Steichen,Lucas Oil Stadium,401873059
+2026,REG,10,2026-11-15,Home,Minnesota Vikings,Green Bay Packers,30,10,0.0,Kirk Cousins,Jordan Love,Kevin O'Connell,Matt LaFleur,Lambeau Field,401873060
+2026,REG,10,2026-11-15,Home,Los Angeles Rams,Arizona Cardinals,34,6,0.0,Matthew Stafford,Gardner Minshew,Sean McVay,Mike LaFleur,State Farm Stadium,401873061
+2026,REG,10,2026-11-15,Home,Seattle Seahawks,Las Vegas Raiders,21,13,0.0,Sam Darnold,Fernando Mendoza,Mike Macdonald,Klint Kubiak,Allegiant Stadium,401873062
+2026,REG,10,2026-11-15,Home,San Francisco 49ers,Dallas Cowboys,46,40,0.0,Brock Purdy,Dak Prescott,Kyle Shanahan,Brian Schottenheimer,AT&T Stadium,401873063
+2026,REG,10,2026-11-15,Home,Pittsburgh Steelers,Cincinnati Bengals,18,38,0.0,Aaron Rodgers,Joe Burrow,Mike McCarthy,Zac Taylor,Paycor Stadium,401873064
+2026,REG,10,2026-11-16,Home,Los Angeles Chargers,Baltimore Ravens,23,20,0.0,Justin Herbert,Tyler Huntley,Jim Harbaugh,Jesse Minter,M&T Bank Stadium,401873065
