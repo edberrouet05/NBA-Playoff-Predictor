@@ -537,5 +537,27 @@
   "home_win_prob": 41.5,
   "predicted_winner": "Nashville Predators",
   "puck_drop": "2026-11-16T02:00Z"
+ },
+ "401892726": {
+  "away_goalie": "Jacob Fowler",
+  "away_team": "Montreal Canadiens",
+  "away_win_prob": 54.7,
+  "frozen_at": "2026-11-17T00:23:46Z",
+  "home_goalie": "Joonas Korpisalo",
+  "home_team": "New York Rangers",
+  "home_win_prob": 45.3,
+  "predicted_winner": "Montreal Canadiens",
+  "puck_drop": "2026-11-17T00:30Z"
+ },
+ "401892727": {
+  "away_goalie": "Nikita Tolopilo",
+  "away_team": "Vancouver Canucks",
+  "away_win_prob": 23.1,
+  "frozen_at": "2026-11-17T00:23:46Z",
+  "home_goalie": "Karel Vejmelka",
+  "home_team": "Utah Mammoth",
+  "home_win_prob": 76.9,
+  "predicted_winner": "Utah Mammoth",
+  "puck_drop": "2026-11-17T02:30Z"
  }
 }
