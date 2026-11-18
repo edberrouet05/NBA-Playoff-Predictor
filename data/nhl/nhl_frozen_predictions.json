@@ -680,5 +680,38 @@
   "home_win_prob": 51.4,
   "predicted_winner": "San Jose Sharks",
   "puck_drop": "2026-11-18T03:00Z"
+ },
+ "401892739": {
+  "away_goalie": "Jeremy Swayman",
+  "away_team": "Boston Bruins",
+  "away_win_prob": 42.8,
+  "frozen_at": "2026-11-18T23:02:59Z",
+  "home_goalie": "Daniil Tarasov",
+  "home_team": "Detroit Red Wings",
+  "home_win_prob": 57.2,
+  "predicted_winner": "Detroit Red Wings",
+  "puck_drop": "2026-11-19T00:30Z"
+ },
+ "401892740": {
+  "away_goalie": "Jacob Fowler",
+  "away_team": "Montreal Canadiens",
+  "away_win_prob": 41.2,
+  "frozen_at": "2026-11-18T23:02:59Z",
+  "home_goalie": "Connor Hellebuyck",
+  "home_team": "New Jersey Devils",
+  "home_win_prob": 58.8,
+  "predicted_winner": "New Jersey Devils",
+  "puck_drop": "2026-11-19T00:30Z"
+ },
+ "401892741": {
+  "away_goalie": "Mackenzie Blackwood",
+  "away_team": "Colorado Avalanche",
+  "away_win_prob": 54.3,
+  "frozen_at": "2026-11-18T23:02:59Z",
+  "home_goalie": "Sebastian Cossa",
+  "home_team": "Utah Mammoth",
+  "home_win_prob": 45.7,
+  "predicted_winner": "Colorado Avalanche",
+  "puck_drop": "2026-11-19T03:00Z"
  }
 }
