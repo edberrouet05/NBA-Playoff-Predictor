@@ -713,5 +713,137 @@
   "home_win_prob": 45.7,
   "predicted_winner": "Colorado Avalanche",
   "puck_drop": "2026-11-19T03:00Z"
+ },
+ "401892742": {
+  "away_goalie": "Darcy Kuemper",
+  "away_team": "Los Angeles Kings",
+  "away_win_prob": 46.8,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Anthony Stolarz",
+  "home_team": "Toronto Maple Leafs",
+  "home_win_prob": 53.2,
+  "predicted_winner": "Toronto Maple Leafs",
+  "puck_drop": "2026-11-20T00:00Z"
+ },
+ "401892743": {
+  "away_goalie": "Joseph Woll",
+  "away_team": "Philadelphia Flyers",
+  "away_win_prob": 45.7,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Samuel Ersson",
+  "home_team": "Ottawa Senators",
+  "home_win_prob": 54.3,
+  "predicted_winner": "Ottawa Senators",
+  "puck_drop": "2026-11-20T00:00Z"
+ },
+ "401892744": {
+  "away_goalie": "Devon Levi",
+  "away_team": "Edmonton Oilers",
+  "away_win_prob": 35.8,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Andrei Vasilevskiy",
+  "home_team": "Tampa Bay Lightning",
+  "home_win_prob": 64.2,
+  "predicted_winner": "Tampa Bay Lightning",
+  "puck_drop": "2026-11-20T00:30Z"
+ },
+ "401892745": {
+  "away_goalie": "Joel Hofer",
+  "away_team": "St. Louis Blues",
+  "away_win_prob": 50.3,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Arturs Silovs",
+  "home_team": "Pittsburgh Penguins",
+  "home_win_prob": 49.7,
+  "predicted_winner": "St. Louis Blues",
+  "puck_drop": "2026-11-20T00:00Z"
+ },
+ "401892746": {
+  "away_goalie": "Ukko-Pekka Luukkonen",
+  "away_team": "Buffalo Sabres",
+  "away_win_prob": 41.8,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Logan Thompson",
+  "home_team": "Washington Capitals",
+  "home_win_prob": 58.2,
+  "predicted_winner": "Washington Capitals",
+  "puck_drop": "2026-11-20T00:00Z"
+ },
+ "401892747": {
+  "away_goalie": "Jakub Dobes",
+  "away_team": "Montreal Canadiens",
+  "away_win_prob": 21.5,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Pyotr Kochetkov",
+  "home_team": "Carolina Hurricanes",
+  "home_win_prob": 78.5,
+  "predicted_winner": "Carolina Hurricanes",
+  "puck_drop": "2026-11-20T00:00Z"
+ },
+ "401892748": {
+  "away_goalie": "Cam Talbot",
+  "away_team": "Columbus Blue Jackets",
+  "away_win_prob": 58.8,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Spencer Knight",
+  "home_team": "Chicago Blackhawks",
+  "home_win_prob": 41.2,
+  "predicted_winner": "Columbus Blue Jackets",
+  "puck_drop": "2026-11-20T01:00Z"
+ },
+ "401892749": {
+  "away_goalie": "Semyon Varlamov",
+  "away_team": "New York Islanders",
+  "away_win_prob": 44.5,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Nico Daws",
+  "home_team": "Winnipeg Jets",
+  "home_win_prob": 55.5,
+  "predicted_winner": "Winnipeg Jets",
+  "puck_drop": "2026-11-20T00:00Z"
+ },
+ "401892750": {
+  "away_goalie": "Jesper Wallstedt",
+  "away_team": "Minnesota Wild",
+  "away_win_prob": 65.7,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Dustin Wolf",
+  "home_team": "Calgary Flames",
+  "home_win_prob": 34.3,
+  "predicted_winner": "Minnesota Wild",
+  "puck_drop": "2026-11-20T01:00Z"
+ },
+ "401892751": {
+  "away_goalie": "Lukas Dostal",
+  "away_team": "Anaheim Ducks",
+  "away_win_prob": 42.5,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Scott Wedgewood",
+  "home_team": "Colorado Avalanche",
+  "home_win_prob": 57.5,
+  "predicted_winner": "Colorado Avalanche",
+  "puck_drop": "2026-11-20T02:00Z"
+ },
+ "401892752": {
+  "away_goalie": "Leevi Merilainen",
+  "away_team": "Vancouver Canucks",
+  "away_win_prob": 39.0,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Philipp Grubauer",
+  "home_team": "Seattle Kraken",
+  "home_win_prob": 61.0,
+  "predicted_winner": "Seattle Kraken",
+  "puck_drop": "2026-11-20T02:40Z"
+ },
+ "401892753": {
+  "away_goalie": "Jake Oettinger",
+  "away_team": "Dallas Stars",
+  "away_win_prob": 46.6,
+  "frozen_at": "2026-11-19T23:10:34Z",
+  "home_goalie": "Adin Hill",
+  "home_team": "Vegas Golden Knights",
+  "home_win_prob": 53.4,
+  "predicted_winner": "Vegas Golden Knights",
+  "puck_drop": "2026-11-20T03:00Z"
  }
 }
