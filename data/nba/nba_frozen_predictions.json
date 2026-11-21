@@ -254,6 +254,16 @@
   "projected_total": 226,
   "tipoff": "2026-11-14T03:30Z"
  },
+ "401909312": {
+  "away_team": "Houston Rockets",
+  "away_win_prob": 45.4,
+  "frozen_at": "2026-11-21T03:12:49Z",
+  "home_team": "Denver Nuggets",
+  "home_win_prob": 54.6,
+  "predicted_winner": "Denver Nuggets",
+  "projected_total": 226,
+  "tipoff": "2026-11-21T03:00Z"
+ },
  "401909834": {
   "away_team": "Atlanta Hawks",
   "away_win_prob": 42.9,
