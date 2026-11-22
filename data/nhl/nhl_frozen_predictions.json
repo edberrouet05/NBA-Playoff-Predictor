@@ -977,5 +977,49 @@
   "home_win_prob": 51.7,
   "predicted_winner": "San Jose Sharks",
   "puck_drop": "2026-11-22T03:00Z"
+ },
+ "401892769": {
+  "away_goalie": "Ukko-Pekka Luukkonen",
+  "away_team": "Buffalo Sabres",
+  "away_win_prob": 29.2,
+  "frozen_at": "2026-11-22T21:45:25Z",
+  "home_goalie": "Dennis Hildeby",
+  "home_team": "Tampa Bay Lightning",
+  "home_win_prob": 70.8,
+  "predicted_winner": "Tampa Bay Lightning",
+  "puck_drop": "2026-11-22T22:00Z"
+ },
+ "401892770": {
+  "away_goalie": "Tristan Jarry",
+  "away_team": "Edmonton Oilers",
+  "away_win_prob": 47.3,
+  "frozen_at": "2026-11-22T21:45:25Z",
+  "home_goalie": "Joel Hofer",
+  "home_team": "St. Louis Blues",
+  "home_win_prob": 52.7,
+  "predicted_winner": "St. Louis Blues",
+  "puck_drop": "2026-11-23T00:00Z"
+ },
+ "401892771": {
+  "away_goalie": "Arturs Silovs",
+  "away_team": "Pittsburgh Penguins",
+  "away_win_prob": 30.4,
+  "frozen_at": "2026-11-22T21:45:25Z",
+  "home_goalie": "Jake Oettinger",
+  "home_team": "Dallas Stars",
+  "home_win_prob": 69.6,
+  "predicted_winner": "Dallas Stars",
+  "puck_drop": "2026-11-23T00:00Z"
+ },
+ "401892772": {
+  "away_goalie": "Drew Commesso",
+  "away_team": "Chicago Blackhawks",
+  "away_win_prob": 49.3,
+  "frozen_at": "2026-11-22T21:45:25Z",
+  "home_goalie": "Nikita Tolopilo",
+  "home_team": "Vancouver Canucks",
+  "home_win_prob": 50.7,
+  "predicted_winner": "Vancouver Canucks",
+  "puck_drop": "2026-11-23T01:00Z"
  }
 }

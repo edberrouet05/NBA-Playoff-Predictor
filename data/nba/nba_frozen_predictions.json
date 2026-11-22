@@ -1701,5 +1701,65 @@
   "predicted_winner": "Boston Celtics",
   "projected_total": 222,
   "tipoff": "2026-11-22T03:00Z"
+ },
+ "401910030": {
+  "away_team": "Oklahoma City Thunder",
+  "away_win_prob": 33.1,
+  "frozen_at": "2026-11-22T21:45:44Z",
+  "home_team": "Miami Heat",
+  "home_win_prob": 66.9,
+  "predicted_winner": "Miami Heat",
+  "projected_total": 234,
+  "tipoff": "2026-11-22T23:00Z"
+ },
+ "401910031": {
+  "away_team": "Orlando Magic",
+  "away_win_prob": 62.4,
+  "frozen_at": "2026-11-22T21:45:44Z",
+  "home_team": "Washington Wizards",
+  "home_win_prob": 37.6,
+  "predicted_winner": "Orlando Magic",
+  "projected_total": 226,
+  "tipoff": "2026-11-23T00:00Z"
+ },
+ "401910032": {
+  "away_team": "Denver Nuggets",
+  "away_win_prob": 77.2,
+  "frozen_at": "2026-11-22T21:45:44Z",
+  "home_team": "Chicago Bulls",
+  "home_win_prob": 22.8,
+  "predicted_winner": "Denver Nuggets",
+  "projected_total": 233,
+  "tipoff": "2026-11-23T00:00Z"
+ },
+ "401910033": {
+  "away_team": "Dallas Mavericks",
+  "away_win_prob": 48.6,
+  "frozen_at": "2026-11-22T21:45:44Z",
+  "home_team": "Utah Jazz",
+  "home_win_prob": 51.4,
+  "predicted_winner": "Utah Jazz",
+  "projected_total": 227,
+  "tipoff": "2026-11-23T00:00Z"
+ },
+ "401910034": {
+  "away_team": "Indiana Pacers",
+  "away_win_prob": 15.9,
+  "frozen_at": "2026-11-22T21:45:44Z",
+  "home_team": "New York Knicks",
+  "home_win_prob": 84.1,
+  "predicted_winner": "New York Knicks",
+  "projected_total": 221,
+  "tipoff": "2026-11-23T01:00Z"
+ },
+ "401910035": {
+  "away_team": "Boston Celtics",
+  "away_win_prob": 68.2,
+  "frozen_at": "2026-11-22T21:45:44Z",
+  "home_team": "Golden State Warriors",
+  "home_win_prob": 31.8,
+  "predicted_winner": "Boston Celtics",
+  "projected_total": 220,
+  "tipoff": "2026-11-23T01:30Z"
  }
 }
