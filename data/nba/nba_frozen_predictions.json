@@ -1691,5 +1691,15 @@
   "predicted_winner": "Los Angeles Lakers",
   "projected_total": 223,
   "tipoff": "2026-11-18T04:00Z"
+ },
+ "401910028": {
+  "away_team": "Boston Celtics",
+  "away_win_prob": 83.1,
+  "frozen_at": "2026-11-22T02:28:47Z",
+  "home_team": "Sacramento Kings",
+  "home_win_prob": 16.9,
+  "predicted_winner": "Boston Celtics",
+  "projected_total": 222,
+  "tipoff": "2026-11-22T03:00Z"
  }
 }
