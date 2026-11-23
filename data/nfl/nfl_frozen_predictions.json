@@ -1494,10 +1494,10 @@
  },
  "401873077": {
   "away_team": "Minnesota Vikings",
-  "away_win_prob": 35.4,
-  "frozen_at": "2026-11-21T03:12:21Z",
+  "away_win_prob": 36.9,
+  "frozen_at": "2026-11-23T00:22:19Z",
   "home_team": "San Francisco 49ers",
-  "home_win_prob": 64.6,
+  "home_win_prob": 63.1,
   "kickoff": "2026-11-23T01:20Z",
   "predicted_winner": "San Francisco 49ers",
   "projected_total": 47
