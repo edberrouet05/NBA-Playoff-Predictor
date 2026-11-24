@@ -1032,5 +1032,16 @@
   "home_win_prob": 33.5,
   "predicted_winner": "Minnesota Wild",
   "puck_drop": "2026-11-24T03:00Z"
+ },
+ "401892780": {
+  "away_goalie": "Carter Hart",
+  "away_team": "Vegas Golden Knights",
+  "away_win_prob": 53.3,
+  "frozen_at": "2026-11-24T10:57:09Z",
+  "home_goalie": "Devon Levi",
+  "home_team": "Edmonton Oilers",
+  "home_win_prob": 46.7,
+  "predicted_winner": "Vegas Golden Knights",
+  "puck_drop": "2026-11-25T01:00Z"
  }
 }
