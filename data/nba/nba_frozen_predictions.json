@@ -264,6 +264,36 @@
   "projected_total": 226,
   "tipoff": "2026-11-21T03:00Z"
  },
+ "401909314": {
+  "away_team": "Detroit Pistons",
+  "away_win_prob": 52.3,
+  "frozen_at": "2026-11-24T11:30:19Z",
+  "home_team": "Orlando Magic",
+  "home_win_prob": 47.7,
+  "predicted_winner": "Detroit Pistons",
+  "projected_total": 221,
+  "tipoff": "2026-11-25T00:00Z"
+ },
+ "401909315": {
+  "away_team": "Boston Celtics",
+  "away_win_prob": 74.5,
+  "frozen_at": "2026-11-24T11:30:19Z",
+  "home_team": "Washington Wizards",
+  "home_win_prob": 25.5,
+  "predicted_winner": "Boston Celtics",
+  "projected_total": 219,
+  "tipoff": "2026-11-25T01:00Z"
+ },
+ "401909316": {
+  "away_team": "Dallas Mavericks",
+  "away_win_prob": 23.1,
+  "frozen_at": "2026-11-24T11:30:19Z",
+  "home_team": "Denver Nuggets",
+  "home_win_prob": 76.9,
+  "predicted_winner": "Denver Nuggets",
+  "projected_total": 231,
+  "tipoff": "2026-11-25T03:00Z"
+ },
  "401909834": {
   "away_team": "Atlanta Hawks",
   "away_win_prob": 42.9,
