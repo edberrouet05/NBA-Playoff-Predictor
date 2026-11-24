@@ -1021,5 +1021,16 @@
   "home_win_prob": 50.7,
   "predicted_winner": "Vancouver Canucks",
   "puck_drop": "2026-11-23T01:00Z"
+ },
+ "401892779": {
+  "away_goalie": "Filip Gustavsson",
+  "away_team": "Minnesota Wild",
+  "away_win_prob": 66.5,
+  "frozen_at": "2026-11-24T03:00:11Z",
+  "home_goalie": "Yaroslav Askarov",
+  "home_team": "San Jose Sharks",
+  "home_win_prob": 33.5,
+  "predicted_winner": "Minnesota Wild",
+  "puck_drop": "2026-11-24T03:00Z"
  }
 }
