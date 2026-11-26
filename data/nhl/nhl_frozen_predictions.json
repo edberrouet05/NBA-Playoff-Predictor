@@ -1043,5 +1043,71 @@
   "home_win_prob": 46.7,
   "predicted_winner": "Vegas Golden Knights",
   "puck_drop": "2026-11-25T01:00Z"
+ },
+ "401892789": {
+  "away_goalie": "Leevi Merilainen",
+  "away_team": "Vancouver Canucks",
+  "away_win_prob": 31.0,
+  "frozen_at": "2026-11-26T00:36:14Z",
+  "home_goalie": "Daniil Tarasov",
+  "home_team": "Detroit Red Wings",
+  "home_win_prob": 69.0,
+  "predicted_winner": "Detroit Red Wings",
+  "puck_drop": "2026-11-26T00:30Z"
+ },
+ "401892790": {
+  "away_goalie": "Juuse Saros",
+  "away_team": "Nashville Predators",
+  "away_win_prob": 38.4,
+  "frozen_at": "2026-11-26T00:36:14Z",
+  "home_goalie": "Jake Oettinger",
+  "home_team": "Dallas Stars",
+  "home_win_prob": 61.6,
+  "predicted_winner": "Dallas Stars",
+  "puck_drop": "2026-11-26T01:00Z"
+ },
+ "401892791": {
+  "away_goalie": "Karel Vejmelka",
+  "away_team": "Utah Mammoth",
+  "away_win_prob": 40.1,
+  "frozen_at": "2026-11-26T00:36:14Z",
+  "home_goalie": "Jesper Wallstedt",
+  "home_team": "Minnesota Wild",
+  "home_win_prob": 59.9,
+  "predicted_winner": "Minnesota Wild",
+  "puck_drop": "2026-11-26T01:00Z"
+ },
+ "401892792": {
+  "away_goalie": "Jacob Fowler",
+  "away_team": "Montreal Canadiens",
+  "away_win_prob": 40.9,
+  "frozen_at": "2026-11-26T00:36:14Z",
+  "home_goalie": "Mackenzie Blackwood",
+  "home_team": "Colorado Avalanche",
+  "home_win_prob": 59.1,
+  "predicted_winner": "Colorado Avalanche",
+  "puck_drop": "2026-11-26T02:30Z"
+ },
+ "401892793": {
+  "away_goalie": "Alex Nedeljkovic",
+  "away_team": "San Jose Sharks",
+  "away_win_prob": 31.3,
+  "frozen_at": "2026-11-26T00:36:14Z",
+  "home_goalie": "Laurent Brossoit",
+  "home_team": "Anaheim Ducks",
+  "home_win_prob": 68.7,
+  "predicted_winner": "Anaheim Ducks",
+  "puck_drop": "2026-11-26T03:00Z"
+ },
+ "401892794": {
+  "away_goalie": "Spencer Knight",
+  "away_team": "Chicago Blackhawks",
+  "away_win_prob": 41.0,
+  "frozen_at": "2026-11-26T00:36:14Z",
+  "home_goalie": "Joey Daccord",
+  "home_team": "Seattle Kraken",
+  "home_win_prob": 59.0,
+  "predicted_winner": "Seattle Kraken",
+  "puck_drop": "2026-11-26T02:40Z"
  }
 }
