@@ -1109,5 +1109,38 @@
   "home_win_prob": 59.0,
   "predicted_winner": "Seattle Kraken",
   "puck_drop": "2026-11-26T02:40Z"
+ },
+ "401892807": {
+  "away_goalie": "Stuart Skinner",
+  "away_team": "Winnipeg Jets",
+  "away_win_prob": 45.0,
+  "frozen_at": "2026-11-28T00:11:18Z",
+  "home_goalie": "Semyon Varlamov",
+  "home_team": "New York Islanders",
+  "home_win_prob": 55.0,
+  "predicted_winner": "New York Islanders",
+  "puck_drop": "2026-11-28T00:30Z"
+ },
+ "401892808": {
+  "away_goalie": "Sergei Murashov",
+  "away_team": "Pittsburgh Penguins",
+  "away_win_prob": 44.2,
+  "frozen_at": "2026-11-28T00:11:18Z",
+  "home_goalie": "Ukko-Pekka Luukkonen",
+  "home_team": "Buffalo Sabres",
+  "home_win_prob": 55.8,
+  "predicted_winner": "Buffalo Sabres",
+  "puck_drop": "2026-11-28T01:00Z"
+ },
+ "401892809": {
+  "away_goalie": "Philipp Grubauer",
+  "away_team": "Seattle Kraken",
+  "away_win_prob": 38.0,
+  "frozen_at": "2026-11-28T00:11:18Z",
+  "home_goalie": "Tristan Jarry",
+  "home_team": "Edmonton Oilers",
+  "home_win_prob": 62.0,
+  "predicted_winner": "Edmonton Oilers",
+  "puck_drop": "2026-11-28T01:00Z"
  }
 }
